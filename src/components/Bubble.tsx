@@ -16,6 +16,8 @@ interface Props {
   isLast: boolean
   /** userText가 있으면 사용자 말풍선을 올리고 요청을 보내요. 없으면 조용히 다시 시도해요. */
   onSend: (request: AnalyzeRequest, userText?: string) => void
+  /** 넓은 화면에서 채팅 옆에 붙여 두는 메뉴로 그릴 때 true. 타자 효과 없이 칸을 꽉 채워서 보여줘요. */
+  docked?: boolean
 }
 
 const actionButton =
@@ -26,9 +28,9 @@ const quietButton =
 
 const WIDE_TYPES = new Set(['ranking', 'summary', 'list', 'chart', 'facts', 'stack', 'pick'])
 
-export function Bubble({ message, busy, isLast, onSend }: Props) {
+export function Bubble({ message, busy, isLast, onSend, docked = false }: Props) {
   // 글이 타자를 치듯 다 나타난 뒤에 카드, 그래프, 버튼 같은 나머지 내용을 보여줘요.
-  const [typed, setTyped] = useState(!(message.from === 'bot' && message.live))
+  const [typed, setTyped] = useState(docked || !(message.from === 'bot' && message.live))
   if (message.from === 'user') {
     return (
       <div className="flex animate-rise justify-end">
@@ -83,12 +85,12 @@ export function Bubble({ message, busy, isLast, onSend }: Props) {
   return (
     <div className="flex animate-rise justify-start">
       <div
-        className={`rounded-2xl rounded-bl-md bg-gray-100 px-4 py-2.5 text-[15px] leading-relaxed text-gray-900 ${
-          wide ? 'w-full pb-4' : 'max-w-[85%]'
+        className={`rounded-2xl bg-gray-100 px-4 py-2.5 text-[15px] leading-relaxed text-gray-900 ${
+          docked ? 'w-full' : `rounded-bl-md ${wide ? 'w-full pb-4' : 'max-w-[85%]'}`
         }`}
       >
         <p className="whitespace-pre-line">
-          <RichText text={event.text} typed={message.live} onDone={() => setTyped(true)} />
+          <RichText text={event.text} typed={message.live && !docked} onDone={() => setTyped(true)} />
         </p>
 
         {typed && <div className="animate-rise">{renderExtras()}</div>}

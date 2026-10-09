@@ -27,7 +27,7 @@ export function Followup({ people, disabled, onAsk, onStart }: Props) {
             type="button"
             disabled={disabled}
             onClick={onStart}
-            className="rounded-lg bg-brand px-3 py-2 text-left text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover disabled:bg-gray-200 disabled:text-gray-400"
+            className={chip}
           >
             {ANALYSIS_LABEL}
           </button>
