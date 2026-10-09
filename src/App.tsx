@@ -21,7 +21,7 @@ function takePendingRepo(): string | null {
 
 export default function App() {
   const { user, ready, logout } = useAuth()
-  const { messages, busy, send, say, reset } = useAnalysis()
+  const { messages, busy, paused, send, resume, say, reset } = useAnalysis()
   const resumed = useRef(false)
 
   // 로그인 직후에는 기다리던 레포를 바로 이어서 분석하고, 로그인에 실패했다면 말풍선으로 알려줘요.
@@ -55,7 +55,7 @@ export default function App() {
       {messages.length === 0 ? (
         <Hero onSubmit={handleSubmit} />
       ) : (
-        <Chat messages={messages} busy={busy} onLogin={handleLogin} onSend={send} />
+        <Chat messages={messages} busy={busy} paused={paused} onResume={resume} onLogin={handleLogin} onSend={send} />
       )}
     </div>
   )

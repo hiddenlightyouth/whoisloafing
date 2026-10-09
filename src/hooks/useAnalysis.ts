@@ -7,7 +7,7 @@ export type ChatMessage =
   | {
       id: number
       from: 'bot'
-      event: Exclude<ChatEvent, { type: 'done' }>
+      event: Exclude<ChatEvent, { type: 'done' | 'pause' }>
       /** 이 말풍선을 만든 요청. 다시 시도하거나 이어서 질문할 때 그대로 써요. */
       request?: AnalyzeRequest
     }
@@ -22,6 +22,9 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 export function useAnalysis() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [busy, setBusy] = useState(false)
+  /** 한 단계가 끝나서 계속하기를 기다리는 중이면 다음 단계 안내가 들어 있어요. */
+  const [paused, setPaused] = useState<string | null>(null)
+  const resumeRef = useRef<(() => void) | null>(null)
   const busyRef = useRef(false)
   const nextId = useRef(1)
 
@@ -71,6 +74,14 @@ export function useAnalysis() {
           continue
         }
         if (event.type === 'done') break
+        if (event.type === 'pause') {
+          // 서버는 뒤에서 계속 분석하고, 화면만 사용자가 계속하기를 누를 때까지 기다려요.
+          setPaused(event.next)
+          await new Promise<void>((resolve) => (resumeRef.current = resolve))
+          resumeRef.current = null
+          setPaused(null)
+          continue
+        }
         await sleep(TYPING_DELAY_MS)
         append({ from: 'bot', event, request: current })
       }
@@ -81,9 +92,11 @@ export function useAnalysis() {
     [append],
   )
 
+  const resume = useCallback(() => resumeRef.current?.(), [])
+
   const reset = useCallback(() => {
     if (!busyRef.current) setMessages([])
   }, [])
 
-  return { messages, busy, send, say, reset }
+  return { messages, busy, paused, send, resume, say, reset }
 }

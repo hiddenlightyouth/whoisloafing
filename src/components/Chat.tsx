@@ -7,6 +7,9 @@ import { TypingDots } from './TypingDots'
 interface Props {
   messages: ChatMessage[]
   busy: boolean
+  /** 계속하기를 기다리는 중이면 다음 단계 안내 */
+  paused: string | null
+  onResume: () => void
   onLogin: (repoUrl?: string) => void
   onSend: (request: AnalyzeRequest, userText?: string) => void
 }
@@ -19,8 +22,10 @@ const HEADER_HEIGHT_PX = 56
 /** 화면 위에서부터 이 비율만큼의 구간에서 서서히 밝아져요. */
 const FOCUS_FADE_RATIO = 0.4
 const FOCUS_MIN_OPACITY = 0.3
+/** 이만큼 스크롤되면 흐림 효과가 온전히 적용돼요. */
+const FOCUS_RAMP_PX = 240
 
-export function Chat({ messages, busy, onLogin, onSend }: Props) {
+export function Chat({ messages, busy, paused, onResume, onLogin, onSend }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
   const lastScrollTop = useRef(0)
@@ -51,6 +56,8 @@ export function Chat({ messages, busy, onLogin, onSend }: Props) {
     const view = el.getBoundingClientRect()
     const fadeStart = view.top + HEADER_HEIGHT_PX
     const fadeRange = (view.height - HEADER_HEIGHT_PX) * FOCUS_FADE_RATIO
+    // 위로 넘어간 내용이 없으면 흐리게 하지 않고, 스크롤된 만큼만 서서히 효과를 줘요.
+    const strength = Math.min(1, el.scrollTop / FOCUS_RAMP_PX)
     for (const item of el.querySelectorAll<HTMLElement>('[data-focus]')) {
       const rect = item.getBoundingClientRect()
       // 화면에 보이는 부분의 가운데를 기준으로 해요. 화면보다 긴 말풍선도 자연스럽게 밝아져요.
@@ -58,7 +65,7 @@ export function Chat({ messages, busy, onLogin, onSend }: Props) {
       const visibleBottom = Math.min(rect.bottom, view.bottom)
       const center = visibleBottom > visibleTop ? (visibleTop + visibleBottom) / 2 : rect.bottom
       const progress = Math.min(1, Math.max(0, (center - fadeStart) / fadeRange))
-      item.style.opacity = String(FOCUS_MIN_OPACITY + (1 - FOCUS_MIN_OPACITY) * progress)
+      item.style.opacity = String(1 - (1 - FOCUS_MIN_OPACITY) * (1 - progress) * strength)
     }
   }, [])
 
@@ -71,7 +78,7 @@ export function Chat({ messages, busy, onLogin, onSend }: Props) {
   // 아래에 붙어 있을 때만 새 말풍선을 따라 내려가요. 위로 올려서 읽는 중이면 그대로 둬요.
   useEffect(() => {
     if (pinned.current) scrollToBottom()
-  }, [messages.length, busy, scrollToBottom])
+  }, [messages.length, busy, paused, scrollToBottom])
 
   return (
     <main className="relative flex min-h-0 flex-1 flex-col">
@@ -93,7 +100,26 @@ export function Chat({ messages, busy, onLogin, onSend }: Props) {
             </div>
           ))}
           {/* 말풍선이 하나 올라올 때마다 새로 그려서, 오래 기다릴 때만 문구가 나오게 해요. */}
-          {busy && <TypingDots key={messages.length} />}
+          {paused ? (
+            <div className="mt-2 flex animate-rise flex-wrap items-center gap-x-3 gap-y-2">
+              <button
+                type="button"
+                autoFocus
+                onClick={onResume}
+                className="inline-flex h-10 items-center gap-1.5 rounded-full bg-brand pr-3.5 pl-4 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover"
+              >
+                계속하기
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-4" aria-hidden="true">
+                  <path d="M8 3.5v9M4.5 9L8 12.5 11.5 9" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+              <p className="text-[13px] text-gray-500">
+                다음 단계 <span className="ml-1 font-medium text-gray-900">{paused}</span>
+              </p>
+            </div>
+          ) : (
+            busy && <TypingDots key={messages.length} />
+          )}
         </div>
       </div>
 
