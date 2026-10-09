@@ -12,6 +12,21 @@ export function Hero({ onSubmit }: { onSubmit: (url: string) => void }) {
         </h1>
         <RepoInput onSubmit={onSubmit} />
       </div>
+
+      <footer className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 whitespace-nowrap px-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-[11px] text-gray-400 sm:px-6 sm:text-xs">
+        <a
+          href="https://hidly.dev/"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 transition-colors hover:text-gray-700"
+        >
+          숨은빛청년들 팀
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" className="size-3" aria-hidden="true">
+            <path d="M3.5 8.5l5-5M4.5 3.5h4v4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </a>
+        <span>© 2026 WhoIsLoafing. All rights reserved.</span>
+      </footer>
     </main>
   )
 }

@@ -26,7 +26,7 @@ export function RepoInput({ onSubmit }: { onSubmit: (url: string) => void }) {
         autoFocus
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        placeholder="github.com/owner/repo"
+        placeholder="GitHub 레포지토리 링크를 입력해 보세요!"
         aria-label="GitHub 레포 링크"
         className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-gray-900 outline-none placeholder:text-gray-400"
       />
