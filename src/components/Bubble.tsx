@@ -22,7 +22,7 @@ const actionButton =
 const quietButton =
   'mt-3 inline-flex h-9 items-center rounded-lg bg-white px-3.5 text-[13px] font-semibold text-gray-700 transition-colors hover:text-brand disabled:text-gray-400'
 
-const WIDE_TYPES = new Set(['ranking', 'summary', 'list', 'chart', 'facts'])
+const WIDE_TYPES = new Set(['ranking', 'summary', 'list', 'chart', 'facts', 'stack'])
 
 export function Bubble({ message, busy, isLast, onLogin, onSend }: Props) {
   if (message.from === 'user') {
@@ -77,6 +77,26 @@ export function Bubble({ message, busy, isLast, onLogin, onSend }: Props) {
 
         {event.type === 'summary' && (
           <SummaryChart contributors={event.contributors} othersCount={event.othersCount} />
+        )}
+
+        {event.type === 'stack' && (
+          <dl className="mt-3 mb-1.5 divide-y divide-gray-100 rounded-xl bg-white px-4">
+            {event.groups.map((group) => (
+              <div key={group.category} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-baseline sm:gap-4">
+                <dt className="shrink-0 text-xs font-medium text-gray-500 sm:w-24">{group.category}</dt>
+                <dd className="flex min-w-0 flex-wrap gap-1.5">
+                  {group.items.map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-full bg-brand-soft px-2.5 py-1 text-[13px] leading-none font-medium text-brand-hover"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </dd>
+              </div>
+            ))}
+          </dl>
         )}
 
         {event.type === 'chart' && <Charts charts={event.charts} />}

@@ -131,6 +131,17 @@ export function createGitHub(token?: string) {
       }
     },
 
+    /** 파일 내용을 글자로 가져와요. 없거나 너무 크면 빈 문자열을 돌려줘요. */
+    async getFile(owner: string, repo: string, path: string): Promise<string> {
+      try {
+        const encoded = path.split('/').map(encodeURIComponent).join('/')
+        return await (await request(`${base(owner, repo)}/contents/${encoded}`, 'application/vnd.github.raw+json')).text()
+      } catch (err) {
+        if (err instanceof GitHubError && (err.status === 404 || err.status === 403)) return ''
+        throw err
+      }
+    },
+
     getLanguages: (owner: string, repo: string) => json<Record<string, number>>(`${base(owner, repo)}/languages`),
 
     /**

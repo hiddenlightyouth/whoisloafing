@@ -45,6 +45,12 @@ export type ChartSpec =
       rows: { label: string; values: number[] }[]
     }
 
+/** 기술 스택을 종류별로 묶은 것 */
+export interface StackGroup {
+  category: string
+  items: string[]
+}
+
 export type ChatEvent =
   | { type: 'text'; text: string }
   /** 기여도 순서대로 정렬된 참여자별 수치 카드 묶음. 화면에서는 말풍선 하나 안에서 좌우로 넘겨 봐요. */
@@ -57,6 +63,8 @@ export type ChatEvent =
     }
   /** 번호가 붙은 목록 말풍선. 참여자가 맡은 기능과 코드 스타일에 써요. */
   | { type: 'list'; text: string; items: string[] }
+  /** 레포에서 사용한 기술 스택 */
+  | { type: 'stack'; text: string; groups: StackGroup[] }
   | { type: 'chart'; text: string; charts: ChartSpec[] }
   /** 이름과 값이 짝을 이루는 표 */
   | { type: 'facts'; text: string; items: { label: string; value: string }[] }
@@ -66,6 +74,8 @@ export type ChatEvent =
   | { type: 'ask'; text: string }
   /** action이 있으면 말풍선 안에 로그인 버튼이나 다시 시도 버튼을 보여줘요. */
   | { type: 'error'; text: string; action?: 'login' | 'retry' }
+  /** 한 단계가 끝났어요. 사용자가 계속하기를 누를 때까지 다음 말풍선을 올리지 않아요. next는 다음 단계 안내예요. */
+  | { type: 'pause'; next: string }
   | { type: 'done' }
 
 export interface AnalyzeRequest {

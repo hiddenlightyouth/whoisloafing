@@ -1,4 +1,5 @@
-import type { ChatEvent, ContributorStats, FollowupQuestion } from '../shared/types.ts'
+import type { ChatEvent, ContributorStats, FollowupQuestion, StackGroup } from '../shared/types.ts'
+import { parseRepoUrl } from '../shared/repo.ts'
 import { TtlCache } from './cache.ts'
 import { aiEnabled, analyzeContributor, narrateOrNull, summarizeRepo } from './gemini.ts'
 import { env } from './env.ts'
@@ -34,7 +35,7 @@ const PULL_TITLE_LIMIT = 10
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const resultCache = new TtlCache<ChatEvent[]>(CACHE_TTL_MS, 300)
-const summaryCache = new TtlCache<string>(CACHE_TTL_MS, 300)
+const summaryCache = new TtlCache<RepoIntro>(CACHE_TTL_MS, 300)
 
 export interface Requester {
   id: number
@@ -44,20 +45,6 @@ export interface Requester {
 type Emit = (event: ChatEvent) => void
 
 type Ranked = ContributorStats & { key: string }
-
-/** 여러 형태의 GitHub 레포 주소에서 owner와 repo를 뽑아내요. */
-export function parseRepoUrl(input: string): { owner: string; repo: string } | null {
-  const trimmed = input.trim()
-  const match =
-    /^(?:https?:\/\/)?(?:www\.)?github\.com\/([^/\s]+)\/([^/\s?#]+)/i.exec(trimmed) ??
-    /^git@github\.com:([^/\s]+)\/([^/\s]+)$/i.exec(trimmed) ??
-    /^([^/\s]+)\/([^/\s]+)$/.exec(trimmed)
-  if (!match) return null
-  const owner = match[1]
-  const repo = match[2].replace(/\.git$/i, '')
-  const valid = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(owner) && /^[A-Za-z0-9._-]+$/.test(repo)
-  return valid && repo !== '.' && repo !== '..' ? { owner, repo } : null
-}
 
 function rateLimitMessage(err: GitHubError): string {
   if (!err.resetAt) return 'GitHub API 호출 제한을 넘었어요. 잠시 뒤에 다시 시도해 주세요.'
@@ -127,10 +114,55 @@ function fallbackSummary(repo: Repo, languages: Record<string, number>): string 
   return top ? `**${top}**로 만든 **${repo.name}** 레포지토리네요!` : `**${repo.name}** 레포지토리네요!`
 }
 
-/** 어떤 서비스의 어떤 레포인지 한 문장으로 정의해요. AI를 쓸 수 없으면 언어와 이름으로 대신해요. */
-async function describeRepo(gh: GitHub, repo: Repo, baseKey: string): Promise<{ text: string; fromAi: boolean }> {
+/** 기술 스택을 알아내는 데 쓰는 의존성 파일과 설정 파일 (앞에 있을수록 먼저 읽어요) */
+const MANIFEST_FILES = [
+  'build.gradle',
+  'build.gradle.kts',
+  'pom.xml',
+  'package.json',
+  'requirements.txt',
+  'pyproject.toml',
+  'go.mod',
+  'Cargo.toml',
+  'Gemfile',
+  'composer.json',
+  'pubspec.yaml',
+  'docker-compose.yml',
+  'docker-compose.yaml',
+  'Dockerfile',
+]
+const MANIFEST_MAX_FILES = 3
+const MANIFEST_LIMIT = 2500
+
+/** 레포 위쪽에 있는 의존성 파일을 몇 개 골라서 내용을 읽어 와요. */
+async function readManifests(gh: GitHub, owner: string, repo: string, tree: string[]): Promise<string> {
+  const picked = tree
+    .filter((path) => !path.endsWith('/') && path.split('/').length <= 2 && !isExcludedFile(path))
+    .map((path) => ({ path, rank: MANIFEST_FILES.indexOf(path.split('/').pop()!) }))
+    .filter((file) => file.rank >= 0)
+    .sort((a, b) => a.rank - b.rank || a.path.length - b.path.length)
+    .slice(0, MANIFEST_MAX_FILES)
+
+  const contents = await Promise.all(picked.map((file) => gh.getFile(owner, repo, file.path).catch(() => '')))
+  return picked
+    .map((file, index) => (contents[index] ? `--- ${file.path}\n${truncate(contents[index], MANIFEST_LIMIT)}` : ''))
+    .filter(Boolean)
+    .join('\n\n')
+}
+
+interface RepoIntro {
+  text: string
+  stack: StackGroup[]
+  fromAi: boolean
+}
+
+/**
+ * 어떤 서비스의 어떤 레포인지 한 문장으로 정의하고 기술 스택을 정리해요.
+ * AI를 쓸 수 없으면 언어와 이름으로 대신해요.
+ */
+async function describeRepo(gh: GitHub, repo: Repo, baseKey: string): Promise<RepoIntro> {
   const cached = summaryCache.get(baseKey)
-  if (cached) return { text: cached, fromAi: true }
+  if (cached) return cached
 
   const owner = repo.owner.login
   const [readme, tree, languages] = await Promise.all([
@@ -141,20 +173,31 @@ async function describeRepo(gh: GitHub, repo: Repo, baseKey: string): Promise<{ 
 
   if (aiEnabled) {
     try {
-      const text = await summarizeRepo({
+      const result = await summarizeRepo({
         fullName: repo.full_name,
         description: repo.description,
         languages,
         tree: compactTree(tree),
         readme: truncate(readme, README_LIMIT),
+        manifests: await readManifests(gh, owner, repo.name, tree),
       })
-      summaryCache.set(baseKey, text)
-      return { text, fromAi: true }
+      const intro = { text: result.sentence, stack: result.stack, fromAi: true }
+      summaryCache.set(baseKey, intro)
+      return intro
     } catch (err) {
       console.error(err)
     }
   }
-  return { text: sanitize(fallbackSummary(repo, languages)), fromAi: false }
+
+  const topLanguages = Object.entries(languages)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([name]) => name)
+  return {
+    text: sanitize(fallbackSummary(repo, languages)),
+    stack: topLanguages.length > 0 ? [{ category: '언어', items: topLanguages }] : [],
+    fromAi: false,
+  }
 }
 
 const firstLine = (message: string) => message.split('\n')[0].trim()
@@ -349,6 +392,9 @@ export async function runAnalysis(options: {
     try {
       const summary = await describeRepo(gh, repo, baseKey)
       options.emit({ type: 'text', text: summary.text })
+      if (summary.stack.length > 0) {
+        options.emit({ type: 'stack', text: '이런 기술로 만들었어요.', groups: summary.stack })
+      }
     } catch (err) {
       options.emit(repoErrorEvent(err, !!requester))
       return
@@ -461,7 +507,9 @@ export async function runAnalysis(options: {
     const teamNotes: { name: string; features: string[]; style: string[] }[] = []
 
     if (withProfiles) {
+      // 한 단계가 끝날 때마다 멈춰서, 사용자가 읽고 계속하기를 눌러야 다음으로 넘어가요.
       // 먼저 모든 참여자의 기능을 이어서 보여주고, 그다음에 코드 스타일을 이어서 보여줘요.
+      emit({ type: 'pause', next: '누가 어떤 기능을 맡았는지 살펴보기' })
       emit({ type: 'text', text: '누가 어떤 기능을 맡았는지 분석해볼게요!' })
       const styles: { name: string; items: string[] }[] = []
       for (const [index, card] of cards.entries()) {
@@ -478,6 +526,7 @@ export async function runAnalysis(options: {
       }
 
       if (styles.length > 0) {
+        emit({ type: 'pause', next: '참여자들의 코드 스타일 살펴보기' })
         emit({ type: 'text', text: '이번엔 참여자들의 코드 스타일을 분석해볼게요!' })
         for (const style of styles) {
           emit(
@@ -491,6 +540,8 @@ export async function runAnalysis(options: {
       cacheable = false
       emit({ type: 'text', text: 'AI 분석이 설정되어 있지 않아서 기능과 코드 스타일은 보여드리지 못했어요.' })
     }
+
+    emit({ type: 'pause', next: '전체 기여도 비교와 팀 총평 보기' })
 
     const rest = ranked.length - detailed.length
     if (rest > 0) {
