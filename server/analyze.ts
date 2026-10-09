@@ -22,6 +22,12 @@ const MAX_DETAILED = 10
 /** 마지막 요약 그래프에 그리는 최대 인원 */
 const MAX_CHART = 15
 const AI_CONCURRENCY = 2
+/** 참여자가 이보다 많으면 누구를 살펴볼지 먼저 물어봐요. */
+const PICK_THRESHOLD = 5
+/** "상위 N명만 분석하기"의 N */
+const PICK_TOP = 5
+/** 직접 고를 때 보여주는 최대 인원 */
+const PICK_LIST_MAX = 30
 
 // Gemini에 보내는 자료 길이 제한 (비용 절감)
 const README_LIMIT = 6000
@@ -36,6 +42,8 @@ const PULL_TITLE_LIMIT = 10
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const resultCache = new TtlCache<ChatEvent[]>(CACHE_TTL_MS, 300)
 const summaryCache = new TtlCache<RepoIntro>(CACHE_TTL_MS, 300)
+/** 모아 둔 수치. 참여자를 고른 뒤에 다시 오는 요청이 같은 수치를 쓰게 해요. */
+const collectedCache = new TtlCache<Collected>(60 * 60 * 1000, 50)
 
 type Emit = (event: ChatEvent) => void
 
@@ -306,6 +314,8 @@ export async function runAnalysis(options: {
   /** 분석이 끝난 뒤의 추가 질문 */
   question?: FollowupQuestion
   person?: string
+  /** 맡은 기능과 코드 스타일을 살펴볼 참여자. 참여자가 많을 때 사용자가 골라서 보내요. */
+  people?: string[]
   timeZone?: string
   emit: Emit
   isAborted: () => boolean
@@ -382,7 +392,12 @@ export async function runAnalysis(options: {
     return
   }
 
-  const resultKey = `${baseKey}:${excludeGenerated ? 'commits' : 'stats'}`
+  const mode = excludeGenerated ? 'commits' : 'stats'
+  // 참여자가 많으면 순위까지 보여준 뒤 누구를 살펴볼지 물어봐요. 고른 사람들은 다음 요청의 people로 와요.
+  const picked = options.people?.length
+    ? [...new Set(options.people.map((id) => id.trim().toLowerCase()))].slice(0, MAX_DETAILED)
+    : null
+  const resultKey = `${baseKey}:${mode}:${picked ? `people:${[...picked].sort().join(',')}` : 'start'}`
 
   const cached = resultCache.get(resultKey)
   if (cached) {
@@ -393,8 +408,12 @@ export async function runAnalysis(options: {
   let cacheable = true
 
   try {
-    emit({ type: 'text', text: 'GitHub에서 생성된 통계를 가져오고 있어요.\n잠시만 기다려 주세요!' })
-    const collecting = collect(gh, owner, repoName, excludeGenerated)
+    if (!picked) emit({ type: 'text', text: 'GitHub에서 생성된 통계를 가져오고 있어요.\n잠시만 기다려 주세요!' })
+
+    // 참여자를 고른 뒤에 다시 오는 요청은 앞에서 모아 둔 수치를 그대로 써요.
+    const collectKey = `${baseKey}:${mode}`
+    const known = collectedCache.get(collectKey)
+    const collecting = known ? Promise.resolve(known) : collect(gh, owner, repoName, excludeGenerated)
     // 아래에서 await하기 전에 실패해도 처리되지 않은 거절로 남지 않게 해요.
     collecting.catch(() => {})
 
@@ -407,6 +426,7 @@ export async function runAnalysis(options: {
     }
 
     const collected = await collecting
+    collectedCache.set(collectKey, collected)
     const ranked = rank(collected.people)
     if (isAborted()) return
 
@@ -415,28 +435,28 @@ export async function runAnalysis(options: {
       return
     }
 
-    if (collected.capped) {
-      emit({ type: 'text', text: `커밋이 많아서 최근 ${formatNumber(MAX_COMMITS)}개만 살펴봤어요.` })
+    const idOf = (person: Ranked) => personId(person.login, person.name)
+    const needsPick = !picked && aiEnabled && ranked.length > PICK_THRESHOLD
+
+    // 맡은 기능과 코드 스타일을 살펴볼 사람들 (기여도 순서)
+    let selected: Ranked[]
+    if (picked) {
+      selected = ranked.filter((person) => picked.includes(idOf(person)))
+      if (selected.length === 0) {
+        emit({ type: 'text', text: '고른 참여자를 찾지 못했어요. 다시 골라 주세요.' })
+        return
+      }
+    } else {
+      selected = needsPick ? [] : ranked.slice(0, MAX_DETAILED)
     }
 
-    const detailed = ranked.slice(0, MAX_DETAILED)
-    const withProfiles = aiEnabled
-
-    emit({
-      type: 'text',
-      text:
-        ranked.length === 1
-          ? '🎉 이 프로젝트는 **1명**이 혼자 만들었네요!'
-          : `🎉 이 프로젝트에 **${formatNumber(ranked.length)}명**이 참여했네요!`,
-    })
-
-    // 역할과 코드 스타일 분석은 미리 한꺼번에 시작해 두고, 화면에는 기여도 순서대로 내보내요.
+    // 맡은 기능과 코드 스타일 분석은 미리 한꺼번에 시작해 두고, 화면에는 기여도 순서대로 내보내요.
     let profiles: Promise<Profile | null>[] = []
-    if (withProfiles) {
+    if (aiEnabled && selected.length > 0) {
       const pulls = await gh.listPulls(owner, repoName).catch(() => [] as Pull[])
       const settled = new Map<number, (profile: Profile | null) => void>()
-      profiles = detailed.map((_, index) => new Promise<Profile | null>((resolve) => settled.set(index, resolve)))
-      void mapLimit(detailed, AI_CONCURRENCY, async (person, index) => {
+      profiles = selected.map((_, index) => new Promise<Profile | null>((resolve) => settled.set(index, resolve)))
+      void mapLimit(selected, AI_CONCURRENCY, async (person, index) => {
         try {
           if (isAborted()) throw new Error('요청이 취소됐어요.')
           settled.get(index)!(await profileContributor(gh, owner, repoName, person, collected, pulls, repoSummary))
@@ -447,45 +467,74 @@ export async function runAnalysis(options: {
       })
     }
 
-    const cards = detailed.map(toPublic)
-    // 순위 숫자를 읽고 풀어 주는 설명은 카드를 보여주는 동안 미리 받아 둬요.
-    const rankingStory =
-      cards.length > 1
-        ? narrateOrNull(
-            '참여자별 기여도',
-            cards.map(({ name, commits, additions, deletions, commitShare, lineShare }) => ({
-              name,
-              commits,
-              additions,
-              deletions,
-              commitShare,
-              lineShare,
-            })),
-            '커밋 수 기준과 라인 수 기준 순위가 어떻게 다른지, 누가 작게 자주 올리고 누가 한 번에 크게 올리는 편인지, 기여가 고르게 나뉘었는지 한쪽에 쏠렸는지 짚어 줘요.',
-          )
-        : null
-    emit({
-      type: 'ranking',
-      text:
-        ranked.length === 1
-          ? `**${cards[0].name}**님이 혼자 만든 레포예요.`
-          : `**${cards[0].name}**님이 가장 많이 기여했어요. ${cards
-              .slice(1, 3)
-              .map((card, index) => `${index + 2}위는 ${card.name}님`)
-              .join(', ')}이에요.`,
-      contributors: cards,
-    })
+    if (!picked) {
+      if (collected.capped) {
+        emit({ type: 'text', text: `커밋이 많아서 최근 ${formatNumber(MAX_COMMITS)}개만 살펴봤어요.` })
+      }
 
-    const rankingText = await rankingStory
-    if (rankingText) emit({ type: 'text', text: rankingText })
-    else if (rankingStory) cacheable = false
+      emit({
+        type: 'text',
+        text:
+          ranked.length === 1
+            ? '🎉 이 프로젝트는 **1명**이 혼자 만들었네요!'
+            : `🎉 이 프로젝트에 **${formatNumber(ranked.length)}명**이 참여했네요!`,
+      })
 
+      const cards = ranked.slice(0, MAX_DETAILED).map(toPublic)
+      // 순위 숫자를 읽고 풀어 주는 설명은 카드를 보여주는 동안 미리 받아 둬요.
+      const rankingStory =
+        cards.length > 1
+          ? narrateOrNull(
+              '참여자별 기여도',
+              cards.map(({ name, commits, additions, deletions, commitShare, lineShare }) => ({
+                name,
+                commits,
+                additions,
+                deletions,
+                commitShare,
+                lineShare,
+              })),
+              '커밋 수 기준과 라인 수 기준 순위가 어떻게 다른지, 누가 작게 자주 올리고 누가 한 번에 크게 올리는 편인지, 기여가 고르게 나뉘었는지 한쪽에 쏠렸는지 짚어 줘요.',
+            )
+          : null
+      emit({
+        type: 'ranking',
+        text:
+          ranked.length === 1
+            ? `**${cards[0].name}**님이 혼자 만든 레포예요.`
+            : `**${cards[0].name}**님이 가장 많이 기여했어요. ${cards
+                .slice(1, 3)
+                .map((card, index) => `${index + 2}위는 ${card.name}님`)
+                .join(', ')}이에요.`,
+        contributors: cards,
+      })
+
+      const rankingText = await rankingStory
+      if (rankingText) emit({ type: 'text', text: rankingText })
+      else if (rankingStory) cacheable = false
+
+      // 참여자가 많으면 모두 살펴보는 대신, 누구를 볼지 사용자가 고르게 해요.
+      if (needsPick) {
+        emit({
+          type: 'pick',
+          text: `참여자가 **${formatNumber(ranked.length)}명**이나 되네요. 누가 맡은 기능과 코드 스타일을 살펴볼까요?`,
+          people: ranked.slice(0, PICK_LIST_MAX).map((person) => ({ id: idOf(person), name: sanitize(person.name) })),
+          top: PICK_TOP,
+          max: MAX_DETAILED,
+        })
+        if (cacheable && !isAborted()) resultCache.set(resultKey, recorded)
+        return
+      }
+    }
+
+    const cards = selected.map(toPublic)
     const teamNotes: { name: string; features: string[]; style: string[] }[] = []
 
-    if (withProfiles) {
+    if (aiEnabled) {
       // 한 단계가 끝날 때마다 멈춰서, 사용자가 읽고 계속하기를 눌러야 다음으로 넘어가요.
+      // 참여자를 직접 고른 직후에는 이미 버튼을 누른 것이라 멈추지 않고 바로 이어가요.
       // 먼저 모든 참여자의 기능을 이어서 보여주고, 그다음에 코드 스타일을 이어서 보여줘요.
-      emit({ type: 'pause', next: '누가 어떤 기능을 맡았는지 살펴보기' })
+      if (!picked) emit({ type: 'pause', next: '누가 어떤 기능을 맡았는지 살펴보기' })
       emit({ type: 'text', text: '누가 어떤 기능을 맡았는지 분석해볼게요!' })
       const styles: { name: string; items: string[] }[] = []
       for (const [index, card] of cards.entries()) {
@@ -519,9 +568,9 @@ export async function runAnalysis(options: {
 
     emit({ type: 'pause', next: '전체 기여도 비교와 팀 총평 보기' })
 
-    const rest = ranked.length - detailed.length
+    const rest = ranked.length - selected.length
     if (rest > 0) {
-      emit({ type: 'text', text: `나머지 ${formatNumber(rest)}명은 아래 요약에서 함께 보여드릴게요.` })
+      emit({ type: 'text', text: `자세히 살펴보지 않은 ${formatNumber(rest)}명은 아래 요약에서 함께 보여드릴게요.` })
     }
 
     emit({
@@ -539,6 +588,7 @@ export async function runAnalysis(options: {
         '이 팀은 전체적으로 어떻게 일했나요?',
         {
           repo: repoSummary,
+          totalContributors: ranked.length,
           contributors: cards.map((card) => ({
             name: card.name,
             commitShare: card.commitShare,
@@ -546,13 +596,13 @@ export async function runAnalysis(options: {
             ...teamNotes.find((note) => note.name === card.name),
           })),
         },
-        '"전체적으로"로 시작해서, 역할이 어떻게 나뉘었는지와 팀의 작업 방식에서 느껴지는 인상을 총평처럼 말해 줘요. 한 사람만 참여했다면 그 사람의 작업 방식을 말해 줘요.',
+        '"전체적으로"로 시작해서, 역할이 어떻게 나뉘었는지와 팀의 작업 방식에서 느껴지는 인상을 총평처럼 말해 줘요. 한 사람만 참여했다면 그 사람의 작업 방식을 말해 줘요. 자료에 있는 참여자가 전체 참여자의 일부라면 팀 전체를 단정하지 말고 살펴본 사람들에 대해서만 말해요.',
       )
       if (closing) emit({ type: 'text', text: closing })
       else cacheable = false
     }
 
-    emit(followupEvent(ranked.map((person) => ({ id: personId(person.login, person.name), name: sanitize(person.name) }))))
+    emit(followupEvent(ranked.map((person) => ({ id: idOf(person), name: sanitize(person.name) }))))
 
     if (cacheable && !isAborted()) resultCache.set(resultKey, recorded)
   } catch (err) {

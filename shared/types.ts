@@ -70,6 +70,8 @@ export type ChatEvent =
   | { type: 'facts'; text: string; items: { label: string; value: string }[] }
   /** 추가 질문을 고르는 말풍선 */
   | { type: 'followup'; text: string; people: FollowupPerson[] }
+  /** 참여자가 많을 때, 맡은 기능과 코드 스타일을 살펴볼 사람을 고르게 해요. top은 "상위 N명"의 N, max는 고를 수 있는 최대 인원이에요. */
+  | { type: 'pick'; text: string; people: FollowupPerson[]; top: number; max: number }
   /** 분석을 시작하기 전에 lock 파일과 빌드 결과물을 뺄지 물어봐요. */
   | { type: 'ask'; text: string }
   /** action이 있으면 말풍선 안에 다시 시도 버튼을 보여줘요. */
@@ -109,6 +111,8 @@ export interface AnalyzeRequest {
   question?: FollowupQuestion
   /** question이 person일 때 살펴볼 참여자 */
   person?: string
+  /** 맡은 기능과 코드 스타일을 살펴볼 참여자들. 참여자가 많아서 고르라고 물어봤을 때 답으로 보내요. */
+  people?: string[]
   /** 시간대별 통계를 사용자의 시간대로 계산하기 위한 값 (예: Asia/Seoul) */
   timeZone?: string
 }

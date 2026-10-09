@@ -143,6 +143,9 @@ app.post('/api/analyze', async (req, res) => {
             ? (body.question as FollowupQuestion)
             : undefined,
         person: typeof body.person === 'string' ? body.person.slice(0, 100) : undefined,
+        people: Array.isArray(body.people)
+          ? body.people.filter((id): id is string => typeof id === 'string' && id.length <= 100).slice(0, 10)
+          : undefined,
       }
 
       if (chatId) existing = await getChat(chatId)
