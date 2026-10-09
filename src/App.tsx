@@ -59,7 +59,7 @@ export default function App() {
   const handleSubmit = useCallback((url: string) => void analyze(url), [analyze])
 
   return (
-    <div className="flex h-dvh flex-col bg-white">
+    <div className="relative flex h-dvh flex-col bg-white">
       <Header user={user} authReady={ready} onLogout={logout} onHome={reset} />
       {messages.length === 0 ? (
         <Hero onSubmit={handleSubmit} />

@@ -79,7 +79,7 @@ function repoErrorEvent(err: unknown, loggedIn: boolean): ChatEvent {
           }
         : {
             type: 'error',
-            text: '레포를 찾을 수 없어요. 주소가 틀렸거나 비공개 레포일 수 있어요. 비공개 레포라면 GitHub로 로그인하면 분석할 수 있어요.',
+            text: '레포를 찾을 수 없어요. 주소가 틀렸거나 비공개 레포일 수 있어요. 비공개 레포라면 GitHub로 로그인하면 분석을 이어나갈 수 있어요.',
             action: 'login',
           }
     }
@@ -302,7 +302,7 @@ export async function runAnalysis(options: {
   }
 
   if (repo.private && !requester) {
-    emit({ type: 'error', text: '비공개 레포네요. GitHub로 로그인하면 분석할 수 있어요.', action: 'login' })
+    emit({ type: 'error', text: '비공개 레포예요! GitHub로 로그인하면 분석을 이어나갈 수 있어요.', action: 'login' })
     return
   }
 
