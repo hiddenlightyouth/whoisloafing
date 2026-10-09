@@ -32,11 +32,6 @@ export function useAnalysis() {
     setMessages((prev) => [...prev, { ...message, id: nextId.current++ } as ChatMessage])
   }, [])
 
-  const say = useCallback(
-    (text: string) => append({ from: 'bot', event: { type: 'text', text } }),
-    [append],
-  )
-
   /** userText가 있으면 사용자 말풍선을 먼저 올리고, 없으면(다시 시도) 조용히 요청만 보내요. */
   const send = useCallback(
     async (request: AnalyzeRequest, userText?: string) => {
@@ -98,5 +93,5 @@ export function useAnalysis() {
     if (!busyRef.current) setMessages([])
   }, [])
 
-  return { messages, busy, paused, send, resume, say, reset }
+  return { messages, busy, paused, send, resume, reset }
 }

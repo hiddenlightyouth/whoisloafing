@@ -72,8 +72,8 @@ export type ChatEvent =
   | { type: 'followup'; text: string; people: FollowupPerson[] }
   /** 분석을 시작하기 전에 lock 파일과 빌드 결과물을 뺄지 물어봐요. */
   | { type: 'ask'; text: string }
-  /** action이 있으면 말풍선 안에 로그인 버튼이나 다시 시도 버튼을 보여줘요. */
-  | { type: 'error'; text: string; action?: 'login' | 'retry' }
+  /** action이 있으면 말풍선 안에 다시 시도 버튼을 보여줘요. */
+  | { type: 'error'; text: string; action?: 'retry' }
   /** 한 단계가 끝났어요. 사용자가 계속하기를 누를 때까지 다음 말풍선을 올리지 않아요. next는 다음 단계 안내예요. */
   | { type: 'pause'; next: string }
   | { type: 'done' }
@@ -91,9 +91,4 @@ export interface AnalyzeRequest {
   person?: string
   /** 시간대별 통계를 사용자의 시간대로 계산하기 위한 값 (예: Asia/Seoul) */
   timeZone?: string
-}
-
-export interface SessionUser {
-  login: string
-  avatarUrl: string
 }

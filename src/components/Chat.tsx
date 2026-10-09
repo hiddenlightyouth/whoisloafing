@@ -10,7 +10,6 @@ interface Props {
   /** 계속하기를 기다리는 중이면 다음 단계 안내 */
   paused: string | null
   onResume: () => void
-  onLogin: (repoUrl?: string) => void
   onSend: (request: AnalyzeRequest, userText?: string) => void
 }
 
@@ -25,7 +24,7 @@ const FOCUS_MIN_OPACITY = 0.3
 /** 이만큼 스크롤되면 흐림 효과가 온전히 적용돼요. */
 const FOCUS_RAMP_PX = 240
 
-export function Chat({ messages, busy, paused, onResume, onLogin, onSend }: Props) {
+export function Chat({ messages, busy, paused, onResume, onSend }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
   const lastScrollTop = useRef(0)
@@ -94,7 +93,6 @@ export function Chat({ messages, busy, paused, onResume, onLogin, onSend }: Prop
                 message={message}
                 busy={busy}
                 isLast={index === messages.length - 1}
-                onLogin={onLogin}
                 onSend={onSend}
               />
             </div>

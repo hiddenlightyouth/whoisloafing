@@ -37,11 +37,6 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const resultCache = new TtlCache<ChatEvent[]>(CACHE_TTL_MS, 300)
 const summaryCache = new TtlCache<RepoIntro>(CACHE_TTL_MS, 300)
 
-export interface Requester {
-  id: number
-  token: string
-}
-
 type Emit = (event: ChatEvent) => void
 
 type Ranked = ContributorStats & { key: string }
@@ -52,45 +47,30 @@ function rateLimitMessage(err: GitHubError): string {
   return `GitHub API 호출 제한을 넘었어요. 약 ${minutes}분 뒤에 다시 시도해 주세요.`
 }
 
-function repoErrorEvent(err: unknown, loggedIn: boolean): ChatEvent {
+function repoErrorEvent(err: unknown): ChatEvent {
   if (err instanceof GitHubError) {
-    if (err.rateLimited) {
-      return loggedIn
-        ? { type: 'error', text: rateLimitMessage(err), action: 'retry' }
-        : { type: 'error', text: `${rateLimitMessage(err)} GitHub로 로그인하면 바로 이어서 분석할 수 있어요.`, action: 'login' }
-    }
+    if (err.rateLimited) return { type: 'error', text: rateLimitMessage(err), action: 'retry' }
     if (err.status === 404) {
-      return loggedIn
-        ? {
-            type: 'error',
-            text: '레포를 찾을 수 없어요. 주소가 정확한지 확인해 주세요. 비공개 레포라면 이 계정에 접근 권한이 없는 것일 수 있어요.',
-          }
-        : {
-            type: 'error',
-            text: '레포를 찾을 수 없어요. 주소가 틀렸거나 비공개 레포일 수 있어요. 비공개 레포라면 GitHub로 로그인하면 분석을 이어나갈 수 있어요.',
-            action: 'login',
-          }
+      // 비공개 레포도 GitHub가 404로 알려줘서, 없는 레포와 구분할 수 없어요.
+      return {
+        type: 'error',
+        text: '레포를 찾을 수 없어요. 주소가 틀렸거나 **비공개 레포**일 수 있어요. 비공개 레포는 분석할 수 없어요.',
+      }
     }
     if (err.status === 401) {
-      return loggedIn
-        ? { type: 'error', text: '로그인이 만료됐어요. 다시 로그인해 주세요.', action: 'login' }
-        : { type: 'error', text: '서버의 GitHub 토큰에 문제가 있어요. 관리자에게 알려주세요.' }
+      return { type: 'error', text: '서버의 GitHub 토큰에 문제가 있어요. 관리자에게 알려주세요.' }
     }
     if (err.status === 403) {
       // 조직이 만료 기간이 긴 fine-grained 토큰을 막아 둔 경우예요. 공개 레포여도 403이 와요.
       if (/token's lifetime/i.test(err.detail)) {
         return {
           type: 'error',
-          text: loggedIn
-            ? '이 레포의 조직은 만료 기간이 366일을 넘는 GitHub 토큰의 접근을 막고 있어요.'
-            : '이 레포의 조직은 만료 기간이 366일을 넘는 GitHub 토큰의 접근을 막고 있어요. 서버의 GITHUB_TOKEN 만료 기간을 366일 이하로 바꾸면 분석할 수 있어요.',
+          text: '이 레포의 조직은 만료 기간이 366일을 넘는 GitHub 토큰의 접근을 막고 있어요. 서버의 GITHUB_TOKEN 만료 기간을 366일 이하로 바꾸면 분석할 수 있어요.',
         }
       }
       return {
         type: 'error',
-        text: loggedIn
-          ? '이 레포에 접근할 권한이 없어요. 레포의 조직에서 이 앱의 접근을 허용했는지 확인해 주세요.'
-          : '서버의 GitHub 토큰으로는 이 레포에 접근할 수 없어요. 레포의 조직이 토큰 접근을 제한하고 있을 수 있어요.',
+        text: '서버의 GitHub 토큰으로는 이 레포에 접근할 수 없어요. 레포의 조직이 토큰 접근을 제한하고 있을 수 있어요.',
       }
     }
     if (err.status === 451) {
@@ -327,11 +307,10 @@ export async function runAnalysis(options: {
   question?: FollowupQuestion
   person?: string
   timeZone?: string
-  requester: Requester | null
   emit: Emit
   isAborted: () => boolean
 }): Promise<void> {
-  const { url, excludeGenerated, requester, isAborted } = options
+  const { url, excludeGenerated, isAborted } = options
   const recorded: ChatEvent[] = []
   const emit: Emit = (event) => {
     recorded.push(event)
@@ -348,26 +327,23 @@ export async function runAnalysis(options: {
   }
   const { owner, repo: repoName } = parsed
 
-  const token = requester?.token ?? env.githubToken
-  const gh = createGitHub(token)
+  const gh = createGitHub(env.githubToken)
 
   let repo: Repo
   try {
     repo = await gh.getRepo(owner, repoName)
   } catch (err) {
-    emit(repoErrorEvent(err, !!requester))
+    emit(repoErrorEvent(err))
     return
   }
 
-  if (repo.private && !requester) {
-    emit({ type: 'error', text: '**비공개 레포**예요! GitHub로 로그인하면 분석을 이어나갈 수 있어요.', action: 'login' })
+  // 비공개 레포는 분석하지 않아요. 서버 토큰이 볼 수 있는 레포여도 결과를 내보내지 않아요.
+  if (repo.private) {
+    emit({ type: 'error', text: '**비공개 레포**는 분석할 수 없어요. 공개 레포 링크를 입력해 주세요.' })
     return
   }
 
-  // 비공개 레포의 결과는 사용자별로 따로 캐싱해서 다른 사람에게 보이지 않게 해요.
-  // 접근 권한은 위에서 요청자의 토큰으로 매번 다시 확인해요.
-  const scope = repo.private ? `user:${requester!.id}` : 'public'
-  const baseKey = `${scope}:${repo.id}:${repo.pushed_at ?? 'empty'}`
+  const baseKey = `${repo.id}:${repo.pushed_at ?? 'empty'}`
 
   if (options.question) {
     try {
@@ -382,7 +358,7 @@ export async function runAnalysis(options: {
         emit: options.emit,
       })
     } catch (err) {
-      options.emit(repoErrorEvent(err, !!requester))
+      options.emit(repoErrorEvent(err))
     }
     return
   }
@@ -396,7 +372,7 @@ export async function runAnalysis(options: {
         options.emit({ type: 'stack', text: '이런 기술로 만들었어요.', groups: summary.stack })
       }
     } catch (err) {
-      options.emit(repoErrorEvent(err, !!requester))
+      options.emit(repoErrorEvent(err))
       return
     }
     options.emit({
@@ -581,6 +557,6 @@ export async function runAnalysis(options: {
     if (cacheable && !isAborted()) resultCache.set(resultKey, recorded)
   } catch (err) {
     if (isAborted()) return
-    emit(repoErrorEvent(err, !!requester))
+    emit(repoErrorEvent(err))
   }
 }

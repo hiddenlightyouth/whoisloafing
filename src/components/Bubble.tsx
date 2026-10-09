@@ -11,7 +11,6 @@ interface Props {
   busy: boolean
   /** 가장 최근 말풍선인지 여부. 지난 질문의 버튼은 다시 누를 수 없게 해요. */
   isLast: boolean
-  onLogin: (repoUrl?: string) => void
   /** userText가 있으면 사용자 말풍선을 올리고 요청을 보내요. 없으면 조용히 다시 시도해요. */
   onSend: (request: AnalyzeRequest, userText?: string) => void
 }
@@ -24,7 +23,7 @@ const quietButton =
 
 const WIDE_TYPES = new Set(['ranking', 'summary', 'list', 'chart', 'facts', 'stack'])
 
-export function Bubble({ message, busy, isLast, onLogin, onSend }: Props) {
+export function Bubble({ message, busy, isLast, onSend }: Props) {
   if (message.from === 'user') {
     return (
       <div className="flex animate-rise justify-end">
@@ -120,14 +119,6 @@ export function Bubble({ message, busy, isLast, onLogin, onSend }: Props) {
           <div>
             <button type="button" disabled={locked} onClick={() => onSend(request)} className={`${actionButton} mb-1.5`}>
               다시 시도
-            </button>
-          </div>
-        )}
-
-        {event.type === 'error' && event.action === 'login' && (
-          <div>
-            <button type="button" onClick={() => onLogin(request?.url)} className={`${actionButton} mb-1.5`}>
-              GitHub로 로그인
             </button>
           </div>
         )}
