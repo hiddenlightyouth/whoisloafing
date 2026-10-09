@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import type { AnalyzeRequest, FollowupQuestion } from '../../shared/types'
 import type { ChatMessage } from '../hooks/useAnalysis'
 import { repoLabel, track } from '../lib/analytics'
 import { Charts, Facts } from './Charts'
 import { Followup } from './Followup'
+import { PeoplePicker } from './PeoplePicker'
 import { RankingCarousel } from './RankingCarousel'
 import { RichText } from './RichText'
 import { SummaryChart } from './SummaryChart'
@@ -22,9 +24,11 @@ const actionButton =
 const quietButton =
   'mt-3 inline-flex h-9 items-center rounded-lg bg-white px-3.5 text-[13px] font-semibold text-gray-700 transition-colors hover:text-brand disabled:text-gray-400'
 
-const WIDE_TYPES = new Set(['ranking', 'summary', 'list', 'chart', 'facts', 'stack'])
+const WIDE_TYPES = new Set(['ranking', 'summary', 'list', 'chart', 'facts', 'stack', 'pick'])
 
 export function Bubble({ message, busy, isLast, onSend }: Props) {
+  // 글이 타자를 치듯 다 나타난 뒤에 카드, 그래프, 버튼 같은 나머지 내용을 보여줘요.
+  const [typed, setTyped] = useState(!(message.from === 'bot' && message.live))
   if (message.from === 'user') {
     return (
       <div className="flex animate-rise justify-end">
@@ -56,6 +60,12 @@ export function Bubble({ message, busy, isLast, onSend }: Props) {
     onSend({ url: request.url, question, person }, userText)
   }
 
+  const pick = (ids: string[], userText: string, mode: 'top' | 'custom') => {
+    if (!request) return
+    track('people_pick', { repo, mode, count: ids.length })
+    onSend({ url: request.url, excludeGenerated: request.excludeGenerated, people: ids }, userText)
+  }
+
   const retry = () => {
     if (!request) return
     track('retry_click', { repo, question: request.question ?? 'analysis' })
@@ -70,8 +80,18 @@ export function Bubble({ message, busy, isLast, onSend }: Props) {
         }`}
       >
         <p className="whitespace-pre-line">
-          <RichText text={event.text} />
+          <RichText text={event.text} typed={message.live} onDone={() => setTyped(true)} />
         </p>
+
+        {typed && <div className="animate-rise">{renderExtras()}</div>}
+      </div>
+    </div>
+  )
+
+  function renderExtras() {
+    if (message.from !== 'bot') return null
+    return (
+      <>
 
         {event.type === 'ranking' && <RankingCarousel contributors={event.contributors} />}
 
@@ -118,6 +138,10 @@ export function Bubble({ message, busy, isLast, onSend }: Props) {
 
         {event.type === 'followup' && request && <Followup people={event.people} disabled={locked} onAsk={ask} />}
 
+        {event.type === 'pick' && request && (
+          <PeoplePicker people={event.people} top={event.top} max={event.max} disabled={locked} onPick={pick} />
+        )}
+
         {event.type === 'ask' && request && (
           <div className="mb-1.5 flex flex-wrap gap-2">
             <button type="button" disabled={locked} onClick={() => choose(false)} className={actionButton}>
@@ -136,7 +160,7 @@ export function Bubble({ message, busy, isLast, onSend }: Props) {
             </button>
           </div>
         )}
-      </div>
-    </div>
-  )
+      </>
+    )
+  }
 }

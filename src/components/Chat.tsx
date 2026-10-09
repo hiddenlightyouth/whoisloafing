@@ -83,10 +83,24 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
     if (pinned.current) scrollToBottom()
   }, [messages.length, busy, paused, scrollToBottom])
 
+  // 글이 타자를 치듯 늘어나면서 말풍선 높이가 바뀔 때도, 아래에 붙어 있었다면 따라 내려가요.
+  const contentRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const content = contentRef.current
+    if (!content) return
+    const observer = new ResizeObserver(() => {
+      if (pinned.current) scrollToBottom('auto')
+      updateFocus()
+    })
+    observer.observe(content)
+    return () => observer.disconnect()
+  }, [scrollToBottom, updateFocus])
+
   return (
     <main className="relative flex min-h-0 flex-1 flex-col">
       <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 pt-14 sm:px-6">
         <div
+          ref={contentRef}
           className="mx-auto flex max-w-2xl flex-col gap-2.5 pt-6 pb-[max(2.5rem,env(safe-area-inset-bottom))]"
           aria-live="polite"
         >

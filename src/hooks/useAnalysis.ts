@@ -11,6 +11,8 @@ export type ChatMessage =
       event: Exclude<ChatEvent, { type: 'done' | 'pause' }>
       /** 이 말풍선을 만든 요청. 다시 시도하거나 이어서 질문할 때 그대로 써요. */
       request?: AnalyzeRequest
+      /** 방금 서버에서 온 말풍선이면 true. 타자를 치듯 나타나요. 저장된 채팅을 불러온 말풍선은 바로 보여줘요. */
+      live?: boolean
     }
 
 type NewMessage = ChatMessage extends infer M ? (M extends unknown ? Omit<M, 'id'> : never) : never
@@ -49,6 +51,7 @@ export function useAnalysis() {
         excludeGenerated: request.excludeGenerated,
         question: request.question,
         person: request.person,
+        people: request.people,
       }
       busyRef.current = true
       setBusy(true)
@@ -99,7 +102,7 @@ export function useAnalysis() {
         }
         await sleep(TYPING_DELAY_MS)
         if (stoppedRef.current) break
-        append({ from: 'bot', event, request: current })
+        append({ from: 'bot', event, request: current, live: true })
 
         const seconds = Math.round((Date.now() - startedAt) / 1000)
         if (event.type === 'error') {
