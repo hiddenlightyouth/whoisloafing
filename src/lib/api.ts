@@ -19,7 +19,8 @@ export async function streamAnalysis(request: AnalyzeRequest, onEvent: (event: C
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'same-origin',
-    body: JSON.stringify(request),
+    // 시간대별 통계를 사용자의 시간대로 보여주려고 함께 보내요.
+    body: JSON.stringify({ ...request, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
   })
   if (!res.ok || !res.body) throw new Error(`분석 요청에 실패했어요. (${res.status})`)
 

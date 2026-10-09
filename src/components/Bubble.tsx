@@ -1,4 +1,7 @@
+import type { AnalyzeRequest, FollowupQuestion } from '../../shared/types'
 import type { ChatMessage } from '../hooks/useAnalysis'
+import { Charts, Facts } from './Charts'
+import { Followup } from './Followup'
 import { RankingCarousel } from './RankingCarousel'
 import { SummaryChart } from './SummaryChart'
 
@@ -8,8 +11,8 @@ interface Props {
   /** 가장 최근 말풍선인지 여부. 지난 질문의 버튼은 다시 누를 수 없게 해요. */
   isLast: boolean
   onLogin: (repoUrl?: string) => void
-  onChoose: (repoUrl: string, excludeGenerated: boolean) => void
-  onRetry: (repoUrl: string, excludeGenerated?: boolean) => void
+  /** userText가 있으면 사용자 말풍선을 올리고 요청을 보내요. 없으면 조용히 다시 시도해요. */
+  onSend: (request: AnalyzeRequest, userText?: string) => void
 }
 
 const actionButton =
@@ -18,7 +21,9 @@ const actionButton =
 const quietButton =
   'mt-3 inline-flex h-9 items-center rounded-lg bg-white px-3.5 text-[13px] font-semibold text-gray-700 transition-colors hover:text-brand disabled:text-gray-400'
 
-export function Bubble({ message, busy, isLast, onLogin, onChoose, onRetry }: Props) {
+const WIDE_TYPES = new Set(['ranking', 'summary', 'list', 'chart', 'facts'])
+
+export function Bubble({ message, busy, isLast, onLogin, onSend }: Props) {
   if (message.from === 'user') {
     return (
       <div className="flex animate-rise justify-end">
@@ -29,8 +34,19 @@ export function Bubble({ message, busy, isLast, onLogin, onChoose, onRetry }: Pr
     )
   }
 
-  const { event, repoUrl, excludeGenerated } = message
-  const wide = event.type === 'ranking' || event.type === 'summary' || event.type === 'list'
+  const { event, request } = message
+  const wide = WIDE_TYPES.has(event.type)
+  const locked = busy || !isLast
+
+  const choose = (excludeGenerated: boolean) =>
+    request &&
+    onSend(
+      { url: request.url, excludeGenerated },
+      excludeGenerated ? '빼고 계산해 주세요.' : '전부 포함해서 계산해 주세요.',
+    )
+
+  const ask = (question: FollowupQuestion, userText: string, person?: string) =>
+    request && onSend({ url: request.url, question, person }, userText)
 
   return (
     <div className="flex animate-rise justify-start">
@@ -58,35 +74,26 @@ export function Bubble({ message, busy, isLast, onLogin, onChoose, onRetry }: Pr
           <SummaryChart contributors={event.contributors} othersCount={event.othersCount} />
         )}
 
-        {event.type === 'ask' && repoUrl && (
+        {event.type === 'chart' && <Charts charts={event.charts} />}
+
+        {event.type === 'facts' && <Facts items={event.items} />}
+
+        {event.type === 'followup' && request && <Followup people={event.people} disabled={locked} onAsk={ask} />}
+
+        {event.type === 'ask' && request && (
           <div className="mb-1.5 flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={busy || !isLast}
-              onClick={() => onChoose(repoUrl, false)}
-              className={actionButton}
-            >
+            <button type="button" disabled={locked} onClick={() => choose(false)} className={actionButton}>
               전부 포함하기
             </button>
-            <button
-              type="button"
-              disabled={busy || !isLast}
-              onClick={() => onChoose(repoUrl, true)}
-              className={quietButton}
-            >
+            <button type="button" disabled={locked} onClick={() => choose(true)} className={quietButton}>
               빼고 계산하기
             </button>
           </div>
         )}
 
-        {event.type === 'error' && event.action === 'retry' && repoUrl && (
+        {event.type === 'error' && event.action === 'retry' && request && (
           <div>
-            <button
-              type="button"
-              disabled={busy || !isLast}
-              onClick={() => onRetry(repoUrl, excludeGenerated)}
-              className={`${actionButton} mb-1.5`}
-            >
+            <button type="button" disabled={locked} onClick={() => onSend(request)} className={`${actionButton} mb-1.5`}>
               다시 시도
             </button>
           </div>
@@ -94,7 +101,7 @@ export function Bubble({ message, busy, isLast, onLogin, onChoose, onRetry }: Pr
 
         {event.type === 'error' && event.action === 'login' && (
           <div>
-            <button type="button" onClick={() => onLogin(repoUrl)} className={`${actionButton} mb-1.5`}>
+            <button type="button" onClick={() => onLogin(request?.url)} className={`${actionButton} mb-1.5`}>
               GitHub로 로그인
             </button>
           </div>

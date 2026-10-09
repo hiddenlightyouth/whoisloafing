@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import express from 'express'
 import session from 'express-session'
-import type { AnalyzeRequest, ChatEvent } from '../shared/types.ts'
+import { FOLLOWUP_LABELS, type AnalyzeRequest, type ChatEvent, type FollowupQuestion } from '../shared/types.ts'
 import { runAnalysis } from './analyze.ts'
 import { authRouter } from './auth.ts'
 import { env } from './env.ts'
@@ -12,7 +12,7 @@ const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
 // 분석 요청 횟수 제한 (IP 기준)
 const RATE_WINDOW_MS = 10 * 60 * 1000
-const RATE_MAX_REQUESTS = 20
+const RATE_MAX_REQUESTS = 60
 const recentRequests = new Map<string, number[]>()
 
 function allowRequest(ip: string): boolean {
@@ -82,6 +82,12 @@ app.post('/api/analyze', async (req, res) => {
       await runAnalysis({
         url: body.url,
         excludeGenerated: typeof body.excludeGenerated === 'boolean' ? body.excludeGenerated : undefined,
+        question:
+          typeof body.question === 'string' && Object.hasOwn(FOLLOWUP_LABELS, body.question)
+            ? (body.question as FollowupQuestion)
+            : undefined,
+        person: typeof body.person === 'string' ? body.person.slice(0, 100) : undefined,
+        timeZone: typeof body.timeZone === 'string' ? body.timeZone.slice(0, 64) : undefined,
         requester: user && token ? { id: user.id, token } : null,
         emit,
         isAborted: () => closed,

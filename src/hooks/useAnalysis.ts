@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import type { ChatEvent } from '../../shared/types'
+import type { AnalyzeRequest, ChatEvent } from '../../shared/types'
 import { streamAnalysis } from '../lib/api'
 
 export type ChatMessage =
@@ -8,9 +8,8 @@ export type ChatMessage =
       id: number
       from: 'bot'
       event: Exclude<ChatEvent, { type: 'done' }>
-      repoUrl?: string
-      /** 이 말풍선을 만든 요청의 계산 방식. 다시 시도할 때 그대로 써요. */
-      excludeGenerated?: boolean
+      /** 이 말풍선을 만든 요청. 다시 시도하거나 이어서 질문할 때 그대로 써요. */
+      request?: AnalyzeRequest
     }
 
 type NewMessage = ChatMessage extends infer M ? (M extends unknown ? Omit<M, 'id'> : never) : never
@@ -35,14 +34,15 @@ export function useAnalysis() {
     [append],
   )
 
-  const analyze = useCallback(
-    async (url: string, options: { excludeGenerated?: boolean; userText?: string; silent?: boolean } = {}) => {
-      const trimmed = url.trim()
-      if (!trimmed || busyRef.current) return
+  /** userText가 있으면 사용자 말풍선을 먼저 올리고, 없으면(다시 시도) 조용히 요청만 보내요. */
+  const send = useCallback(
+    async (request: AnalyzeRequest, userText?: string) => {
+      const url = request.url.trim()
+      if (!url || busyRef.current) return
+      const current = { ...request, url }
       busyRef.current = true
       setBusy(true)
-      // 다시 시도할 때는 같은 말을 한 번 더 올리지 않아요.
-      if (!options.silent) append({ from: 'user', text: options.userText ?? trimmed })
+      if (userText) append({ from: 'user', text: userText })
 
       // 서버에서 온 메시지를 큐에 쌓아 두고, 입력 중 표시를 거쳐 하나씩 화면에 올려요.
       const queue: ChatEvent[] = []
@@ -53,7 +53,7 @@ export function useAnalysis() {
         wake?.()
       }
 
-      streamAnalysis({ url: trimmed, excludeGenerated: options.excludeGenerated }, push)
+      streamAnalysis(current, push)
         .catch(() =>
           push({ type: 'error', text: '서버와 연결이 끊어졌어요. 잠시 뒤에 다시 시도해 주세요.', action: 'retry' }),
         )
@@ -72,7 +72,7 @@ export function useAnalysis() {
         }
         if (event.type === 'done') break
         await sleep(TYPING_DELAY_MS)
-        append({ from: 'bot', event, repoUrl: trimmed, excludeGenerated: options.excludeGenerated })
+        append({ from: 'bot', event, request: current })
       }
 
       busyRef.current = false
@@ -85,5 +85,5 @@ export function useAnalysis() {
     if (!busyRef.current) setMessages([])
   }, [])
 
-  return { messages, busy, analyze, say, reset }
+  return { messages, busy, send, say, reset }
 }

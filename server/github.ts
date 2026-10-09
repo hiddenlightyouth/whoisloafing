@@ -44,7 +44,7 @@ export interface StatsContributor {
 
 export interface CommitSummary {
   sha: string
-  commit: { message: string; author: { name: string; email: string } | null }
+  commit: { message: string; author: { name: string; email: string; date?: string } | null }
   author: Account | null
   parents: { sha: string }[]
 }
@@ -62,6 +62,9 @@ export interface CommitDetail extends CommitSummary {
 
 export interface Pull {
   title: string
+  state: string
+  created_at: string
+  merged_at: string | null
   user: { login: string } | null
 }
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { AnalyzeRequest } from '../../shared/types'
 import type { ChatMessage } from '../hooks/useAnalysis'
 import { Bubble } from './Bubble'
 import { TypingDots } from './TypingDots'
@@ -7,16 +8,16 @@ interface Props {
   messages: ChatMessage[]
   busy: boolean
   onLogin: (repoUrl?: string) => void
-  onChoose: (repoUrl: string, excludeGenerated: boolean) => void
-  onRetry: (repoUrl: string, excludeGenerated?: boolean) => void
+  onSend: (request: AnalyzeRequest, userText?: string) => void
 }
 
 /** 맨 아래에서 이만큼 안쪽이면 아래에 붙어 있는 것으로 봐요. */
 const BOTTOM_THRESHOLD_PX = 80
 
-export function Chat({ messages, busy, onLogin, onChoose, onRetry }: Props) {
+export function Chat({ messages, busy, onLogin, onSend }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
+  const lastScrollTop = useRef(0)
   const [atBottom, setAtBottom] = useState(true)
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
@@ -24,12 +25,16 @@ export function Chat({ messages, busy, onLogin, onChoose, onRetry }: Props) {
     if (el) el.scrollTo({ top: el.scrollHeight, behavior })
   }, [])
 
+  // 사용자가 직접 위로 올렸을 때만 따라 내려가기를 멈춰요.
+  // 긴 말풍선이 올라오는 동안 잠깐 바닥에서 멀어지는 것은 위로 올린 것으로 보지 않아요.
   function handleScroll() {
     const el = scrollRef.current
     if (!el) return
     const near = el.scrollHeight - el.scrollTop - el.clientHeight < BOTTOM_THRESHOLD_PX
-    pinned.current = near
-    setAtBottom(near)
+    if (near) pinned.current = true
+    else if (el.scrollTop < lastScrollTop.current - 2) pinned.current = false
+    lastScrollTop.current = el.scrollTop
+    setAtBottom(near || pinned.current)
   }
 
   // 아래에 붙어 있을 때만 새 말풍선을 따라 내려가요. 위로 올려서 읽는 중이면 그대로 둬요.
@@ -51,8 +56,7 @@ export function Chat({ messages, busy, onLogin, onChoose, onRetry }: Props) {
               busy={busy}
               isLast={index === messages.length - 1}
               onLogin={onLogin}
-              onChoose={onChoose}
-              onRetry={onRetry}
+              onSend={onSend}
             />
           ))}
           {/* 말풍선이 하나 올라올 때마다 새로 그려서, 오래 기다릴 때만 문구가 나오게 해요. */}

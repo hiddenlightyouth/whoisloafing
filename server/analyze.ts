@@ -1,4 +1,4 @@
-import type { ChatEvent, ContributorStats } from '../shared/types.ts'
+import type { ChatEvent, ContributorStats, FollowupQuestion } from '../shared/types.ts'
 import { TtlCache } from './cache.ts'
 import { aiEnabled, analyzeContributor, summarizeRepo } from './gemini.ts'
 import { env } from './env.ts'
@@ -13,6 +13,7 @@ import {
   rank,
   type Collected,
 } from './stats.ts'
+import { answerFollowup, followupEvent, personId } from './insights.ts'
 import { formatNumber, sanitize, truncate } from './text.ts'
 
 /** 역할과 코드 스타일까지 자세히 소개하는 최대 인원 */
@@ -279,6 +280,10 @@ export async function runAnalysis(options: {
   url: string
   /** 아직 정하지 않았다면 undefined. 레포를 확인한 뒤 사용자에게 먼저 물어봐요. */
   excludeGenerated: boolean | undefined
+  /** 분석이 끝난 뒤의 추가 질문 */
+  question?: FollowupQuestion
+  person?: string
+  timeZone?: string
   requester: Requester | null
   emit: Emit
   isAborted: () => boolean
@@ -320,6 +325,24 @@ export async function runAnalysis(options: {
   // 접근 권한은 위에서 요청자의 토큰으로 매번 다시 확인해요.
   const scope = repo.private ? `user:${requester!.id}` : 'public'
   const baseKey = `${scope}:${repo.id}:${repo.pushed_at ?? 'empty'}`
+
+  if (options.question) {
+    try {
+      await answerFollowup({
+        gh,
+        owner,
+        repo: repoName,
+        cacheKey: baseKey,
+        question: options.question,
+        person: options.person,
+        timeZone: options.timeZone,
+        emit: options.emit,
+      })
+    } catch (err) {
+      options.emit(repoErrorEvent(err, !!requester))
+    }
+    return
+  }
 
   // 먼저 어떤 레포인지 한 문장으로 소개한 다음, 라인 수를 어떻게 셀지 물어봐요.
   if (excludeGenerated === undefined) {
@@ -432,7 +455,7 @@ export async function runAnalysis(options: {
       }
 
       if (styles.length > 0) {
-        emit({ type: 'text', text: '참여자의 코드 스타일 분석을 시작할게요.' })
+        emit({ type: 'text', text: '이번엔 참여자들의 코드 스타일을 분석해볼게요!' })
         for (const style of styles) {
           emit(
             style.items.length > 0
@@ -459,6 +482,8 @@ export async function runAnalysis(options: {
       contributors: ranked.slice(0, MAX_CHART).map(toPublic),
       othersCount: Math.max(0, ranked.length - MAX_CHART),
     })
+
+    emit(followupEvent(ranked.map((person) => ({ id: personId(person.login, person.name), name: sanitize(person.name) }))))
 
     if (cacheable && !isAborted()) resultCache.set(resultKey, recorded)
   } catch (err) {

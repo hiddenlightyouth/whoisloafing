@@ -79,7 +79,7 @@ export interface Collected {
   capped: boolean
 }
 
-const isBot = (account: { login: string; type: string } | null) =>
+export const isBot = (account: { login: string; type: string } | null) =>
   !!account && (account.type === 'Bot' || account.login.endsWith('[bot]'))
 
 export const isMergeCommit = (commit: CommitSummary) => commit.parents.length > 1
@@ -109,7 +109,7 @@ const NOREPLY_PATTERN = /^(?:\d+\+)?([^@]+)@users\.noreply\.github\.com$/
  * 커밋 작성자를 GitHub 계정으로 이어 주는 함수를 만들어요.
  * 계정이 연결된 커밋에서 이메일과 이름을 모아두고, 연결되지 않은 커밋을 같은 계정으로 묶는 데 써요.
  */
-function createLoginResolver(commits: CommitSummary[]) {
+export function createLoginResolver(commits: CommitSummary[]) {
   const loginByEmail = new Map<string, string>()
   const loginsByName = new Map<string, Set<string>>()
   const knownLogins = new Map<string, string>()

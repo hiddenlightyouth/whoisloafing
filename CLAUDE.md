@@ -50,6 +50,7 @@ server/
   stats.ts            사람별 수치 계산, 제외 파일 규칙, 계정 기준 합치기, 기여도 순위
   gemini.ts           Gemini 프롬프트와 호출 (레포 요약, 역할, 코드 스타일)
   analyze.ts          분석 파이프라인, 채팅 메시지 생성, 예외 안내, 캐싱
+  insights.ts         분석 뒤 추가 질문 답변 (활동 시간, 진행 흐름, 막판 작업, 커밋 규칙, PR, 참여자 상세)
   cache.ts            만료 시간이 있는 메모리 캐시
   text.ts             금지 문자 후처리, 길이 제한
 src/
@@ -58,7 +59,7 @@ src/
   lib/api.ts          서버 호출, SSE 스트림 읽기
   hooks/useAuth.ts    로그인 상태
   hooks/useAnalysis.ts  채팅 메시지 큐, 입력 중 표시 타이밍
-  components/         Header, Logo, Hero, RepoInput, Chat, Bubble, TypingDots, RankingCarousel, StatsCard, SummaryChart
+  components/         Header, Logo, Hero, RepoInput, Chat, Bubble, TypingDots, RankingCarousel, StatsCard, SummaryChart, Charts, Followup
 ```
 
 ## 실행 방법
@@ -116,6 +117,8 @@ GitHub OAuth App의 콜백 URL은 `{APP_URL}/api/auth/github/callback` 으로 �
 - 채팅을 위로 올리면 화면 하단 중앙에 맨 아래로 이동 버튼이 나오고, 위로 올려서 읽는 동안에는 새 말풍선이 와도 스크롤을 끌어내리지 않아요.
 - 분석 전에 lock 파일과 빌드 결과물을 뺄지 묻고, 고르면 커밋 단위로 계산
 - 결과 캐싱 (비공개 레포는 사용자별 분리)
+- 분석이 끝나면 "더 궁금한 점이 있나요?" 말풍선에서 추가 질문을 고를 수 있어요. 활동 시간대, 진행 흐름, 막판에 몰아서 작업한 사람, 커밋 메시지 규칙, PR 현황, 특정 참여자 상세를 지원하고, 답한 뒤에 다시 질문을 고를 수 있어요.
+- 추가 질문은 AI 없이 커밋 목록(최근 1,000개)과 PR 목록(최근 100개)으로 계산하고, 시간은 사용자 기기의 시간대 기준이에요.
 - 연결 끊김, 일시적인 분석 오류, 호출 제한 안내 말풍선에는 다시 시도 버튼이 있어요. 누르면 같은 레포를 같은 계산 방식으로 이어서 분석해요.
 - 예외 안내 말풍선: 잘못된 링크, 찾을 수 없는 레포, 호출 제한 초과, 비공개 레포 로그인 안내(말풍선 안 로그인 버튼), 접근 권한 없음, 로그인 만료
 - 말풍선의 로그인 버튼으로 로그인하면 돌아와서 같은 레포를 바로 이어서 분석

@@ -21,7 +21,7 @@ function takePendingRepo(): string | null {
 
 export default function App() {
   const { user, ready, logout } = useAuth()
-  const { messages, busy, analyze, say, reset } = useAnalysis()
+  const { messages, busy, send, say, reset } = useAnalysis()
   const resumed = useRef(false)
 
   // 로그인 직후에는 기다리던 레포를 바로 이어서 분석하고, 로그인에 실패했다면 말풍선으로 알려줘요.
@@ -35,8 +35,8 @@ export default function App() {
 
     const pending = takePendingRepo()
     if (failed) say('로그인하지 못했어요. 잠시 뒤에 다시 시도해 주세요.')
-    else if (user && pending) void analyze(pending)
-  }, [ready, user, analyze, say])
+    else if (user && pending) void send({ url: pending }, pending)
+  }, [ready, user, send, say])
 
   const handleLogin = useCallback((repoUrl?: string) => {
     try {
@@ -47,21 +47,7 @@ export default function App() {
     window.location.href = LOGIN_URL
   }, [])
 
-  const handleChoose = useCallback(
-    (repoUrl: string, excludeGenerated: boolean) =>
-      void analyze(repoUrl, {
-        excludeGenerated,
-        userText: excludeGenerated ? '빼고 계산해 주세요.' : '전부 포함해서 계산해 주세요.',
-      }),
-    [analyze],
-  )
-
-  const handleRetry = useCallback(
-    (repoUrl: string, excludeGenerated?: boolean) => void analyze(repoUrl, { excludeGenerated, silent: true }),
-    [analyze],
-  )
-
-  const handleSubmit = useCallback((url: string) => void analyze(url), [analyze])
+  const handleSubmit = useCallback((url: string) => void send({ url }, url.trim()), [send])
 
   return (
     <div className="relative flex h-dvh flex-col bg-white">
@@ -69,7 +55,7 @@ export default function App() {
       {messages.length === 0 ? (
         <Hero onSubmit={handleSubmit} />
       ) : (
-        <Chat messages={messages} busy={busy} onLogin={handleLogin} onChoose={handleChoose} onRetry={handleRetry} />
+        <Chat messages={messages} busy={busy} onLogin={handleLogin} onSend={send} />
       )}
     </div>
   )
