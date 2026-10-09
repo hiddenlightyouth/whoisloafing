@@ -8,7 +8,7 @@ export function Hero({ onSubmit }: { onSubmit: (url: string) => void }) {
           누가 어떤 기능을 얼마나 많이 만들었을까요?
         </h1>
         <div className="mt-9 sm:mt-11">
-          <RepoInput onSubmit={onSubmit} size="lg" autoFocus />
+          <RepoInput onSubmit={onSubmit} />
         </div>
       </div>
     </main>

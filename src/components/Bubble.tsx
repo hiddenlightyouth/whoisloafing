@@ -29,7 +29,7 @@ export function Bubble({ message, busy, isLast, onLogin, onChoose }: Props) {
   }
 
   const { event, repoUrl } = message
-  const wide = event.type === 'ranking' || event.type === 'summary'
+  const wide = event.type === 'ranking' || event.type === 'summary' || event.type === 'features'
 
   return (
     <div className="flex animate-rise justify-start">
@@ -38,19 +38,19 @@ export function Bubble({ message, busy, isLast, onLogin, onChoose }: Props) {
           wide ? 'w-full pb-4' : 'max-w-[85%]'
         }`}
       >
-        <p>{event.text}</p>
+        <p className="whitespace-pre-line">{event.text}</p>
 
         {event.type === 'ranking' && <RankingCarousel contributors={event.contributors} />}
 
         {event.type === 'features' && (
-          <ol className="mt-3 mb-1.5 divide-y divide-gray-100 rounded-xl bg-white px-4">
+          <ul className="mt-3 mb-1.5 divide-y divide-gray-100 rounded-xl bg-white px-4">
             {event.items.map((item, index) => (
               <li key={`${index}:${item}`} className="flex gap-3 py-2.5 text-[14px] leading-snug">
                 <span className="w-4 shrink-0 text-xs leading-5 font-semibold text-brand tabular-nums">{index + 1}</span>
                 <span className="min-w-0">{item}</span>
               </li>
             ))}
-          </ol>
+          </ul>
         )}
 
         {event.type === 'summary' && (

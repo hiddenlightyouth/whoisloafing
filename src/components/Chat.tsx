@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatMessage } from '../hooks/useAnalysis'
 import { Bubble } from './Bubble'
-import { RepoInput } from './RepoInput'
 import { TypingDots } from './TypingDots'
 
 interface Props {
   messages: ChatMessage[]
   busy: boolean
-  onSubmit: (url: string) => void
   onLogin: (repoUrl?: string) => void
   onChoose: (repoUrl: string, excludeGenerated: boolean) => void
 }
@@ -15,7 +13,7 @@ interface Props {
 /** 맨 아래에서 이만큼 안쪽이면 아래에 붙어 있는 것으로 봐요. */
 const BOTTOM_THRESHOLD_PX = 80
 
-export function Chat({ messages, busy, onSubmit, onLogin, onChoose }: Props) {
+export function Chat({ messages, busy, onLogin, onChoose }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
   const [atBottom, setAtBottom] = useState(true)
@@ -38,15 +36,13 @@ export function Chat({ messages, busy, onSubmit, onLogin, onChoose }: Props) {
     if (pinned.current) scrollToBottom()
   }, [messages.length, busy, scrollToBottom])
 
-  function handleSubmit(url: string) {
-    pinned.current = true
-    onSubmit(url)
-  }
-
   return (
     <main className="relative flex min-h-0 flex-1 flex-col">
       <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-4 pt-14 sm:px-6">
-        <div className="mx-auto flex max-w-2xl flex-col gap-2.5 py-6" aria-live="polite">
+        <div
+          className="mx-auto flex max-w-2xl flex-col gap-2.5 pt-6 pb-[max(2.5rem,env(safe-area-inset-bottom))]"
+          aria-live="polite"
+        >
           {messages.map((message, index) => (
             <Bubble
               key={message.id}
@@ -57,29 +53,24 @@ export function Chat({ messages, busy, onSubmit, onLogin, onChoose }: Props) {
               onChoose={onChoose}
             />
           ))}
-          {busy && <TypingDots />}
+          {/* 말풍선이 하나 올라올 때마다 새로 그려서, 오래 기다릴 때만 문구가 나오게 해요. */}
+          {busy && <TypingDots key={messages.length} />}
         </div>
       </div>
 
-      <div className="relative shrink-0 border-t border-gray-100 bg-white px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
-        <button
-          type="button"
-          aria-label="맨 아래로 이동"
-          tabIndex={atBottom ? -1 : 0}
-          onClick={() => scrollToBottom()}
-          className={`absolute -top-12 left-1/2 flex size-9 -translate-x-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm transition-all duration-200 hover:text-brand ${
-            atBottom ? 'pointer-events-none translate-y-2 opacity-0' : 'opacity-100'
-          }`}
-        >
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-4" aria-hidden="true">
-            <path d="M10 4v12M5 11l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-
-        <div className="mx-auto max-w-2xl">
-          <RepoInput onSubmit={handleSubmit} disabled={busy} />
-        </div>
-      </div>
+      <button
+        type="button"
+        aria-label="맨 아래로 이동"
+        tabIndex={atBottom ? -1 : 0}
+        onClick={() => scrollToBottom()}
+        className={`absolute bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 flex size-9 -translate-x-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm transition-all duration-200 hover:text-brand ${
+          atBottom ? 'pointer-events-none translate-y-2 opacity-0' : 'opacity-100'
+        }`}
+      >
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-4" aria-hidden="true">
+          <path d="M10 4v12M5 11l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
     </main>
   )
 }

@@ -64,7 +64,7 @@ export default function App() {
       {messages.length === 0 ? (
         <Hero onSubmit={handleSubmit} />
       ) : (
-        <Chat messages={messages} busy={busy} onSubmit={handleSubmit} onLogin={handleLogin} onChoose={handleChoose} />
+        <Chat messages={messages} busy={busy} onLogin={handleLogin} onChoose={handleChoose} />
       )}
     </div>
   )

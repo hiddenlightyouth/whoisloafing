@@ -220,9 +220,16 @@ async function profileContributor(
     messages = known.map((commit) => firstLine(commit.commit.message))
     samples = pickSpread(known, SAMPLE_COMMITS)
   } else {
-    const recent = (await gh.listCommits(owner, repo, { author: person.login!, perPage: 100 })).filter(
-      (commit) => !isMergeCommit(commit),
+    // 작성자로 걸러서 조회하면 일부 이메일로 올린 커밋이 빠지는 경우가 있어서, 미리 받아 둔 목록에서 먼저 찾아요.
+    const login = person.login!.toLowerCase()
+    let recent = (collected.recentCommits ?? []).filter(
+      (commit) => !isMergeCommit(commit) && commit.author?.login.toLowerCase() === login,
     )
+    if (recent.length === 0) {
+      recent = (await gh.listCommits(owner, repo, { author: person.login!, perPage: 100 })).filter(
+        (commit) => !isMergeCommit(commit),
+      )
+    }
     messages = recent.map((commit) => firstLine(commit.commit.message))
     samples = await Promise.all(pickSpread(recent, SAMPLE_COMMITS).map((commit) => gh.getCommit(owner, repo, commit.sha)))
   }
@@ -245,18 +252,21 @@ async function collect(
   owner: string,
   repo: string,
   excludeGenerated: boolean,
-  onPending: () => void,
 ): Promise<Collected> {
   if (excludeGenerated) return fromCommits(gh, owner, repo, { exclude: true })
 
-  const raw = await gh.getContributorStats(owner, repo, onPending)
+  const raw = await gh.getContributorStats(owner, repo)
   const people = raw ? fromStatsApi(raw) : []
   // 통계가 끝내 준비되지 않았거나, 커밋이 아주 많은 레포라 라인 수가 비어 있으면 커밋을 직접 읽어요.
   const usable = people.length > 0 && people.some((person) => person.additions + person.deletions > 0)
   if (usable) {
     // 커밋 목록 전체를 받을 수 있는 크기라면, 통계 API가 잘못 나눈 몫을 원래 참여자에게 합쳐요.
     const listed = await gh.listCommits(owner, repo, { perPage: 100, maxPages: Math.ceil(MAX_COMMITS / 100) })
-    return { people: listed.length < MAX_COMMITS ? mergeMisattributed(people, listed) : people, capped: false }
+    return {
+      people: listed.length < MAX_COMMITS ? mergeMisattributed(people, listed) : people,
+      recentCommits: listed,
+      capped: false,
+    }
   }
   return fromCommits(gh, owner, repo, { exclude: false })
 }
@@ -338,9 +348,8 @@ export async function runAnalysis(options: {
   let cacheable = true
 
   try {
-    const collecting = collect(gh, owner, repoName, excludeGenerated, () =>
-      emit({ type: 'text', text: 'GitHub가 통계를 만들고 있어요. 조금만 기다려 주세요.' }),
-    )
+    emit({ type: 'text', text: 'GitHub에서 생성된 통계를 가져오고 있어요.\n잠시만 기다려 주세요!' })
+    const collecting = collect(gh, owner, repoName, excludeGenerated)
     // 아래에서 await하기 전에 실패해도 처리되지 않은 거절로 남지 않게 해요.
     collecting.catch(() => {})
 
@@ -372,13 +381,9 @@ export async function runAnalysis(options: {
       type: 'text',
       text:
         ranked.length === 1
-          ? '참여한 사람은 1명이에요. 이제 분석을 시작할게요.'
-          : `참여한 사람은 총 ${formatNumber(ranked.length)}명이에요. 이제 분석을 시작할게요.`,
+          ? '🎉 이 프로젝트는 1명이 혼자 만들었네요!'
+          : `🎉 이 프로젝트에 ${formatNumber(ranked.length)}명이 참여했네요!`,
     })
-    if (!aiEnabled) {
-      cacheable = false
-      emit({ type: 'text', text: 'AI 분석이 설정되어 있지 않아서 지금은 수치만 보여드릴게요.' })
-    }
 
     // 역할과 코드 스타일 분석은 미리 한꺼번에 시작해 두고, 화면에는 기여도 순서대로 내보내요.
     let profiles: Promise<Profile | null>[] = []
@@ -411,17 +416,28 @@ export async function runAnalysis(options: {
     })
 
     if (withProfiles) {
+      // 먼저 모든 참여자의 기능을 이어서 보여주고, 그다음에 코드 스타일을 이어서 보여줘요.
+      emit({ type: 'text', text: '이제 누가 어떤 기능을 맡았는지 분석을 시작할게요.' })
+      const styles: string[] = []
       for (const [index, card] of cards.entries()) {
         if (isAborted()) return
         const profile = await profiles[index]
         if (profile) {
-          emit({ type: 'features', text: `${card.name}님이 개발한 기능이에요.`, items: profile.features })
-          emit({ type: 'text', text: profile.style })
+          emit({ type: 'features', text: `${card.name}님이 맡은 기능이에요.`, items: profile.features })
+          styles.push(profile.style)
         } else {
           cacheable = false
-          emit({ type: 'text', text: `${card.name}님이 개발한 기능과 코드 스타일은 이번에는 분석하지 못했어요.` })
+          emit({ type: 'text', text: `${card.name}님이 맡은 기능은 이번에는 분석하지 못했어요.` })
         }
       }
+
+      if (styles.length > 0) {
+        emit({ type: 'text', text: '참여자의 코드 스타일 분석을 시작할게요.' })
+        for (const style of styles) emit({ type: 'text', text: style })
+      }
+    } else {
+      cacheable = false
+      emit({ type: 'text', text: 'AI 분석이 설정되어 있지 않아서 기능과 코드 스타일은 보여드리지 못했어요.' })
     }
 
     const rest = ranked.length - detailed.length

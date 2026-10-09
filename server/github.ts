@@ -137,7 +137,6 @@ export function createGitHub(token?: string) {
     async getContributorStats(
       owner: string,
       repo: string,
-      onPending?: () => void,
     ): Promise<StatsContributor[] | null> {
       for (let attempt = 0; attempt < STATS_MAX_ATTEMPTS; attempt++) {
         const res = await request(`${base(owner, repo)}/stats/contributors`)
@@ -147,7 +146,6 @@ export function createGitHub(token?: string) {
         }
         if (res.status === 204) return []
         if (res.status !== 202) return null
-        if (attempt === 0) onPending?.()
         await sleep(STATS_RETRY_DELAY_MS)
       }
       return null

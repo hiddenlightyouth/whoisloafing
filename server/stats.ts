@@ -73,6 +73,8 @@ export interface Collected {
   people: Person[]
   /** 커밋 단위 분석일 때만 채워져요. 사람별 커밋 상세 (최근 순) */
   commitsByKey?: Map<string, CommitDetail[]>
+  /** 통계 API를 쓸 때 함께 받아 둔 최근 커밋 목록. 대표 커밋을 고르는 데 써요. */
+  recentCommits?: CommitSummary[]
   /** 커밋이 MAX_COMMITS보다 많아서 최근 것만 본 경우 */
   capped: boolean
 }
