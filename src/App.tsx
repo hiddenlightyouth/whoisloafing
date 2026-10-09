@@ -95,15 +95,32 @@ export default function App() {
     trackPageView('home')
   }, [chat, messages.length, reset])
 
-  // 분석 중에 로고를 누르면 바로 떠나지 않고 먼저 물어봐요.
+  // 공유된 채팅과 다른 브라우저에서 만든 채팅은 읽기만 할 수 있어요.
+  const readOnly = chat !== null && (chat.shared || !chat.mine)
+  // 내가 진행 중인 채팅이 화면에 있으면, 떠나기 전에 항상 물어봐요. 분석이 잠깐 멈춰 있을 때(질문을 기다리는 중)도 마찬가지예요.
+  const working = busy || (messages.length > 0 && !readOnly)
+
   const handleHome = useCallback(() => {
-    if (!busy) {
+    if (!working) {
       goHome()
       return
     }
-    track('leave_confirm_open')
+    track('leave_confirm_open', { busy })
     setConfirmingLeave(true)
-  }, [busy, goHome])
+  }, [busy, goHome, working])
+
+  // 새로 고치거나 탭을 닫을 때도 잃어버리는 작업이 있으면 브라우저의 경고 창을 띄워요.
+  // 저장 기능이 켜져 있으면 끝난 요청까지는 다시 열 수 있어서, 분석이 돌고 있을 때만 경고해요.
+  const unsaved = busy || (working && !storage)
+  useEffect(() => {
+    if (!unsaved) return
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [unsaved])
 
   const handleLeave = useCallback(() => {
     track('leave_confirm', { message_count: messages.length })
@@ -133,9 +150,6 @@ export default function App() {
     track('share_link_copy', { success: ok, is_owner: chat?.mine === true })
     return ok
   }, [chat])
-
-  // 공유된 채팅과 다른 브라우저에서 만든 채팅은 읽기만 할 수 있어요.
-  const readOnly = chat !== null && (chat.shared || !chat.mine)
 
   return (
     <div className="relative flex h-dvh flex-col bg-white">
