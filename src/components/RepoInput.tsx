@@ -49,7 +49,8 @@ export function RepoInput({ onSubmit }: { onSubmit: (url: string) => void }) {
           aria-label="GitHub 레포 링크"
           aria-invalid={invalid}
           aria-describedby={invalid ? 'repo-input-error' : undefined}
-          className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-gray-900 outline-none placeholder:text-gray-400"
+          // 모바일에서 글자가 16px보다 작으면 입력창을 누를 때 화면이 확대돼서, 모바일에서는 16px로 둬요.
+          className="h-full min-w-0 flex-1 bg-transparent text-base text-gray-900 outline-none placeholder:text-gray-400 sm:text-[15px]"
         />
         <button
           type="submit"
