@@ -4,10 +4,13 @@ import { Logo } from './Logo'
 
 interface Props {
   onHome: () => void
-  /** 공유 버튼을 보여줄 수 있는 상태인지 (저장된 내 채팅이고 아직 공유하지 않음) */
-  canShare: boolean
-  /** 분석이 진행 중이면 공유를 잠깐 막아요. */
+  /** 내가 이어서 쓸 수 있는 채팅 화면인지. 이때만 공유와 중단하기 버튼을 보여줘요. */
+  inChat: boolean
+  /** 서버에 채팅 저장 기능이 켜져 있는지. 꺼져 있으면 공유할 수 없다고 안내해요. */
+  storage: boolean
+  /** 분석이 진행 중이면 공유 대신 중단하기 버튼을 보여줘요. */
   busy: boolean
+  onStop: () => void
   shared: boolean
   onShare: () => Promise<boolean>
   onCopyLink: () => Promise<boolean>
@@ -15,7 +18,7 @@ interface Props {
 
 const quiet = 'h-8 rounded-full px-3 text-[13px] font-medium transition-colors'
 
-export function Header({ onHome, canShare, busy, shared, onShare, onCopyLink }: Props) {
+export function Header({ onHome, inChat, storage, busy, shared, onShare, onStop, onCopyLink }: Props) {
   const [confirming, setConfirming] = useState(false)
   const [working, setWorking] = useState(false)
   const [notice, setNotice] = useState('')
@@ -55,23 +58,31 @@ export function Header({ onHome, canShare, busy, shared, onShare, onCopyLink }: 
             링크 복사
           </button>
         ) : (
-          canShare && (
+          inChat &&
+          (busy ? (
+            <button type="button" onClick={onStop} className={`${quiet} bg-gray-100 text-gray-700 hover:text-red-500`}>
+              중단하기
+            </button>
+          ) : (
             <button
               type="button"
-              disabled={busy}
               aria-expanded={confirming}
               onClick={() => {
+                if (!storage) {
+                  setNotice('저장 기능이 꺼져 있어서 공유할 수 없어요.')
+                  return
+                }
                 if (!confirming) track('share_open')
                 setConfirming((open) => !open)
               }}
-              className={`${quiet} bg-gray-100 text-gray-700 hover:text-brand disabled:text-gray-400`}
+              className={`${quiet} bg-gray-100 text-gray-700 hover:text-brand`}
             >
-              공유
+              공유하기
             </button>
-          )
+          ))
         )}
 
-        {confirming && !shared && (
+        {confirming && !shared && !busy && (
           <div className="absolute top-full right-0 mt-2 w-64 animate-rise rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_12px_32px_-12px_rgba(16,24,40,0.25)]">
             <p className="text-[14px] font-semibold text-gray-900">이 채팅을 공유할까요?</p>
             <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">

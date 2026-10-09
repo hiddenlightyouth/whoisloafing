@@ -20,7 +20,7 @@ async function copyLink(): Promise<boolean> {
 }
 
 export default function App() {
-  const { messages, busy, paused, send, resume, reset, load, chatId } = useAnalysis()
+  const { messages, busy, paused, send, resume, stop, reset, load, chatId } = useAnalysis()
   /** 서버에 채팅 저장 기능(Supabase)이 켜져 있는지 */
   const [storage, setStorage] = useState(false)
   /** 지금 보고 있는 채팅의 상태. mine은 이 브라우저에서 만든 채팅인지, shared는 공유됐는지예요. */
@@ -111,14 +111,15 @@ export default function App() {
 
   // 공유된 채팅과 다른 브라우저에서 만든 채팅은 읽기만 할 수 있어요.
   const readOnly = chat !== null && (chat.shared || !chat.mine)
-  const hasSummary = messages.some((message) => message.from === 'bot' && message.event.type === 'summary')
 
   return (
     <div className="relative flex h-dvh flex-col bg-white">
       <Header
         onHome={handleHome}
-        canShare={storage && chat?.mine === true && hasSummary}
+        inChat={messages.length > 0 && !readOnly}
+        storage={storage}
         busy={busy}
+        onStop={stop}
         shared={chat?.shared === true}
         onShare={handleShare}
         onCopyLink={handleCopyLink}

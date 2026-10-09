@@ -47,12 +47,17 @@ export async function shareChat(id: string): Promise<boolean> {
 }
 
 /** 서버가 SSE로 흘려보내는 분석 메시지를 하나씩 받아서 넘겨줘요. */
-export async function streamAnalysis(request: AnalyzeRequest, onEvent: (event: ChatEvent) => void): Promise<void> {
+export async function streamAnalysis(
+  request: AnalyzeRequest,
+  onEvent: (event: ChatEvent) => void,
+  signal?: AbortSignal,
+): Promise<void> {
   const res = await fetch('/api/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...ownerHeaders() },
     // 시간대별 통계를 사용자의 시간대로 보여주려고 함께 보내요.
     body: JSON.stringify({ ...request, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+    signal,
   })
   if (!res.ok || !res.body) throw new Error(`분석 요청에 실패했어요. (${res.status})`)
 

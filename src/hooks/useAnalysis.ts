@@ -30,6 +30,10 @@ export function useAnalysis() {
   const nextId = useRef(1)
   /** 저장할 채팅방의 ID. 저장 기능이 꺼져 있으면 null이에요. */
   const chatIdRef = useRef<string | null>(null)
+  /** 진행 중인 분석을 중단할 때 쓰는 값들 */
+  const abortRef = useRef<AbortController | null>(null)
+  const stoppedRef = useRef(false)
+  const wakeRef = useRef<(() => void) | null>(null)
 
   const append = useCallback((message: NewMessage) => {
     setMessages((prev) => [...prev, { ...message, id: nextId.current++ } as ChatMessage])
@@ -61,8 +65,12 @@ export function useAnalysis() {
         queue.push(event)
         wake?.()
       }
+      const controller = new AbortController()
+      abortRef.current = controller
+      stoppedRef.current = false
+      wakeRef.current = () => wake?.()
 
-      streamAnalysis({ ...current, chatId: chatIdRef.current ?? undefined, userText }, push)
+      streamAnalysis({ ...current, chatId: chatIdRef.current ?? undefined, userText }, push, controller.signal)
         .catch(() =>
           push({ type: 'error', text: '서버와 연결이 끊어졌어요. 잠시 뒤에 다시 시도해 주세요.', action: 'retry' }),
         )
@@ -71,7 +79,7 @@ export function useAnalysis() {
           wake?.()
         })
 
-      while (true) {
+      while (!stoppedRef.current) {
         const event = queue.shift()
         if (!event) {
           if (finished) break
@@ -86,10 +94,11 @@ export function useAnalysis() {
           await new Promise<void>((resolve) => (resumeRef.current = resolve))
           resumeRef.current = null
           setPaused(null)
-          track('analysis_step_continue', { repo, next_step: event.next })
+          if (!stoppedRef.current) track('analysis_step_continue', { repo, next_step: event.next })
           continue
         }
         await sleep(TYPING_DELAY_MS)
+        if (stoppedRef.current) break
         append({ from: 'bot', event, request: current })
 
         const seconds = Math.round((Date.now() - startedAt) / 1000)
@@ -107,11 +116,26 @@ export function useAnalysis() {
         }
       }
 
+      if (stoppedRef.current) {
+        track('analysis_stop', { repo, question: current.question ?? 'analysis', duration_seconds: Math.round((Date.now() - startedAt) / 1000) })
+        append({ from: 'bot', event: { type: 'error', text: '분석을 중단했어요.', action: 'retry' }, request: current })
+      }
+      abortRef.current = null
+      wakeRef.current = null
       busyRef.current = false
       setBusy(false)
     },
     [append],
   )
+
+  /** 진행 중인 분석을 중단해요. 서버와의 연결을 끊고, 기다리던 말풍선은 올리지 않아요. */
+  const stop = useCallback(() => {
+    if (!busyRef.current || stoppedRef.current) return
+    stoppedRef.current = true
+    abortRef.current?.abort()
+    resumeRef.current?.()
+    wakeRef.current?.()
+  }, [])
 
   const resume = useCallback(() => resumeRef.current?.(), [])
 
@@ -130,5 +154,5 @@ export function useAnalysis() {
     setMessages(chat.messages.map((message) => ({ ...message, id: nextId.current++ }) as ChatMessage))
   }, [])
 
-  return { messages, busy, paused, send, resume, reset, load, chatId: chatIdRef }
+  return { messages, busy, paused, send, resume, stop, reset, load, chatId: chatIdRef }
 }
