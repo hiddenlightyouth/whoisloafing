@@ -83,7 +83,7 @@ export function Header({ onHome, inChat, storage, busy, shared, onShare, onStop,
         )}
 
         {confirming && !shared && !busy && (
-          <div className="absolute top-full right-0 mt-2 w-64 animate-rise rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_12px_32px_-12px_rgba(16,24,40,0.25)]">
+          <div className="absolute top-full right-0 mt-2 w-64 animate-rise rounded-2xl border border-gray-200 bg-white p-4">
             <p className="text-[14px] font-semibold text-gray-900">이 채팅을 공유할까요?</p>
             <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">
               링크를 아는 사람은 누구나 볼 수 있어요. 공유한 뒤에는 이 채팅에서 분석을 더 이어갈 수 없어요.
