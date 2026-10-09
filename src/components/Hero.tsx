@@ -1,30 +1,12 @@
-import { useEffect, useState } from 'react'
 import { track } from '../lib/analytics'
 import { ContributionBackdrop } from './ContributionBackdrop'
 import { RepoInput } from './RepoInput'
 
-/** 타이틀을 어절 단위로 나눠요. 어절이 하나씩 떠오른 뒤, 차례로 메인 컬러로 물들어요. */
-const TITLE_WORDS = ['우리', '프로젝트의', 'MVP는']
-const FOCUS_INTERVAL_MS = 1800
+/** 타이틀을 어절 단위로 나눠요. 어절이 하나씩 흐릿하게 떠오르며 나타나요. */
+const TITLE_WORDS = ['우리', '프로젝트의', 'MVP는?']
 const WORD_STAGGER_MS = 80
 
 function Title() {
-  const [focus, setFocus] = useState(-1)
-
-  // 어절이 모두 나타난 뒤부터 "우리", "프로젝트의", "MVP는"을 차례로 짚어요.
-  useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    let interval: ReturnType<typeof setInterval> | undefined
-    const start = setTimeout(() => {
-      setFocus(0)
-      interval = setInterval(() => setFocus((current) => (current + 1) % TITLE_WORDS.length), FOCUS_INTERVAL_MS)
-    }, TITLE_WORDS.length * WORD_STAGGER_MS + 500)
-    return () => {
-      clearTimeout(start)
-      clearInterval(interval)
-    }
-  }, [])
-
   return (
     <h1
       aria-label="우리 프로젝트의 MVP는?"
@@ -33,9 +15,7 @@ function Title() {
       {TITLE_WORDS.map((word, index) => (
         <span key={index} aria-hidden="true">
           <span className="inline-block animate-word" style={{ animationDelay: `${index * WORD_STAGGER_MS}ms` }}>
-            <span className={`transition-colors duration-500 ${index === focus ? 'text-brand' : ''}`}>{word}</span>
-            {/* 마지막 물음표는 색을 넣지 않고 기울여요. */}
-            {index === TITLE_WORDS.length - 1 && <em>?</em>}
+            {word}
           </span>
           {index < TITLE_WORDS.length - 1 && ' '}
         </span>
