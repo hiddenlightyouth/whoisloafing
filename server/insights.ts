@@ -1,9 +1,9 @@
 import { FOLLOWUP_LABELS, type ChartSpec, type ChatEvent, type FollowupPerson, type FollowupQuestion } from '../shared/types.ts'
 import { TtlCache } from './cache.ts'
-import { narrateOrNull } from './gemini.ts'
+import { aiEnabled, analyzeContributor, narrateOrNull } from './gemini.ts'
 import type { GitHub, Pull } from './github.ts'
 import { createLoginResolver, isBot, isMergeCommit } from './stats.ts'
-import { formatNumber, sanitize } from './text.ts'
+import { formatNumber, sanitize, truncate } from './text.ts'
 
 /** 추가 질문에 답할 때 살펴보는 최대 커밋 수 (최근 순) */
 const MAX_INSIGHT_COMMITS = 1000
@@ -45,6 +45,44 @@ const insightsCache = new TtlCache<Insights>(60 * 60 * 1000, 200)
 /** 참여자를 고르는 버튼과 추가 질문 답변에서 같은 사람을 가리키는 데 쓰는 값이에요. */
 export function personId(login: string | null, name: string): string {
   return (login ?? name).trim().toLowerCase()
+}
+
+/** 분석 중에 정리한 참여자별 맡은 기능이에요. 특정 참여자를 자세히 볼 때 다시 꺼내 써요. */
+const featuresCache = new TtlCache<string[]>(24 * 60 * 60 * 1000, 1000)
+/** 맡은 기능을 새로 정리할 때 보내는 최대 커밋 메시지 수 */
+const FEATURE_MESSAGE_LIMIT = 50
+
+export function rememberFeatures(cacheKey: string, id: string, features: string[]): void {
+  if (features.length > 0) featuresCache.set(`${cacheKey}:${id}`, features)
+}
+
+/** 분석에서 다루지 않은 참여자는 커밋 메시지와 PR 제목만으로 맡은 기능을 정리해요. 정리하지 못하면 빈 목록을 돌려줘요. */
+async function loadFeatures(
+  cacheKey: string,
+  person: FollowupPerson & { commits: InsightCommit[] },
+  pulls: Pull[],
+): Promise<string[]> {
+  const cached = featuresCache.get(`${cacheKey}:${person.id}`)
+  if (cached) return cached
+  if (!aiEnabled()) return []
+  try {
+    const { features } = await analyzeContributor({
+      name: person.name,
+      repoSummary: '',
+      topPaths: [],
+      commitMessages: person.commits.slice(0, FEATURE_MESSAGE_LIMIT).map((commit) => truncate(commit.title, 120)),
+      pullTitles: pulls
+        .filter((pull) => pull.user?.login.toLowerCase() === person.id)
+        .slice(0, 30)
+        .map((pull) => truncate(pull.title, 120)),
+      diffs: '',
+    })
+    rememberFeatures(cacheKey, person.id, features)
+    return features
+  } catch (err) {
+    console.error(err)
+    return []
+  }
 }
 
 async function loadInsights(gh: GitHub, owner: string, repo: string, cacheKey: string): Promise<Insights> {
@@ -417,7 +455,7 @@ function answerPulls(insights: Insights, emit: Emit) {
   })
 }
 
-function answerPerson(insights: Insights, clock: Clock, id: string | undefined, emit: Emit) {
+async function answerPerson(insights: Insights, clock: Clock, id: string | undefined, cacheKey: string, emit: Emit) {
   const person = listPeople(insights.commits).find((candidate) => candidate.id === id?.trim().toLowerCase())
   if (!person) {
     emit({ type: 'text', text: '그 참여자의 커밋을 찾지 못했어요. 다른 참여자를 골라 주세요.' })
@@ -460,6 +498,12 @@ function answerPerson(insights: Insights, clock: Clock, id: string | undefined, 
     text: `${person.name}님이 커밋한 시간대와 요일이에요.`,
     charts: [hourChart('시간대별 커밋 수', hours), weekdayChart('요일별 커밋 수', weekdays)],
   })
+  const features = await loadFeatures(cacheKey, person, insights.pulls)
+  if (features.length > 0) {
+    emit({ type: 'list', text: `${person.name}님이 맡은 기능이에요.`, items: features })
+    return
+  }
+  // 맡은 기능을 정리하지 못했을 때만 최근 커밋 제목으로 대신해요.
   emit({
     type: 'list',
     text: `${person.name}님이 가장 최근에 한 작업이에요.`,
@@ -526,7 +570,7 @@ export async function answerFollowup(options: {
       answerPulls(insights, collect)
       break
     case 'person':
-      answerPerson(insights, clock, options.person, collect)
+      await answerPerson(insights, clock, options.person, options.cacheKey, collect)
       break
   }
 

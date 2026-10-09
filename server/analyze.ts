@@ -14,7 +14,7 @@ import {
   rank,
   type Collected,
 } from './stats.ts'
-import { answerFollowup, followupEvent, personId } from './insights.ts'
+import { answerFollowup, followupEvent, personId, rememberFeatures } from './insights.ts'
 import { formatNumber, sanitize, truncate } from './text.ts'
 
 /** 역할과 코드 스타일까지 자세히 소개하는 최대 인원 */
@@ -544,6 +544,7 @@ export async function runAnalysis(options: {
           emit({ type: 'list', text: `**${card.name}**님이 맡은 기능이에요.`, items: profile.features })
           styles.push({ name: card.name, items: profile.style })
           teamNotes.push({ name: card.name, features: profile.features, style: profile.style })
+          rememberFeatures(baseKey, personId(card.login, card.name), profile.features)
         } else {
           cacheable = false
           emit({ type: 'text', text: `${card.name}님이 맡은 기능은 이번에는 분석하지 못했어요.` })
