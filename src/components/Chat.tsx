@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AnalyzeRequest } from '../../shared/types'
 import type { ChatMessage } from '../hooks/useAnalysis'
 import { track } from '../lib/analytics'
+import { AssistantOrb } from './AssistantOrb'
 import { Bubble } from './Bubble'
 import { TypingDots } from './TypingDots'
 
@@ -35,6 +36,8 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
   const pinned = useRef(true)
   const lastScrollTop = useRef(0)
   const [atBottom, setAtBottom] = useState(true)
+  // 방울 옆 메뉴를 펼쳐 둘지. 채팅 칸과 겹치지 않을 만큼 넓은 화면에서는 처음부터 펼쳐 둬요.
+  const [menuOpen, setMenuOpen] = useState(() => window.matchMedia('(min-width: 1280px)').matches)
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'smooth') => {
     const el = scrollRef.current
@@ -98,7 +101,8 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
     return () => observer.disconnect()
   }, [scrollToBottom, updateFocus])
 
-  // 넓은 화면에서는 질문 메뉴를 말풍선으로 올리지 않고, 채팅 입력창이 있을 자리인 화면 아래에 붙여 둬요. 답을 읽으려고 스크롤을 올릴 필요가 없어요.
+  // 넓은 화면에서는 질문 메뉴를 말풍선으로 올리지 않고, 오른쪽 아래에 떠 있는 유리 방울이 말을 거는 것처럼 보여줘요.
+  // 채팅을 밀어내지 않아서, 답을 읽으려고 스크롤을 올릴 필요가 없어요.
   // 메뉴가 방금 나왔거나 메뉴에서 고른 질문의 답이 오가는 동안에만 보여주고, 기여도 분석이 진행되는 동안에는 숨겨요.
   const isMenu = (message: ChatMessage) => message.from === 'bot' && message.event.type === 'followup'
   const menuIndex = readOnly ? -1 : messages.map(isMenu).lastIndexOf(true)
@@ -106,6 +110,9 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
     menuIndex >= 0 && messages.slice(menuIndex + 1).every((message) => message.from === 'user' || message.request?.question)
       ? messages[menuIndex]
       : null
+
+  // 지금 고를 수 있는 메뉴인지. 답을 기다리는 동안에는 방울만 일렁여요.
+  const menuActive = menu !== null && menuIndex === messages.length - 1 && !busy
 
   return (
     <main className="flex min-h-0 flex-1 flex-col">
@@ -168,6 +175,26 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
           </div>
         </div>
 
+        {menu && (
+          <div className="absolute right-6 bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-10 hidden md:block">
+            {menuActive &&
+              (menuOpen ? (
+                <div className="absolute right-0 bottom-[calc(100%+0.75rem)] max-h-[calc(100dvh-11rem)] w-[300px] overflow-y-auto">
+                  <Bubble key={menu.id} message={menu} busy={busy} isLast onSend={onSend} docked />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setMenuOpen(true)}
+                  className="absolute top-1/2 right-[calc(100%+0.625rem)] -translate-y-1/2 animate-rise rounded-full bg-gray-100 px-3.5 py-2 text-[13px] font-medium whitespace-nowrap text-gray-700 transition-colors hover:text-brand"
+                >
+                  {menu.from === 'bot' ? menu.event.text : ''}
+                </button>
+              ))}
+            <AssistantOrb thinking={!menuActive} expanded={menuActive && menuOpen} onClick={() => setMenuOpen((open) => !open)} />
+          </div>
+        )}
+
         <button
           type="button"
           aria-label="맨 아래로 이동"
@@ -186,13 +213,6 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
         </button>
       </div>
 
-      {menu && (
-        <div className="hidden shrink-0 px-6 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:block">
-          <div className="mx-auto max-h-[45vh] max-w-2xl overflow-y-auto">
-            <Bubble key={menu.id} message={menu} busy={busy} isLast={menuIndex === messages.length - 1} onSend={onSend} docked />
-          </div>
-        </div>
-      )}
     </main>
   )
 }

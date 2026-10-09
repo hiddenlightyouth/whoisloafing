@@ -119,8 +119,132 @@
   }
 }
 
+/* 질문 메뉴를 들고 있는 유리 방울. 가장자리가 흐물흐물 일렁이고, 안에서는 파란 빛이 천천히 떠다녀요. */
+.orb {
+  position: relative;
+  display: block;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border: 1px solid rgb(46 144 250 / 0.22);
+  border-radius: 46% 54% 52% 48% / 50% 46% 54% 50%;
+  background: rgb(239 248 255 / 0.55);
+  backdrop-filter: blur(10px) saturate(1.4);
+  animation: orb-morph 7s ease-in-out infinite;
+  transition: transform 0.2s ease-out;
+}
+
+.orb:hover {
+  transform: scale(1.06);
+}
+
+.orb-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(9px);
+}
+
+.orb-blob-a {
+  top: 18%;
+  left: 8%;
+  width: 60%;
+  height: 60%;
+  background: #2e90fa;
+  animation: orb-drift-a 6s ease-in-out infinite;
+}
+
+.orb-blob-b {
+  right: 2%;
+  bottom: 6%;
+  width: 52%;
+  height: 52%;
+  background: #7dd3fc;
+  animation: orb-drift-b 7.5s ease-in-out infinite;
+}
+
+.orb-blob-c {
+  top: 2%;
+  right: 12%;
+  width: 40%;
+  height: 40%;
+  background: #1570ef;
+  opacity: 0.7;
+  animation: orb-drift-c 9s ease-in-out infinite;
+}
+
+/* 유리 표면에 비친 빛 */
+.orb-shine {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 30% 24%, rgb(255 255 255 / 0.9), rgb(255 255 255 / 0) 42%),
+    radial-gradient(circle at 72% 82%, rgb(255 255 255 / 0.35), rgb(255 255 255 / 0) 38%);
+}
+
+/* 답을 기다리는 동안에는 더 빠르게 일렁여요. */
+.orb-thinking,
+.orb-thinking .orb-blob {
+  animation-duration: 2.2s;
+}
+
+@keyframes orb-morph {
+  0%,
+  100% {
+    border-radius: 46% 54% 52% 48% / 50% 46% 54% 50%;
+    rotate: 0deg;
+  }
+  25% {
+    border-radius: 56% 44% 46% 54% / 44% 56% 44% 56%;
+    rotate: 6deg;
+  }
+  50% {
+    border-radius: 44% 56% 58% 42% / 56% 44% 52% 48%;
+    rotate: -4deg;
+  }
+  75% {
+    border-radius: 52% 48% 42% 58% / 46% 54% 48% 52%;
+    rotate: 5deg;
+  }
+}
+
+@keyframes orb-drift-a {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 26% 20%;
+  }
+}
+
+@keyframes orb-drift-b {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: -32% -26%;
+  }
+}
+
+@keyframes orb-drift-c {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: -24% 46%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
+  }
+
+  /* 끝없이 도는 방울 애니메이션은 아예 멈춰요. */
+  .orb,
+  .orb-blob {
+    animation: none;
   }
 }
