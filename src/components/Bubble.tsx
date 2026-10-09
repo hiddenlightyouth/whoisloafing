@@ -42,6 +42,17 @@ export function Bubble({ message, busy, isLast, onLogin, onChoose }: Props) {
 
         {event.type === 'ranking' && <RankingCarousel contributors={event.contributors} />}
 
+        {event.type === 'features' && (
+          <ol className="mt-3 mb-1.5 divide-y divide-gray-100 rounded-xl bg-white px-4">
+            {event.items.map((item, index) => (
+              <li key={`${index}:${item}`} className="flex gap-3 py-2.5 text-[14px] leading-snug">
+                <span className="w-4 shrink-0 text-xs leading-5 font-semibold text-brand tabular-nums">{index + 1}</span>
+                <span className="min-w-0">{item}</span>
+              </li>
+            ))}
+          </ol>
+        )}
+
         {event.type === 'summary' && (
           <SummaryChart contributors={event.contributors} othersCount={event.othersCount} />
         )}

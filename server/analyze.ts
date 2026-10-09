@@ -19,16 +19,16 @@ import { formatNumber, sanitize, truncate } from './text.ts'
 const MAX_DETAILED = 10
 /** 마지막 요약 그래프에 그리는 최대 인원 */
 const MAX_CHART = 15
-const AI_CONCURRENCY = 3
+const AI_CONCURRENCY = 2
 
 // Gemini에 보내는 자료 길이 제한 (비용 절감)
 const README_LIMIT = 6000
 const TREE_LIMIT = 150
-const SAMPLE_COMMITS = 3
+const SAMPLE_COMMITS = 5
 const FILE_PATCH_LIMIT = 1500
 const COMMIT_DIFF_LIMIT = 3500
 const CONTRIBUTOR_DIFF_LIMIT = 9000
-const COMMIT_MESSAGE_LIMIT = 20
+const COMMIT_MESSAGE_LIMIT = 50
 const PULL_TITLE_LIMIT = 10
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
@@ -199,7 +199,7 @@ function topDirectories(commits: CommitDetail[]): string[] {
 }
 
 interface Profile {
-  role: string
+  features: string[]
   style: string
 }
 
@@ -220,7 +220,7 @@ async function profileContributor(
     messages = known.map((commit) => firstLine(commit.commit.message))
     samples = pickSpread(known, SAMPLE_COMMITS)
   } else {
-    const recent = (await gh.listCommits(owner, repo, { author: person.login!, perPage: 30 })).filter(
+    const recent = (await gh.listCommits(owner, repo, { author: person.login!, perPage: 100 })).filter(
       (commit) => !isMergeCommit(commit),
     )
     messages = recent.map((commit) => firstLine(commit.commit.message))
@@ -415,11 +415,11 @@ export async function runAnalysis(options: {
         if (isAborted()) return
         const profile = await profiles[index]
         if (profile) {
-          emit({ type: 'text', text: profile.role })
+          emit({ type: 'features', text: `${card.name}님이 개발한 기능이에요.`, items: profile.features })
           emit({ type: 'text', text: profile.style })
         } else {
           cacheable = false
-          emit({ type: 'text', text: `${card.name}님의 역할과 코드 스타일은 이번에는 분석하지 못했어요.` })
+          emit({ type: 'text', text: `${card.name}님이 개발한 기능과 코드 스타일은 이번에는 분석하지 못했어요.` })
         }
       }
     }
