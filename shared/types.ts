@@ -17,7 +17,7 @@ export interface ContributorStats {
 export type FollowupQuestion = 'hours' | 'timeline' | 'spurt' | 'convention' | 'pulls' | 'teamwork' | 'person'
 
 export const FOLLOWUP_LABELS: Record<FollowupQuestion, string> = {
-  hours: '우리 팀은 보통 몇 시에 활동했나요?',
+  hours: '이 팀은 보통 몇 시에 활동했나요?',
   timeline: '프로젝트는 어떤 흐름으로 진행됐나요?',
   spurt: '막판에 가장 몰아서 작업한 사람은 누구인가요?',
   convention: '커밋 메시지는 어떤 규칙으로 썼나요?',
