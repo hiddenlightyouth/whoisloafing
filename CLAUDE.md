@@ -102,10 +102,10 @@ GitHub OAuth App의 콜백 URL은 `{APP_URL}/api/auth/github/callback` 으로 �
 ## 현재까지 구현된 기능
 
 - 프로젝트 기본 설정 (빌드 도구, 테마 토큰, 폰트, 파비콘)
+- GitHub OAuth 로그인과 로그아웃 서버 (scope는 repo, 토큰은 서버 세션에만 보관)
 
 ## 남은 작업
 
-- GitHub OAuth 로그인
 - 레포 기여도 분석 서버 (GitHub 데이터 수집, Claude 분석, 캐싱)
 - 메인 화면과 채팅 형식 결과 화면
 - 실제 `ANTHROPIC_API_KEY`와 OAuth App으로 AI 분석과 로그인 흐름 실사용 검증
