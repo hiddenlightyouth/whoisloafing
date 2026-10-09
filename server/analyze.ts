@@ -117,6 +117,36 @@ function fallbackSummary(repo: Repo, languages: Record<string, number>): string 
   return top ? `${top}로 만든 ${repo.name} 레포지토리네요!` : `${repo.name} 레포지토리네요!`
 }
 
+/** 어떤 서비스의 어떤 레포인지 한 문장으로 정의해요. AI를 쓸 수 없으면 언어와 이름으로 대신해요. */
+async function describeRepo(gh: GitHub, repo: Repo, baseKey: string): Promise<{ text: string; fromAi: boolean }> {
+  const cached = summaryCache.get(baseKey)
+  if (cached) return { text: cached, fromAi: true }
+
+  const owner = repo.owner.login
+  const [readme, tree, languages] = await Promise.all([
+    gh.getReadme(owner, repo.name),
+    gh.getTree(owner, repo.name, repo.default_branch),
+    gh.getLanguages(owner, repo.name),
+  ])
+
+  if (aiEnabled) {
+    try {
+      const text = await summarizeRepo({
+        fullName: repo.full_name,
+        description: repo.description,
+        languages,
+        tree: compactTree(tree),
+        readme: truncate(readme, README_LIMIT),
+      })
+      summaryCache.set(baseKey, text)
+      return { text, fromAi: true }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+  return { text: sanitize(fallbackSummary(repo, languages)), fromAi: false }
+}
+
 const firstLine = (message: string) => message.split('\n')[0].trim()
 
 /** 고르게 퍼진 대표 커밋을 n개 골라요. */
@@ -263,18 +293,27 @@ export async function runAnalysis(options: {
     return
   }
 
-  if (excludeGenerated === undefined) {
-    emit({
-      type: 'ask',
-      text: `레포를 찾았어요. lock 파일, 빌드 결과물, 자동 생성 파일은 라인 수에서 빼고 계산할까요? 빼고 계산하면 더 정확하지만, 커밋을 하나씩 읽어서 시간이 더 걸리고 최근 ${formatNumber(MAX_COMMITS)}개 커밋까지만 살펴봐요.`,
-    })
-    return
-  }
-
   // 비공개 레포의 결과는 사용자별로 따로 캐싱해서 다른 사람에게 보이지 않게 해요.
   // 접근 권한은 위에서 요청자의 토큰으로 매번 다시 확인해요.
   const scope = repo.private ? `user:${requester!.id}` : 'public'
   const baseKey = `${scope}:${repo.id}:${repo.pushed_at ?? 'empty'}`
+
+  // 먼저 어떤 레포인지 한 문장으로 소개한 다음, 라인 수를 어떻게 셀지 물어봐요.
+  if (excludeGenerated === undefined) {
+    try {
+      const summary = await describeRepo(gh, repo, baseKey)
+      options.emit({ type: 'text', text: summary.text })
+    } catch (err) {
+      options.emit(repoErrorEvent(err, !!requester))
+      return
+    }
+    options.emit({
+      type: 'ask',
+      text: `lock 파일, 빌드 결과물, 자동 생성 파일은 라인 수에서 빼고 계산할까요? 빼고 계산하면 더 정확하지만, 커밋을 하나씩 읽어서 시간이 더 걸리고 최근 ${formatNumber(MAX_COMMITS)}개 커밋까지만 살펴봐요.`,
+    })
+    return
+  }
+
   const resultKey = `${baseKey}:${excludeGenerated ? 'commits' : 'stats'}`
 
   const cached = resultCache.get(resultKey)
@@ -292,29 +331,13 @@ export async function runAnalysis(options: {
     // 아래에서 await하기 전에 실패해도 처리되지 않은 거절로 남지 않게 해요.
     collecting.catch(() => {})
 
-    const [readme, tree, languages] = await Promise.all([
-      gh.getReadme(owner, repoName),
-      gh.getTree(owner, repoName, repo.default_branch),
-      gh.getLanguages(owner, repoName),
-    ])
-
-    let repoSummary = summaryCache.get(baseKey) ?? ''
-    if (!repoSummary && aiEnabled) {
-      try {
-        repoSummary = await summarizeRepo({
-          fullName: repo.full_name,
-          description: repo.description,
-          languages,
-          tree: compactTree(tree),
-          readme: truncate(readme, README_LIMIT),
-        })
-        summaryCache.set(baseKey, repoSummary)
-      } catch (err) {
-        console.error(err)
-        cacheable = false
-      }
+    // 레포 소개는 질문 전에 이미 보여줬어요. 여기서는 역할 분석에 참고하려고 캐시에서 다시 꺼내요.
+    let repoSummary = ''
+    if (aiEnabled) {
+      const summary = await describeRepo(gh, repo, baseKey)
+      if (summary.fromAi) repoSummary = summary.text
+      else cacheable = false
     }
-    emit({ type: 'text', text: repoSummary || sanitize(fallbackSummary(repo, languages)) })
 
     const collected = await collecting
     const ranked = rank(collected.people)
