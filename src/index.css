@@ -181,12 +181,6 @@
     radial-gradient(circle at 72% 82%, rgb(255 255 255 / 0.35), rgb(255 255 255 / 0) 38%);
 }
 
-/* 답을 기다리는 동안에는 더 빠르게 일렁여요. */
-.orb-thinking,
-.orb-thinking .orb-blob {
-  animation-duration: 2.2s;
-}
-
 @keyframes orb-morph {
   0%,
   100% {

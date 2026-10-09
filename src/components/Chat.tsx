@@ -111,7 +111,7 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
       ? messages[menuIndex]
       : null
 
-  // 지금 고를 수 있는 메뉴인지. 답을 기다리는 동안에는 방울만 일렁여요.
+  // 지금 고를 수 있는 메뉴인지. 답을 기다리는 동안처럼 물어볼 것이 없을 때는 방울도 같이 사라져요.
   const menuActive = menu !== null && menuIndex === messages.length - 1 && !busy
 
   return (
@@ -175,23 +175,22 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
           </div>
         </div>
 
-        {menu && (
-          <div className="absolute right-6 bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-10 hidden md:block">
-            {menuActive &&
-              (menuOpen ? (
-                <div className="absolute right-0 bottom-[calc(100%+0.75rem)] max-h-[calc(100dvh-11rem)] w-[300px] overflow-y-auto">
-                  <Bubble key={menu.id} message={menu} busy={busy} isLast onSend={onSend} docked />
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setMenuOpen(true)}
-                  className="absolute top-1/2 right-[calc(100%+0.625rem)] -translate-y-1/2 animate-rise rounded-full bg-gray-100 px-3.5 py-2 text-[13px] font-medium whitespace-nowrap text-gray-700 transition-colors hover:text-brand"
-                >
-                  {menu.from === 'bot' ? menu.event.text : ''}
-                </button>
-              ))}
-            <AssistantOrb thinking={!menuActive} expanded={menuActive && menuOpen} onClick={() => setMenuOpen((open) => !open)} />
+        {menu && menuActive && (
+          <div className="absolute right-6 bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-10 hidden animate-rise md:block">
+            {menuOpen ? (
+              <div className="absolute right-0 bottom-[calc(100%+0.75rem)] max-h-[calc(100dvh-11rem)] w-[300px] overflow-y-auto">
+                <Bubble key={menu.id} message={menu} busy={busy} isLast onSend={onSend} docked />
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setMenuOpen(true)}
+                className="absolute top-1/2 right-[calc(100%+0.625rem)] -translate-y-1/2 animate-rise rounded-full bg-gray-100 px-3.5 py-2 text-[13px] font-medium whitespace-nowrap text-gray-700 transition-colors hover:text-brand"
+              >
+                {menu.from === 'bot' ? menu.event.text : ''}
+              </button>
+            )}
+            <AssistantOrb expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)} />
           </div>
         )}
 
