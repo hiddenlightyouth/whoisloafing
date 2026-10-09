@@ -12,7 +12,7 @@ import { getChat, hashOwnerKey, isUuid, saveMessages, shareChat, storageEnabled,
 
 /**
  * API의 실제 동작이에요. 어디서 돌아가는지와 상관없이 같은 코드를 쓰려고 여기에 모아 뒀어요.
- * Express(server/index.ts)와 Cloudflare Pages Functions(functions/api)가 둘 다 이 파일을 불러서 써요.
+ * Express(server/index.ts)와 Cloudflare Workers(worker/index.ts)가 둘 다 이 파일을 불러서 써요.
  */
 
 // 분석 요청 횟수 제한 (IP 기준). 메모리에만 두기 때문에 서버가 여러 개로 나뉘면 서버마다 따로 세요.

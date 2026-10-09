@@ -10,7 +10,7 @@
     "build": "npm run typecheck && vite build",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit",
     "start": "NODE_ENV=production tsx server/index.ts",
-    "pages:dev": "npm run build && wrangler pages dev dist"
+    "worker:dev": "npm run build && wrangler dev"
   },
   "dependencies": {
     "@google/genai": "^2.28.0",
