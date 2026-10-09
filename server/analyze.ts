@@ -1,6 +1,6 @@
 import type { ChatEvent, ContributorStats, FollowupQuestion } from '../shared/types.ts'
 import { TtlCache } from './cache.ts'
-import { aiEnabled, analyzeContributor, summarizeRepo } from './gemini.ts'
+import { aiEnabled, analyzeContributor, narrateOrNull, summarizeRepo } from './gemini.ts'
 import { env } from './env.ts'
 import { createGitHub, GitHubError, mapLimit, type CommitDetail, type GitHub, type Pull, type Repo } from './github.ts'
 import {
@@ -426,6 +426,22 @@ export async function runAnalysis(options: {
     }
 
     const cards = detailed.map(toPublic)
+    // 순위 숫자를 읽고 풀어 주는 설명은 카드를 보여주는 동안 미리 받아 둬요.
+    const rankingStory =
+      cards.length > 1
+        ? narrateOrNull(
+            '참여자별 기여도',
+            cards.map(({ name, commits, additions, deletions, commitShare, lineShare }) => ({
+              name,
+              commits,
+              additions,
+              deletions,
+              commitShare,
+              lineShare,
+            })),
+            '커밋 수 기준과 라인 수 기준 순위가 어떻게 다른지, 누가 작게 자주 올리고 누가 한 번에 크게 올리는 편인지, 기여가 고르게 나뉘었는지 한쪽에 쏠렸는지 짚어 줘요.',
+          )
+        : null
     emit({
       type: 'ranking',
       text:
@@ -438,6 +454,12 @@ export async function runAnalysis(options: {
       contributors: cards,
     })
 
+    const rankingText = await rankingStory
+    if (rankingText) emit({ type: 'text', text: rankingText })
+    else if (rankingStory) cacheable = false
+
+    const teamNotes: { name: string; features: string[]; style: string[] }[] = []
+
     if (withProfiles) {
       // 먼저 모든 참여자의 기능을 이어서 보여주고, 그다음에 코드 스타일을 이어서 보여줘요.
       emit({ type: 'text', text: '누가 어떤 기능을 맡았는지 분석해볼게요!' })
@@ -448,6 +470,7 @@ export async function runAnalysis(options: {
         if (profile) {
           emit({ type: 'list', text: `${card.name}님이 맡은 기능이에요.`, items: profile.features })
           styles.push({ name: card.name, items: profile.style })
+          teamNotes.push({ name: card.name, features: profile.features, style: profile.style })
         } else {
           cacheable = false
           emit({ type: 'text', text: `${card.name}님이 맡은 기능은 이번에는 분석하지 못했어요.` })
@@ -482,6 +505,25 @@ export async function runAnalysis(options: {
       contributors: ranked.slice(0, MAX_CHART).map(toPublic),
       othersCount: Math.max(0, ranked.length - MAX_CHART),
     })
+
+    // 마지막으로 팀이 어떻게 일했는지 전체적인 인상을 풀어서 말해 줘요.
+    if (teamNotes.length > 0 && !isAborted()) {
+      const closing = await narrateOrNull(
+        '이 팀은 전체적으로 어떻게 일했나요?',
+        {
+          repo: repoSummary,
+          contributors: cards.map((card) => ({
+            name: card.name,
+            commitShare: card.commitShare,
+            lineShare: card.lineShare,
+            ...teamNotes.find((note) => note.name === card.name),
+          })),
+        },
+        '"전체적으로"로 시작해서, 역할이 어떻게 나뉘었는지와 팀의 작업 방식에서 느껴지는 인상을 총평처럼 말해 줘요. 한 사람만 참여했다면 그 사람의 작업 방식을 말해 줘요.',
+      )
+      if (closing) emit({ type: 'text', text: closing })
+      else cacheable = false
+    }
 
     emit(followupEvent(ranked.map((person) => ({ id: personId(person.login, person.name), name: sanitize(person.name) }))))
 

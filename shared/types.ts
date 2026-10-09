@@ -30,12 +30,20 @@ export interface FollowupPerson {
   name: string
 }
 
-export interface ChartSpec {
-  title: string
-  /** columns는 세로 막대(시간 흐름), bars는 가로 막대(항목 비교) */
-  kind: 'columns' | 'bars'
-  items: { label: string; value: number; display?: string }[]
-}
+export type ChartSpec =
+  | {
+      title: string
+      /** columns는 세로 막대(시간 흐름), bars는 가로 막대(항목 비교) */
+      kind: 'columns' | 'bars'
+      items: { label: string; value: number; display?: string }[]
+    }
+  | {
+      title: string
+      /** 줄마다 한 사람, 칸마다 한 시간대를 색의 진하기로 보여줘요. */
+      kind: 'heatmap'
+      columns: string[]
+      rows: { label: string; values: number[] }[]
+    }
 
 export type ChatEvent =
   | { type: 'text'; text: string }

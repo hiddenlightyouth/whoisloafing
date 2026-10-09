@@ -1,7 +1,9 @@
 import type { ChartSpec } from '../../shared/types'
 
 /** 세로 막대. 시간 흐름처럼 순서가 있는 값을 보여줘요. 아래 이름표는 몇 개만 골라서 보여줘요. */
-function Columns({ items }: { items: ChartSpec['items'] }) {
+type Items = Exclude<ChartSpec, { kind: 'heatmap' }>['items']
+
+function Columns({ items }: { items: Items }) {
   const max = Math.max(1, ...items.map((item) => item.value))
   const step = Math.max(1, Math.ceil(items.length / 5))
 
@@ -35,7 +37,7 @@ function Columns({ items }: { items: ChartSpec['items'] }) {
 }
 
 /** 가로 막대. 사람이나 항목끼리 비교할 때 써요. */
-function Bars({ items }: { items: ChartSpec['items'] }) {
+function Bars({ items }: { items: Items }) {
   const max = Math.max(1, ...items.map((item) => item.value))
 
   return (
@@ -56,13 +58,59 @@ function Bars({ items }: { items: ChartSpec['items'] }) {
   )
 }
 
+/** 줄마다 한 사람, 칸마다 한 시간대. 사람마다 가장 많이 커밋한 시간이 가장 진하게 보여요. */
+function Heatmap({ columns, rows }: Extract<ChartSpec, { kind: 'heatmap' }>) {
+  const step = Math.max(1, Math.ceil(columns.length / 4))
+
+  return (
+    <div className="mt-3 space-y-1.5">
+      {rows.map((row) => {
+        const max = Math.max(1, ...row.values)
+        return (
+          <div key={row.label} className="flex items-center gap-2">
+            <span className="w-20 shrink-0 truncate text-[13px] text-gray-900 sm:w-28">{row.label}</span>
+            <div className="flex min-w-0 flex-1 gap-[2px]">
+              {row.values.map((value, index) => (
+                <span
+                  key={index}
+                  title={`${row.label}, ${columns[index]}, ${value}개`}
+                  className={`h-5 min-w-0 flex-1 rounded-[3px] ${value > 0 ? 'bg-brand' : 'bg-gray-100'}`}
+                  style={value > 0 ? { opacity: 0.2 + 0.8 * (value / max) } : undefined}
+                />
+              ))}
+            </div>
+          </div>
+        )
+      })}
+      <div className="flex items-center gap-2 pt-0.5">
+        <span className="w-20 shrink-0 sm:w-28" />
+        <div className="flex min-w-0 flex-1 gap-[2px]">
+          {columns.map((label, index) => (
+            <span key={label} className="relative h-4 min-w-0 flex-1">
+              {index % step === 0 && (
+                <span className="absolute left-0 whitespace-nowrap text-[11px] text-gray-400 tabular-nums">{label}</span>
+              )}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function Charts({ charts }: { charts: ChartSpec[] }) {
   return (
     <div className="mt-3 space-y-5 rounded-xl bg-white p-4">
       {charts.map((chart) => (
         <section key={chart.title}>
           <h3 className="text-xs font-medium text-gray-500">{chart.title}</h3>
-          {chart.kind === 'columns' ? <Columns items={chart.items} /> : <Bars items={chart.items} />}
+          {chart.kind === 'heatmap' ? (
+            <Heatmap {...chart} />
+          ) : chart.kind === 'columns' ? (
+            <Columns items={chart.items} />
+          ) : (
+            <Bars items={chart.items} />
+          )}
         </section>
       ))}
     </div>

@@ -1,5 +1,6 @@
-import type { ChartSpec, ChatEvent, FollowupPerson, FollowupQuestion } from '../shared/types.ts'
+import { FOLLOWUP_LABELS, type ChartSpec, type ChatEvent, type FollowupPerson, type FollowupQuestion } from '../shared/types.ts'
 import { TtlCache } from './cache.ts'
+import { narrateOrNull } from './gemini.ts'
 import type { GitHub, Pull } from './github.ts'
 import { createLoginResolver, isBot, isMergeCommit } from './stats.ts'
 import { formatNumber, sanitize } from './text.ts'
@@ -28,6 +29,16 @@ interface Insights {
 }
 
 type Emit = (event: ChatEvent) => void
+
+/** 질문마다 설명에서 짚어 주면 좋은 관점이에요. */
+const NARRATION_GUIDES: Record<FollowupQuestion, string> = {
+  hours: '팀이 아침형인지 저녁형인지 새벽형인지, 평일과 주말 중 언제 몰리는지, 참여자마다 활동 시간이 어떻게 다른지 짚어 줘요. 시간은 사용자의 시간대 기준이에요.',
+  timeline: '초반부터 꾸준히 진행됐는지, 쉬었다가 몰아서 했는지, 언제 가장 바빴는지 흐름을 이야기해 줘요.',
+  spurt: '마감 직전에 작업이 얼마나 몰렸는지, 미리 해 둔 사람과 막판에 속도를 낸 사람이 어떻게 다른지 짚어 줘요.',
+  convention: '팀이 커밋 메시지 규칙을 얼마나 잘 지켰는지, 어떤 종류의 작업이 많았는지 태그 분포로 읽어 줘요.',
+  pulls: 'PR을 누가 주도했는지, 머지까지 걸린 시간으로 볼 때 리뷰를 꼼꼼히 하는 팀인지 빠르게 합치는 팀인지 짚어 줘요.',
+  person: '이 참여자가 언제, 어떤 리듬으로, 어떤 종류의 작업을 주로 했는지 한 사람의 작업 방식으로 그려 줘요.',
+}
 
 const insightsCache = new TtlCache<Insights>(60 * 60 * 1000, 200)
 
@@ -154,6 +165,21 @@ function hourChart(title: string, counts: number[]): ChartSpec {
   }
 }
 
+const HOUR_COLUMNS = Array.from({ length: 24 }, (_, hour) => `${hour}시`)
+
+function weekdayChart(title: string, weekdays: number[]): ChartSpec {
+  return {
+    title,
+    kind: 'bars',
+    // 월요일부터 보여줘요.
+    items: [1, 2, 3, 4, 5, 6, 0].map((day) => ({
+      label: `${WEEKDAYS[day]}요일`,
+      value: weekdays[day],
+      display: `${formatNumber(weekdays[day])}개`,
+    })),
+  }
+}
+
 function formatDuration(ms: number): string {
   const minutes = Math.round(ms / 60000)
   if (minutes < 60) return `${Math.max(1, minutes)}분`
@@ -173,30 +199,21 @@ function answerHours(insights: Insights, clock: Clock, emit: Emit) {
   const lateNight = hours.slice(0, 6).reduce((sum, count) => sum + count, 0)
   const peakDay = WEEKDAYS[peakIndex(weekdays)]
 
+  const people = listPeople(commits).slice(0, MAX_PEOPLE)
+
   emit({
     type: 'chart',
-    text: `주로 ${hourLabel(peakIndex(hours))}쯤 가장 활발했어요. 요일로는 ${peakDay}요일에 가장 많이 작업했고, 자정부터 새벽 6시 사이 커밋은 전체의 ${percent(lateNight, commits.length)}%예요.`,
+    text: `주로 ${hourLabel(peakIndex(hours))}쯤 가장 활발했어요. 요일로는 ${peakDay}요일에 가장 많이 작업했고, 자정부터 새벽 6시 사이 커밋은 전체의 ${percent(lateNight, commits.length)}%예요. 시간은 지금 쓰는 기기의 시간대 기준이에요.`,
     charts: [
       hourChart('시간대별 커밋 수', hours),
       {
-        title: '요일별 커밋 수',
-        kind: 'bars',
-        // 월요일부터 보여줘요.
-        items: [1, 2, 3, 4, 5, 6, 0].map((day) => ({
-          label: `${WEEKDAYS[day]}요일`,
-          value: weekdays[day],
-          display: `${formatNumber(weekdays[day])}개`,
-        })),
+        title: '참여자별 활동 시간 (색이 진할수록 그 시간에 많이 커밋했어요)',
+        kind: 'heatmap',
+        columns: HOUR_COLUMNS,
+        rows: people.map((person) => ({ label: person.name, values: hourCounts(person.commits, clock) })),
       },
+      weekdayChart('요일별 커밋 수', weekdays),
     ],
-  })
-
-  emit({
-    type: 'facts',
-    text: '참여자별로 가장 활발한 시간이에요. 시간은 지금 쓰는 기기의 시간대 기준이에요.',
-    items: listPeople(commits)
-      .slice(0, MAX_PEOPLE)
-      .map((person) => ({ label: person.name, value: hourLabel(peakIndex(hourCounts(person.commits, clock))) })),
   })
 }
 
@@ -440,8 +457,8 @@ function answerPerson(insights: Insights, clock: Clock, id: string | undefined, 
   })
   emit({
     type: 'chart',
-    text: `${person.name}님이 커밋한 시간대예요.`,
-    charts: [hourChart('시간대별 커밋 수', hours)],
+    text: `${person.name}님이 커밋한 시간대와 요일이에요.`,
+    charts: [hourChart('시간대별 커밋 수', hours), weekdayChart('요일별 커밋 수', weekdays)],
   })
   emit({
     type: 'list',
@@ -487,27 +504,39 @@ export async function answerFollowup(options: {
     emit({ type: 'text', text: `커밋이 많아서 최근 ${formatNumber(MAX_INSIGHT_COMMITS)}개를 기준으로 답할게요.` })
   }
 
+  // 먼저 숫자와 그래프를 계산해서 모아 두고, 그 내용을 읽어서 풀어 쓴 설명을 첫 말풍선에 얹어요.
+  const answer: ChatEvent[] = []
+  const collect: Emit = (event) => answer.push(event)
+
   const clock = createClock(options.timeZone ?? 'Asia/Seoul')
   switch (question) {
     case 'hours':
-      answerHours(insights, clock, emit)
+      answerHours(insights, clock, collect)
       break
     case 'timeline':
-      answerTimeline(insights, clock, emit)
+      answerTimeline(insights, clock, collect)
       break
     case 'spurt':
-      answerSpurt(insights, emit)
+      answerSpurt(insights, collect)
       break
     case 'convention':
-      answerConvention(insights, emit)
+      answerConvention(insights, collect)
       break
     case 'pulls':
-      answerPulls(insights, emit)
+      answerPulls(insights, collect)
       break
     case 'person':
-      answerPerson(insights, clock, options.person, emit)
+      answerPerson(insights, clock, options.person, collect)
       break
   }
+
+  const first = answer[0]
+  if (first && (first.type === 'chart' || first.type === 'facts')) {
+    const topic = question === 'person' ? `${options.person} 참여자는 어떻게 작업했나요?` : FOLLOWUP_LABELS[question]
+    const story = await narrateOrNull(topic, answer, NARRATION_GUIDES[question])
+    if (story) first.text = story
+  }
+  answer.forEach(emit)
 
   emit(followupEvent(people))
 }

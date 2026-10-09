@@ -11,6 +11,7 @@ const WRITING_RULES = `글쓰기 규칙을 반드시 지켜주세요.
 - 한국어로, 친근한 존댓말(~해요, ~네요)로 통일해서 써요. "~합니다", "~했다" 같은 말투는 쓰지 않아요.
 - 긴 대시(—), 가운데점(·), 화살표(→) 같은 특수문자를 쓰지 않아요. 쉼표나 마침표로 자연스럽게 연결해요.
 - 기술 이름과 고유명사는 한글로 풀어 쓰지 말고 원래 표기(S3, JWT, OAuth, API 등)를 그대로 써요.
+- 숫자와 단위는 "32%", "14개", "오전 2시"처럼 숫자와 기호로 써요. "32퍼센트"처럼 한글로 풀어 쓰지 않아요.
 - 이모지, 마크다운 기호, 따옴표로 감싼 강조, 목록 기호를 쓰지 않아요. 평범한 문장으로만 써요.
 - 자료에서 확인되는 내용만 말하고, 근거가 부족하면 추측하지 말고 확인된 범위에서만 짧게 말해요.
 - 사람을 깎아내리거나 평가하는 표현 없이 사실을 담백하게 요약해요.
@@ -27,9 +28,9 @@ const ContributorProfile = z.object({
 })
 
 /** 기본 모델이 혼잡하거나 호출 제한에 걸리면 차례로 대신 써 보는 모델이에요. */
-const FALLBACK_MODELS = ['gemini-3.7-flash', 'gemini-3.5-flash']
-const ATTEMPTS_PER_MODEL = 2
-const RETRY_DELAY_MS = 2500
+const FALLBACK_MODELS = ['gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite']
+const ROUNDS = 2
+const RETRY_DELAY_MS = 6000
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 class EmptyResponseError extends Error {}
@@ -65,22 +66,32 @@ async function generate<T extends z.ZodType>(model: string, system: string, user
   return schema.parse(JSON.parse(text))
 }
 
+/** 방금 성공한 모델을 잠깐 기억해 뒀다가 먼저 써요. 혼잡한 모델을 매번 다시 두드리며 기다리지 않으려는 거예요. */
+const STICKY_MS = 5 * 60 * 1000
+let lastGood: { model: string; at: number } | null = null
+
 async function ask<T extends z.ZodType>(system: string, user: string, schema: T): Promise<z.infer<T>> {
   if (!client) throw new Error('GEMINI_API_KEY가 설정되지 않았어요.')
 
-  const models = [...new Set([env.geminiModel, ...FALLBACK_MODELS])]
+  const chain = [...new Set([env.geminiModel, ...FALLBACK_MODELS])]
+  const sticky = lastGood && Date.now() - lastGood.at < STICKY_MS ? lastGood.model : null
+  const models = sticky ? [sticky, ...chain.filter((model) => model !== sticky)] : chain
+
   let lastError: unknown
-  for (const model of models) {
-    for (let attempt = 1; attempt <= ATTEMPTS_PER_MODEL; attempt++) {
+  // 한 모델에 매달리지 않고 모델을 차례로 한 번씩 써 보고, 모두 실패하면 잠깐 쉬었다가 한 바퀴 더 돌아요.
+  for (let round = 1; round <= ROUNDS; round++) {
+    for (const model of models) {
       try {
-        return await generate(model, system, user, schema)
+        const result = await generate(model, system, user, schema)
+        lastGood = { model, at: Date.now() }
+        return result
       } catch (err) {
         if (!isRetryable(err)) throw err
         lastError = err
-        console.warn(`Gemini 호출을 다시 시도해요. (${model}, ${attempt}번째 실패: ${err instanceof ApiError ? err.status : (err as Error).name})`)
-        if (attempt < ATTEMPTS_PER_MODEL) await sleep(RETRY_DELAY_MS)
+        console.warn(`Gemini 호출 실패, 다음 모델로 넘어가요. (${model}: ${err instanceof ApiError ? err.status : (err as Error).name})`)
       }
     }
+    if (round < ROUNDS) await sleep(RETRY_DELAY_MS)
   }
   throw lastError
 }
@@ -190,4 +201,55 @@ ${input.name}님이 개발한 기능 목록과 코드 스타일을 정리해 주
   const features = clean(result.features, 8)
   if (features.length === 0) throw new Error('개발한 기능을 찾지 못했어요.')
   return { features, style: clean(result.style, 5) }
+}
+
+const Narration = z.object({
+  text: z.string(),
+})
+
+/**
+ * 계산해 둔 숫자를 읽고, 그 숫자가 무엇을 말해 주는지 풀어서 설명하는 글을 써요.
+ * 숫자를 나열하는 대신 "밤늦게 몰아서 작업하는 팀이네요"처럼 읽히는 특징을 말해요.
+ */
+export async function narrate(topic: string, data: unknown, guide = ''): Promise<string> {
+  const system = `당신은 GitHub 레포지토리의 통계를 읽고, 그 숫자가 무엇을 말해 주는지 팀원에게 풀어서 설명해 주는 친절한 분석가예요.
+
+주어진 자료를 보고 "${topic}"에 대한 설명을 써주세요.
+- 숫자를 나열하지 말고, 숫자에서 읽히는 특징과 의미를 말해요. 예시: "밤늦게 몰아서 작업하는 팀이네요. 특히 A님은 저녁형이고 B님은 새벽형이에요."
+- 근거가 되는 핵심 숫자는 한두 개만 자연스럽게 곁들여요. 그래프와 표는 바로 아래에 따로 보여주니까 숫자를 다 옮기지 않아도 돼요.
+- 참여자마다 다른 점이 보이면 이름을 들어서 비교해 줘요. 이름 뒤에는 "님"을 붙여요.
+- 두 문장에서 네 문장 사이로 써요.
+- "저녁형", "새벽형", "꾸준히 쌓아 가는 편"처럼 특징을 짚는 표현은 좋지만, 누군가를 게으르다거나 못한다고 평가하지 않아요.
+${guide ? `- ${guide}\n` : ''}
+${WRITING_RULES}`
+
+  const user = `<repo_data>
+${JSON.stringify(data)}
+</repo_data>
+
+이 자료를 읽고 "${topic}"에 대해 풀어서 설명해 주세요.`
+
+  const { text } = await ask(system, user, Narration)
+  const clean = sanitize(text)
+  if (!clean) throw new Error('설명이 비어 있어요.')
+  return clean
+}
+
+/** 정해진 시간 안에 설명이 오지 않거나 실패하면 null을 돌려줘서, 기본 문장으로 대신할 수 있게 해요. */
+export async function narrateOrNull(topic: string, data: unknown, guide = '', timeoutMs = 25000): Promise<string | null> {
+  if (!aiEnabled) return null
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      narrate(topic, data, guide),
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), timeoutMs)
+      }),
+    ])
+  } catch (err) {
+    console.error(err)
+    return null
+  } finally {
+    clearTimeout(timer)
+  }
 }
