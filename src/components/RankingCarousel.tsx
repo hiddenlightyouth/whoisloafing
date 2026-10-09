@@ -78,7 +78,7 @@ export function RankingCarousel({ contributors }: { contributors: ContributorSta
         {contributors.map((contributor, index) => (
           <div
             key={`${contributor.login ?? ''}:${contributor.name}`}
-            className={`shrink-0 snap-start ${single ? 'w-full' : 'w-[86%]'}`}
+            className={`shrink-0 snap-start ${single ? 'w-full' : 'w-[86%] sm:w-[19rem]'}`}
           >
             <StatsCard contributor={contributor} rank={index + 1} />
           </div>

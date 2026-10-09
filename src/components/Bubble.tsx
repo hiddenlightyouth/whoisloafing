@@ -35,7 +35,7 @@ export function Bubble({ message, busy, isLast, onLogin, onChoose }: Props) {
     <div className="flex animate-rise justify-start">
       <div
         className={`rounded-2xl rounded-bl-md bg-gray-100 px-4 py-2.5 text-[15px] leading-relaxed text-gray-900 ${
-          wide ? 'w-full max-w-md pb-4' : 'max-w-[85%]'
+          wide ? 'w-full pb-4' : 'max-w-[85%]'
         }`}
       >
         <p>{event.text}</p>
