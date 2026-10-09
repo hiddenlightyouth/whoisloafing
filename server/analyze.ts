@@ -417,7 +417,7 @@ export async function runAnalysis(options: {
 
     if (withProfiles) {
       // 먼저 모든 참여자의 기능을 이어서 보여주고, 그다음에 코드 스타일을 이어서 보여줘요.
-      emit({ type: 'text', text: '이제 누가 어떤 기능을 맡았는지 분석을 시작할게요.' })
+      emit({ type: 'text', text: '누가 어떤 기능을 맡았는지 분석해볼게요!' })
       const styles: string[] = []
       for (const [index, card] of cards.entries()) {
         if (isAborted()) return
