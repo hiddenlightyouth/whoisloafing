@@ -521,7 +521,7 @@ async function answerTeamwork(insights: Insights, gh: GitHub, owner: string, rep
     items: [
       { label: '작업을 합치는 방식', value: flow },
       { label: 'PR', value: pulls.length > 0 ? `${formatNumber(pulls.length)}개 중 ${formatNumber(merged.length)}개 머지` : '쓰지 않았어요' },
-      { label: '머지까지 걸린 시간 (중앙값)', value: median === null ? '확인할 수 없어요' : formatDuration(median) },
+      { label: '머지까지 보통 걸린 시간', value: median === null ? '확인할 수 없어요' : formatDuration(median) },
       { label: '커밋 메시지 규칙', value: tagRate >= 60 ? `"태그: 내용" 형식 (${tagRate}%가 따름)` : `정해진 형식 없이 자유롭게 (태그 사용 ${tagRate}%)` },
       { label: '커밋 메시지 언어', value: language },
       { label: '작업하는 날의 하루 평균 커밋', value: `${perDay}개` },
@@ -571,7 +571,7 @@ function answerPulls(insights: Insights, emit: Emit) {
     items: [
       { label: '머지된 PR', value: `${formatNumber(merged.length)}개 (${percent(merged.length, pulls.length)}%)` },
       { label: '아직 열려 있는 PR', value: `${formatNumber(open)}개` },
-      { label: '머지까지 걸린 시간 (중앙값)', value: median === null ? '확인할 수 없어요' : formatDuration(median) },
+      { label: '머지까지 보통 걸린 시간', value: median === null ? '확인할 수 없어요' : formatDuration(median) },
     ],
   })
 }
