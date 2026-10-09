@@ -131,6 +131,8 @@ export async function streamAnalysis(options: {
           typeof body.question === 'string' && Object.hasOwn(FOLLOWUP_LABELS, body.question)
             ? (body.question as FollowupQuestion)
             : undefined,
+        start: body.start === true ? true : undefined,
+        early: body.early === true ? true : undefined,
         person: typeof body.person === 'string' ? body.person.slice(0, 100) : undefined,
         people: Array.isArray(body.people)
           ? body.people.filter((id): id is string => typeof id === 'string' && id.length <= 100).slice(0, 10)

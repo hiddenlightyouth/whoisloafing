@@ -12,6 +12,7 @@ const MAX_PEOPLE = 15
 const DAY_MS = 24 * 60 * 60 * 1000
 
 export const FOLLOWUP_TEXT = '더 궁금한 점이 있나요?'
+export const MENU_TEXT = '무엇부터 살펴볼까요?'
 
 interface InsightCommit {
   /** 계정 아이디, 계정을 찾지 못했으면 커밋 작성자 이름 (소문자) */
@@ -640,11 +641,25 @@ function countBy(values: number[]): number[] {
   return [...counts.values()]
 }
 
-export function followupEvent(people: FollowupPerson[]): ChatEvent {
-  return { type: 'followup', text: FOLLOWUP_TEXT, people: people.slice(0, MAX_PEOPLE) }
+/** analysis가 true면 아직 기여도 분석 전이라, 메뉴에 기여도 분석 버튼도 함께 보여줘요. */
+export function followupEvent(people: FollowupPerson[], options: { text?: string; analysis?: boolean } = {}): ChatEvent {
+  return {
+    type: 'followup',
+    text: options.text ?? FOLLOWUP_TEXT,
+    people: people.slice(0, MAX_PEOPLE),
+    ...(options.analysis ? { analysis: true } : {}),
+  }
 }
 
-/** 분석이 끝난 뒤에 이어서 받는 질문에 답해요. 커밋 목록과 PR 목록만으로 계산해요. */
+/** 레포 소개 직후에 보여주는 메뉴예요. 참여자 목록을 받지 못해도 메뉴는 보여줘요. */
+export async function menuEvent(gh: GitHub, owner: string, repo: string, cacheKey: string): Promise<ChatEvent> {
+  const people = await loadInsights(gh, owner, repo, cacheKey)
+    .then((insights) => listPeople(insights.commits).map(({ id, name }) => ({ id, name })))
+    .catch(() => [] as FollowupPerson[])
+  return followupEvent(people, { text: MENU_TEXT, analysis: true })
+}
+
+/** 메뉴에서 고른 질문에 답해요. 커밋 목록과 PR 목록만으로 계산해요. */
 export async function answerFollowup(options: {
   gh: GitHub
   owner: string
@@ -653,15 +668,19 @@ export async function answerFollowup(options: {
   cacheKey: string
   question: FollowupQuestion
   person?: string
+  /** 기여도 분석을 하기 전에 고른 질문인지 */
+  early?: boolean
   timeZone?: string
   emit: Emit
 }): Promise<void> {
   const { gh, owner, repo, question, emit } = options
+  const again = () => followupEvent(people, { analysis: options.early })
   const insights = await loadInsights(gh, owner, repo, options.cacheKey)
   const people = listPeople(insights.commits).map(({ id, name }) => ({ id, name }))
 
   if (insights.commits.length === 0) {
     emit({ type: 'text', text: '살펴볼 커밋이 없어서 답하기 어려워요.' })
+    if (options.early) emit(again())
     return
   }
   if (insights.capped && question !== 'pulls') {
@@ -705,5 +724,5 @@ export async function answerFollowup(options: {
   }
   answer.forEach(emit)
 
-  emit(followupEvent(people))
+  emit(again())
 }

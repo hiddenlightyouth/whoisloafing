@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { track } from '../lib/analytics'
-import { FOLLOWUP_LABELS, type FollowupPerson, type FollowupQuestion } from '../../shared/types'
+import { ANALYSIS_LABEL, FOLLOWUP_LABELS, type FollowupPerson, type FollowupQuestion } from '../../shared/types'
 
 interface Props {
   people: FollowupPerson[]
   disabled: boolean
   onAsk: (question: FollowupQuestion, userText: string, person?: string) => void
+  /** 아직 기여도 분석 전이면 있어요. 맨 위에 기여도 분석을 시작하는 버튼을 보여줘요. */
+  onStart?: () => void
 }
 
 const chip =
@@ -13,14 +15,24 @@ const chip =
 
 const QUESTIONS = Object.keys(FOLLOWUP_LABELS) as FollowupQuestion[]
 
-/** 분석이 끝난 뒤에 이어서 물어볼 질문을 고르는 버튼 묶음이에요. */
-export function Followup({ people, disabled, onAsk }: Props) {
+/** 살펴볼 내용을 고르는 버튼 묶음이에요. 레포 소개 직후와 답이 끝날 때마다 나와요. */
+export function Followup({ people, disabled, onAsk, onStart }: Props) {
   const [picking, setPicking] = useState(false)
 
   return (
     <div className="mt-3 mb-1.5">
       <div className="flex flex-col items-start gap-1.5">
-        {QUESTIONS.map((question) => (
+        {onStart && (
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onStart}
+            className="rounded-lg bg-brand px-3 py-2 text-left text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover disabled:bg-gray-200 disabled:text-gray-400"
+          >
+            {ANALYSIS_LABEL}
+          </button>
+        )}
+        {QUESTIONS.filter((question) => question !== 'person' || people.length > 0).map((question) => (
           <button
             key={question}
             type="button"

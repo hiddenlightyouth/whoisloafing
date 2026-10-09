@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { AnalyzeRequest, FollowupQuestion } from '../../shared/types'
+import { ANALYSIS_LABEL, type AnalyzeRequest, type FollowupQuestion } from '../../shared/types'
 import type { ChatMessage } from '../hooks/useAnalysis'
 import { repoLabel, track } from '../lib/analytics'
 import { Charts, Facts } from './Charts'
@@ -57,7 +57,15 @@ export function Bubble({ message, busy, isLast, onSend }: Props) {
   const ask = (question: FollowupQuestion, userText: string, person?: string) => {
     if (!request) return
     track('followup_ask', { repo, question, has_person: person !== undefined })
-    onSend({ url: request.url, question, person }, userText)
+    // 기여도 분석 전에 고른 질문이면, 답한 뒤의 메뉴에도 기여도 분석 버튼이 계속 나오게 알려줘요.
+    const early = event.type === 'followup' && event.analysis ? true : undefined
+    onSend({ url: request.url, question, person, early }, userText)
+  }
+
+  const start = () => {
+    if (!request) return
+    track('menu_analysis_select', { repo })
+    onSend({ url: request.url, start: true }, ANALYSIS_LABEL)
   }
 
   const pick = (ids: string[], userText: string, mode: 'top' | 'custom') => {
@@ -136,7 +144,9 @@ export function Bubble({ message, busy, isLast, onSend }: Props) {
 
         {event.type === 'facts' && <Facts items={event.items} />}
 
-        {event.type === 'followup' && request && <Followup people={event.people} disabled={locked} onAsk={ask} />}
+        {event.type === 'followup' && request && (
+          <Followup people={event.people} disabled={locked} onAsk={ask} onStart={event.analysis ? start : undefined} />
+        )}
 
         {event.type === 'pick' && request && (
           <PeoplePicker people={event.people} top={event.top} max={event.max} disabled={locked} onPick={pick} />

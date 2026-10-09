@@ -51,6 +51,8 @@ export function useAnalysis() {
       const current: AnalyzeRequest = {
         url,
         excludeGenerated: request.excludeGenerated,
+        start: request.start,
+        early: request.early,
         question: request.question,
         person: request.person,
         people: request.people,

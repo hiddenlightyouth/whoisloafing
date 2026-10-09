@@ -14,7 +14,7 @@ import {
   rank,
   type Collected,
 } from './stats.ts'
-import { answerFollowup, followupEvent, personId, rememberFeatures } from './insights.ts'
+import { answerFollowup, followupEvent, menuEvent, personId, rememberFeatures } from './insights.ts'
 import { formatNumber, sanitize, truncate } from './text.ts'
 
 /** 역할과 코드 스타일까지 자세히 소개하는 최대 인원 */
@@ -311,7 +311,11 @@ export async function runAnalysis(options: {
   url: string
   /** 아직 정하지 않았다면 undefined. 레포를 확인한 뒤 사용자에게 먼저 물어봐요. */
   excludeGenerated: boolean | undefined
-  /** 분석이 끝난 뒤의 추가 질문 */
+  /** 처음 메뉴에서 기여도 분석을 골랐는지 */
+  start?: boolean
+  /** 기여도 분석을 하기 전에 고른 질문인지 */
+  early?: boolean
+  /** 메뉴에서 고른 질문 */
   question?: FollowupQuestion
   person?: string
   /** 맡은 기능과 코드 스타일을 살펴볼 참여자. 참여자가 많을 때 사용자가 골라서 보내요. */
@@ -364,6 +368,7 @@ export async function runAnalysis(options: {
         cacheKey: baseKey,
         question: options.question,
         person: options.person,
+        early: options.early,
         timeZone: options.timeZone,
         emit: options.emit,
       })
@@ -373,8 +378,10 @@ export async function runAnalysis(options: {
     return
   }
 
-  // 먼저 어떤 레포인지 한 문장으로 소개한 다음, 라인 수를 어떻게 셀지 물어봐요.
-  if (excludeGenerated === undefined) {
+  // 먼저 어떤 레포인지 한 문장으로 소개한 다음, 무엇부터 볼지 메뉴로 물어봐요.
+  if (excludeGenerated === undefined && !options.start) {
+    // 메뉴에 넣을 참여자 목록은 소개를 쓰는 동안 같이 받아 둬요.
+    const menu = menuEvent(gh, owner, repoName, baseKey)
     try {
       const summary = await describeRepo(gh, repo, baseKey)
       options.emit({ type: 'text', text: summary.text })
@@ -385,6 +392,12 @@ export async function runAnalysis(options: {
       options.emit(repoErrorEvent(err))
       return
     }
+    options.emit(await menu)
+    return
+  }
+
+  // 메뉴에서 기여도 분석을 고르면, 라인 수를 어떻게 셀지 물어봐요.
+  if (excludeGenerated === undefined) {
     options.emit({
       type: 'ask',
       text: `lock 파일, 빌드 결과물, 자동 생성 파일은 라인 수에서 빼고 계산할까요? 빼고 계산하면 더 정확하지만, 커밋을 하나씩 읽어서 시간이 더 걸리고 최근 ${formatNumber(MAX_COMMITS)}개 커밋까지만 살펴봐요.`,

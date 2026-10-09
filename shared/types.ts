@@ -13,7 +13,7 @@ export interface ContributorStats {
   lineShare: number
 }
 
-/** 분석이 끝난 뒤에 이어서 물어볼 수 있는 질문 */
+/** 레포 소개 직후의 메뉴와 분석이 끝난 뒤에 고를 수 있는 질문 */
 export type FollowupQuestion = 'hours' | 'timeline' | 'spurt' | 'convention' | 'pulls' | 'teamwork' | 'person'
 
 export const FOLLOWUP_LABELS: Record<FollowupQuestion, string> = {
@@ -25,6 +25,9 @@ export const FOLLOWUP_LABELS: Record<FollowupQuestion, string> = {
   teamwork: '이 팀의 협업 방식을 훔치고 싶어요',
   person: '특정 참여자만 자세히 보고 싶어요',
 }
+
+/** 메뉴에서 기여도 분석을 고르는 버튼의 글 */
+export const ANALYSIS_LABEL = '누가 얼마나 기여했는지 분석해 주세요'
 
 export interface FollowupPerson {
   id: string
@@ -69,8 +72,8 @@ export type ChatEvent =
   | { type: 'chart'; text: string; charts: ChartSpec[] }
   /** 이름과 값이 짝을 이루는 표 */
   | { type: 'facts'; text: string; items: { label: string; value: string }[] }
-  /** 추가 질문을 고르는 말풍선 */
-  | { type: 'followup'; text: string; people: FollowupPerson[] }
+  /** 질문을 고르는 말풍선. analysis가 true면 아직 기여도 분석 전이라, 기여도 분석을 시작하는 버튼도 함께 보여줘요. */
+  | { type: 'followup'; text: string; people: FollowupPerson[]; analysis?: boolean }
   /** 참여자가 많을 때, 맡은 기능과 코드 스타일을 살펴볼 사람을 고르게 해요. top은 "상위 N명"의 N, max는 고를 수 있는 최대 인원이에요. */
   | { type: 'pick'; text: string; people: FollowupPerson[]; top: number; max: number }
   /** 분석을 시작하기 전에 lock 파일과 빌드 결과물을 뺄지 물어봐요. */
@@ -108,7 +111,11 @@ export interface AnalyzeRequest {
    * 값을 보내지 않으면 서버가 레포를 확인한 뒤 어떻게 계산할지 먼저 물어봐요.
    */
   excludeGenerated?: boolean
-  /** 분석이 끝난 뒤의 추가 질문. 있으면 분석 대신 이 질문에만 답해요. */
+  /** 처음 메뉴에서 기여도 분석을 골랐을 때 true. 서버가 계산 방식을 물어봐요. */
+  start?: boolean
+  /** 기여도 분석을 하기 전에 고른 질문이면 true. 답한 뒤의 메뉴에 기여도 분석 버튼을 계속 보여줘요. */
+  early?: boolean
+  /** 고를 수 있는 질문. 있으면 분석 대신 이 질문에만 답해요. */
   question?: FollowupQuestion
   /** question이 person일 때 살펴볼 참여자 */
   person?: string
