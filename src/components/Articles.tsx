@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { articles, findArticle, formatArticleDate, type Article } from '../lib/articles'
+import { articles, findArticle, type Article } from '../lib/articles'
 import { track } from '../lib/analytics'
 
 interface Props {
@@ -53,7 +53,6 @@ function ArticleList({ onOpen }: Pick<Props, 'onOpen'>) {
                 {article.title}
               </h2>
               <p className="mt-2 text-[14px] leading-relaxed text-gray-500">{article.description}</p>
-              <p className="mt-3 text-xs text-gray-400">{formatArticleDate(article.date)}</p>
             </InnerLink>
           </li>
         ))}
@@ -75,7 +74,6 @@ function ArticleView({ article, onOpen, onHome }: { article: Article } & Pick<Pr
         아티클 목록
       </InnerLink>
       <h1 className="mt-5 text-balance text-[26px] font-semibold leading-snug text-gray-900 sm:text-[32px]">{article.title}</h1>
-      <p className="mt-3 text-[13px] text-gray-400">{formatArticleDate(article.date)}</p>
 
       {/* 저장소에 있는 마크다운만 그려요. 사용자가 입력한 글은 여기로 들어오지 않아요. */}
       <div className="article mt-9" dangerouslySetInnerHTML={{ __html: article.html }} />
