@@ -403,7 +403,10 @@ export async function runAnalysis(options: {
       text:
         ranked.length === 1
           ? `${cards[0].name}님이 혼자 만든 레포예요.`
-          : `${cards[0].name}님이 가장 많이 기여했어요. 옆으로 넘기면 기여도 순서대로 볼 수 있어요.`,
+          : `${cards[0].name}님이 가장 많이 기여했어요. ${cards
+              .slice(1, 3)
+              .map((card, index) => `${index + 2}위는 ${card.name}님`)
+              .join(', ')}이에요.`,
       contributors: cards,
     })
 
