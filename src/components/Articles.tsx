@@ -57,6 +57,19 @@ function ArticleList({ onOpen }: Pick<Props, 'onOpen'>) {
           </li>
         ))}
       </ul>
+      <p className="mt-8 text-[13px] leading-relaxed text-gray-500">
+        이 서비스를 어떻게 만들었는지는{' '}
+        <a
+          href="https://hidly.dev/articles/"
+          target="_blank"
+          rel="noreferrer"
+          onClick={() => track('team_articles_click')}
+          className="font-medium text-brand transition-colors hover:text-brand-hover"
+        >
+          숨은빚청년들 팀의 개발 기록
+        </a>
+        에서 볼 수 있어요.
+      </p>
     </>
   )
 }

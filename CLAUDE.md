@@ -54,6 +54,8 @@ GitHub API, Claude API 호출은 모두 서버에서 해요. 키와 토큰은 �
 index.html            폰트 로드, 탭 제목, 파비콘, 링크 미리보기 태그
 public/favicon.svg
 public/og.png         링크 미리보기 카드에 뜨는 대표 이미지 (1200x630)
+public/robots.txt     검색 로봇 안내 (API와 채팅 주소는 막고, 사이트맵 위치를 알려줘요)
+scripts/prerender.mjs 빌드 마지막에 아티클 화면을 페이지별 HTML 파일로 만들고 사이트맵을 만들어요
 .env.production       배포용 빌드에 들어가는 공개 값 (GA 측정 ID)
 shared/types.ts       서버와 클라이언트가 함께 쓰는 타입 (채팅 이벤트, 참여자 수치)
 shared/repo.ts        GitHub 레포 링크 판별
@@ -76,6 +78,7 @@ worker/index.ts       Cloudflare Workers에서 /api 아래 요청을 받는 진�
 wrangler.toml         Cloudflare Workers 설정 (진입점, 정적 파일 폴더, nodejs_compat)
 src/
   App.tsx             화면 전환(메인 화면과 채팅), 채팅 주소(/c/아이디) 처리, 공유
+  prerender.tsx       아티클 화면을 빌드할 때 미리 HTML로 그리는 코드 (브라우저에서는 쓰지 않아요)
   index.css           Tailwind 테마 토큰, 자간, 애니메이션
   lib/api.ts          서버 호출, SSE 스트림 읽기, 브라우저 소유자 키
   lib/analytics.ts    Google Analytics 이벤트 전송
@@ -93,7 +96,7 @@ npm run dev            # 프론트 http://localhost:5173, 서버 http://localhos
 ```
 
 - `npm run typecheck`: 클라이언트와 서버 타입 검사
-- `npm run build`: 타입 검사 후 프론트엔드 빌드 (`dist`)
+- `npm run build`: 타입 검사 후 프론트엔드 빌드 (`dist`). 이어서 아티클 화면을 페이지별 HTML 파일로 만들고 사이트맵을 만들어요.
 - `npm run worker:dev`: 빌드한 뒤 Cloudflare Workers 환경으로 내 컴퓨터에서 실행
 - `npm start`: 프로덕션 모드. Express가 API와 빌드된 프론트엔드를 함께 서빙해요.
 
@@ -175,6 +178,11 @@ Supabase 프로젝트의 SQL Editor에서 `supabase/schema.sql`을 한 번 실�
 - 글도 화면에 노출되는 문구라서 아래의 텍스트 작성 규칙을 그대로 지켜요. 굵게 강조하는 부분 바로 뒤에 조사가 붙을 때, 강조가 따옴표나 괄호로 끝나면 변환이 되지 않으니 한 칸 띄어요.
 - 서비스가 하는 일을 설명하는 내용이 많아서, 기능이 바뀌면 글도 같이 확인해요.
 - 아티클 화면과 변환 코드는 아티클을 열 때만 받아서, 메인 화면이 무거워지지 않아요.
+- 검색 로봇과 링크 미리보기가 자바스크립트 없이도 글을 읽을 수 있게, 빌드할 때 아티클 화면을 미리 그려서 `dist/articles.html`과 `dist/articles/{이름}.html`로 만들어요. `src/prerender.tsx`가 실제 화면 컴포넌트(`Header`, `Articles`)를 그대로 그리고, `scripts/prerender.mjs`가 `index.html`의 제목, 설명, canonical, og 태그를 글에 맞게 바꿔서 파일로 써요. 그래서 글마다 링크 미리보기 카드의 제목과 설명이 달라요.
+- `index.html`의 title, description, canonical, og, twitter 태그 모양을 바꾸면 `scripts/prerender.mjs`가 바꿀 곳을 찾지 못해서 빌드가 멈춰요. 그때는 스크립트의 패턴도 같이 고쳐요.
+- `sitemap.xml`도 같은 스크립트가 글 목록에서 만들어요. 손으로 적지 않아요.
+- 아티클 주소로 바로 들어오면 미리 그려 둔 글이 먼저 보이고, 자바스크립트가 뜨면 같은 화면을 다시 그려요. 글이 잠깐 사라지지 않게 `src/main.tsx`가 아티클 코드를 먼저 받은 뒤에 그려요.
+- 목록 아래에는 팀의 개발 기록(https://hidly.dev/articles/)으로 가는 링크가 있어요. 이 서비스를 만든 이야기는 팀 홈페이지(hidly-dev 저장소)에 따로 있어요.
 
 ## AI 사용량 기록
 
@@ -210,6 +218,7 @@ Claude를 한 번 부를 때마다(실패와 재시도 포함) `ai_usage`에 한
 | `team_link_click` | 팀 홈페이지 링크를 눌렀을 때 | |
 | `article_nav_click` | 헤더의 아티클 링크를 눌렀을 때 | `from` |
 | `article_cta_click` | 글 아래의 레포 분석하러 가기를 눌렀을 때 | `slug` |
+| `team_articles_click` | 아티클 목록 아래의 팀 개발 기록 링크를 눌렀을 때 | |
 
 ## 현재까지 구현된 기능
 

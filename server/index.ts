@@ -53,7 +53,8 @@ app.use('/api', (_req, res) => {
 // 프로덕션에서는 빌드된 프론트엔드를 함께 서빙해요.
 const clientDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist')
 if (env.isProduction && existsSync(clientDir)) {
-  app.use(express.static(clientDir))
+  // 아티클 화면은 articles.html처럼 미리 만들어 둔 파일이 있어서, 확장자 없는 주소로도 찾아요.
+  app.use(express.static(clientDir, { extensions: ['html'] }))
   app.use((req, res, next) => {
     if (req.method !== 'GET') return next()
     res.sendFile(path.join(clientDir, 'index.html'))
