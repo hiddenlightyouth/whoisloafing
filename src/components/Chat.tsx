@@ -156,7 +156,7 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
           )}
           {readOnly && (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-brand-soft px-4 py-3">
-              <p className="text-[13px] text-gray-600">공유된 채팅이라 읽기만 할 수 있어요.</p>
+              <p className="text-[13px] text-gray-600">읽기 전용 채팅으로 전환됨</p>
               <button
                 type="button"
                 onClick={onHome}
