@@ -36,7 +36,7 @@ function Title() {
   return (
     <h1
       aria-label="누가 어떤 기능을 얼마나 많이 만들었을까요?"
-      className="absolute inset-x-0 bottom-full mb-7 text-balance text-center text-[24px] font-semibold leading-snug text-gray-900 sm:mb-8 sm:text-[30px]"
+      className="mb-7 text-balance text-center text-[24px] font-semibold leading-snug text-gray-900 sm:mb-8 sm:text-[30px]"
     >
       {TITLE_WORDS.map((word, index) => (
         <span key={index} aria-hidden="true">
@@ -57,7 +57,7 @@ export function Hero({ onSubmit }: { onSubmit: (url: string) => void }) {
   return (
     <main className="relative flex flex-1 items-center justify-center overflow-hidden px-5">
       <ContributionBackdrop />
-      {/* 입력창이 화면 정중앙에 오도록, 타이틀은 흐름에서 빼서 입력창 위에 얹어요. */}
+      {/* 타이틀과 입력창을 한 덩어리로 묶어서, 그 덩어리가 화면 정중앙에 오게 해요. */}
       <div className="relative w-full max-w-lg">
         <Title />
         <div className="animate-rise" style={{ animationDelay: '350ms' }}>
