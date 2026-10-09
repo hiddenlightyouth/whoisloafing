@@ -439,8 +439,6 @@ async function answerTeamwork(insights: Insights, gh: GitHub, owner: string, rep
 
   // 브랜치와 PR
   const merged = pulls.filter((pull) => pull.merged_at)
-  const mergeTimes = merged.map((pull) => Date.parse(pull.merged_at!) - Date.parse(pull.created_at)).sort((a, b) => a - b)
-  const median = mergeTimes.length > 0 ? mergeTimes[Math.floor(mergeTimes.length / 2)] : null
   const prefixes = new Map<string, number>()
   let named = 0
   for (const pull of pulls) {
@@ -470,13 +468,6 @@ async function answerTeamwork(insights: Insights, gh: GitHub, owner: string, rep
         : '작업마다 브랜치를 새로 만들어요',
     )
     tips.push(topBase ? `작업이 끝나면 ${topBase} 브랜치로 PR을 올려서 합쳐요` : '작업이 끝나면 PR을 올려서 합쳐요')
-    if (median !== null) {
-      tips.push(
-        median < 60 * 60 * 1000
-          ? 'PR은 오래 묵히지 않고 올린 지 한 시간 안에 합쳐요'
-          : `PR은 올린 뒤 ${formatDuration(median)} 안팎으로 확인하고 합쳐요`,
-      )
-    }
   } else if (pulls.length > 0) {
     flow = '주로 브랜치에 바로 커밋하고, PR은 가끔만 써요'
     tips.push('작은 수정은 기본 브랜치에 바로 커밋하고, 큰 작업만 PR로 올려요')
@@ -521,7 +512,6 @@ async function answerTeamwork(insights: Insights, gh: GitHub, owner: string, rep
     items: [
       { label: '작업을 합치는 방식', value: flow },
       { label: 'PR', value: pulls.length > 0 ? `${formatNumber(pulls.length)}개 중 ${formatNumber(merged.length)}개 머지` : '쓰지 않았어요' },
-      { label: '머지까지 보통 걸린 시간', value: median === null ? '확인할 수 없어요' : formatDuration(median) },
       { label: '커밋 메시지 규칙', value: tagRate >= 60 ? `"태그: 내용" 형식 (${tagRate}%가 따름)` : `정해진 형식 없이 자유롭게 (태그 사용 ${tagRate}%)` },
       { label: '커밋 메시지 언어', value: language },
       { label: '작업하는 날의 하루 평균 커밋', value: `${perDay}개` },
