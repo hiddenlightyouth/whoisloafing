@@ -1,6 +1,15 @@
-# Cloudflare Pages 설정이에요. 대시보드에서 Git 저장소를 연결하면 이 파일을 읽어요.
+# Cloudflare Workers 설정이에요. 대시보드에서 Git 저장소를 연결하면 빌드 뒤 wrangler deploy가 이 파일을 읽어요.
 name = "whoisloafing"
-pages_build_output_dir = "dist"
+main = "worker/index.ts"
 compatibility_date = "2026-09-01"
 # 서버 코드가 쓰는 Node 기능(crypto, async_hooks, process.env)을 켜요.
 compatibility_flags = ["nodejs_compat"]
+# 대시보드에서 넣은 일반 변수(SUPABASE_URL 등)를 배포할 때 지우지 않고 그대로 둬요.
+keep_vars = true
+
+# 빌드한 프론트엔드를 정적 파일로 서빙해요. /api 요청만 Worker 코드가 받고,
+# 없는 주소(/c/아이디 같은 화면 주소)는 index.html로 돌려줘요.
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]

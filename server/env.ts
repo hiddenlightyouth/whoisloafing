@@ -1,6 +1,6 @@
 /**
  * 환경 변수를 필요한 순간에 읽어요.
- * Node(Express)에서는 process.env에서, Cloudflare Pages Functions에서는 요청마다 넣어 주는 값에서 읽기 때문에
+ * Node(Express)에서는 process.env에서, Cloudflare Workers에서는 요청마다 넣어 주는 값에서 읽기 때문에
  * 파일을 불러오는 시점에 값을 고정해 두지 않아요.
  */
 const read = (name: string): string | undefined => {
