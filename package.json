@@ -1,0 +1,37 @@
+{
+  "name": "whoisloafing",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n server,client -c gray,blue \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "PORT=3001 tsx watch server/index.ts",
+    "dev:client": "vite",
+    "build": "npm run typecheck && vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit",
+    "start": "NODE_ENV=production tsx server/index.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.132.1",
+    "dotenv": "^18.0.6",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tsx": "^4.23.15",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/express": "^5.0.6",
+    "@types/express-session": "^1.19.0",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.6",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4"
+  }
+}
