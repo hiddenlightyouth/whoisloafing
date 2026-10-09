@@ -66,6 +66,9 @@ export interface Pull {
   created_at: string
   merged_at: string | null
   user: { login: string } | null
+  /** 작업한 브랜치와 합쳐지는 브랜치 */
+  head?: { ref: string } | null
+  base?: { ref: string } | null
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))

@@ -14,7 +14,7 @@ export interface ContributorStats {
 }
 
 /** 분석이 끝난 뒤에 이어서 물어볼 수 있는 질문 */
-export type FollowupQuestion = 'hours' | 'timeline' | 'spurt' | 'convention' | 'pulls' | 'person'
+export type FollowupQuestion = 'hours' | 'timeline' | 'spurt' | 'convention' | 'pulls' | 'teamwork' | 'person'
 
 export const FOLLOWUP_LABELS: Record<FollowupQuestion, string> = {
   hours: '우리 팀은 보통 몇 시에 활동했나요?',
@@ -22,6 +22,7 @@ export const FOLLOWUP_LABELS: Record<FollowupQuestion, string> = {
   spurt: '막판에 가장 몰아서 작업한 사람은 누구인가요?',
   convention: '커밋 메시지는 어떤 규칙으로 썼나요?',
   pulls: 'PR은 누가 얼마나 올렸나요?',
+  teamwork: '이 팀의 협업 방식을 훔치고 싶어요',
   person: '특정 참여자만 자세히 보고 싶어요',
 }
 

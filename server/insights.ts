@@ -26,6 +26,8 @@ interface Insights {
   commits: InsightCommit[]
   pulls: Pull[]
   capped: boolean
+  /** 협업 방식을 볼 때 한 번 받아 두는 파일 목록 */
+  files?: string[]
 }
 
 type Emit = (event: ChatEvent) => void
@@ -37,6 +39,7 @@ const NARRATION_GUIDES: Record<FollowupQuestion, string> = {
   spurt: '마감 직전에 작업이 얼마나 몰렸는지, 미리 해 둔 사람과 막판에 속도를 낸 사람이 어떻게 다른지 짚어 줘요.',
   convention: '팀이 커밋 메시지 규칙을 얼마나 잘 지켰는지, 어떤 종류의 작업이 많았는지 태그 분포로 읽어 줘요.',
   pulls: 'PR을 누가 주도했는지, 머지까지 걸린 시간으로 볼 때 리뷰를 꼼꼼히 하는 팀인지 빠르게 합치는 팀인지 짚어 줘요.',
+  teamwork: '이 팀이 어떤 약속으로 함께 일하는지, 다른 팀이 그대로 따라 할 수 있게 핵심 방식을 짚어 줘요. 브랜치와 PR을 쓰는 방식, 커밋 메시지 규칙, 작업을 쪼개는 크기를 중심으로 이야기해요.',
   person: '이 참여자가 언제, 어떤 리듬으로, 어떤 종류의 작업을 주로 했는지 한 사람의 작업 방식으로 그려 줘요.',
 }
 
@@ -410,6 +413,123 @@ function answerConvention(insights: Insights, emit: Emit) {
   })
 }
 
+/** 브랜치 이름에서 "feat/로그인"의 feat 같은 앞머리를 꺼내요. */
+function branchPrefix(ref: string): string | null {
+  const match = /^([A-Za-z]+)[/_-]/.exec(ref)
+  return match ? match[1].toLowerCase() : null
+}
+
+const TEAM_FILES: { label: string; pattern: RegExp; tip: string }[] = [
+  { label: 'PR 템플릿', pattern: /(^|\/)pull_request_template(\.md|\/)/i, tip: 'PR 템플릿을 만들어 두고 PR마다 같은 양식으로 설명을 적어요' },
+  { label: '이슈 템플릿', pattern: /(^|\/)issue_template(\.md|\/)/i, tip: '이슈 템플릿을 만들어 두고 할 일을 이슈로 먼저 적은 다음에 작업해요' },
+  { label: '자동 검사와 배포', pattern: /^\.github\/workflows\/.+\.ya?ml$/i, tip: 'GitHub Actions로 검사와 배포를 자동으로 돌려요' },
+  { label: '기여 안내 문서', pattern: /(^|\/)contributing(\.md)?$/i, tip: '작업 규칙을 기여 안내 문서로 적어 두고 팀이 함께 봐요' },
+  { label: '코드 담당자 지정', pattern: /(^|\/)codeowners$/i, tip: '코드 담당자를 정해 두고 그 사람이 리뷰하게 해요' },
+]
+
+/** 이 팀이 함께 일하는 방식을 정리하고, 그대로 따라 할 수 있는 방법을 목록으로 알려줘요. */
+async function answerTeamwork(insights: Insights, gh: GitHub, owner: string, repo: string, clock: Clock, emit: Emit) {
+  const { commits } = insights
+  const pulls = insights.pulls.filter((pull) => pull.user && !pull.user.login.endsWith('[bot]'))
+  insights.files ??= await gh.getTree(owner, repo, 'HEAD').catch(() => [] as string[])
+  const files = insights.files
+
+  const tips: string[] = []
+
+  // 브랜치와 PR
+  const merged = pulls.filter((pull) => pull.merged_at)
+  const mergeTimes = merged.map((pull) => Date.parse(pull.merged_at!) - Date.parse(pull.created_at)).sort((a, b) => a - b)
+  const median = mergeTimes.length > 0 ? mergeTimes[Math.floor(mergeTimes.length / 2)] : null
+  const prefixes = new Map<string, number>()
+  let named = 0
+  for (const pull of pulls) {
+    const prefix = pull.head?.ref ? branchPrefix(pull.head.ref) : null
+    if (!prefix) continue
+    named += 1
+    prefixes.set(prefix, (prefixes.get(prefix) ?? 0) + 1)
+  }
+  // 한 번만 나온 앞머리는 규칙이라기보다 우연이라서 빼요.
+  const repeated = [...prefixes.entries()].filter(([, count]) => count >= 2)
+  const topPrefixes = (repeated.length > 0 ? repeated : [...prefixes.entries()])
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([prefix]) => prefix)
+  const bases = new Map<string, number>()
+  for (const pull of pulls) if (pull.base?.ref) bases.set(pull.base.ref, (bases.get(pull.base.ref) ?? 0) + 1)
+  const topBase = [...bases.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
+  const usesPulls = pulls.length >= 3 && pulls.length * 10 >= commits.length
+  const branchRule = named > 0 && named * 2 >= pulls.length
+
+  let flow: string
+  if (usesPulls) {
+    flow = branchRule ? `${topPrefixes.map((prefix) => `${prefix}/`).join(', ')} 브랜치에서 작업하고 PR로 합쳐요` : '브랜치에서 작업하고 PR로 합쳐요'
+    tips.push(
+      branchRule
+        ? `작업마다 "${topPrefixes[0]}/작업 이름"처럼 종류를 앞에 붙인 브랜치를 새로 만들어요`
+        : '작업마다 브랜치를 새로 만들어요',
+    )
+    tips.push(topBase ? `작업이 끝나면 ${topBase} 브랜치로 PR을 올려서 합쳐요` : '작업이 끝나면 PR을 올려서 합쳐요')
+    if (median !== null) {
+      tips.push(
+        median < 60 * 60 * 1000
+          ? 'PR은 오래 묵히지 않고 올린 지 한 시간 안에 합쳐요'
+          : `PR은 올린 뒤 ${formatDuration(median)} 안팎으로 확인하고 합쳐요`,
+      )
+    }
+  } else if (pulls.length > 0) {
+    flow = '주로 브랜치에 바로 커밋하고, PR은 가끔만 써요'
+    tips.push('작은 수정은 기본 브랜치에 바로 커밋하고, 큰 작업만 PR로 올려요')
+  } else {
+    flow = 'PR 없이 브랜치에 바로 커밋해요'
+    tips.push('PR 없이 기본 브랜치에 바로 커밋하면서 빠르게 진행해요')
+  }
+
+  // 커밋 메시지
+  const tagCounts = new Map<string, number>()
+  let tagged = 0
+  let korean = 0
+  for (const commit of commits) {
+    if (/[가-힣]/.test(commit.title)) korean += 1
+    const tag = TAG_PATTERN.exec(commit.title)?.[1].toLowerCase()
+    if (!tag) continue
+    tagged += 1
+    tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1)
+  }
+  const tagRate = percent(tagged, commits.length)
+  const topTags = [...tagCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([tag]) => tag)
+  const language = korean * 2 >= commits.length ? '한국어' : '영어'
+  if (tagRate >= 60) {
+    tips.push(`커밋 메시지는 "${topTags[0]}: 내용"처럼 태그를 앞에 붙이고, ${topTags.join(', ')} 태그를 주로 써요`)
+  }
+  tips.push(`커밋 메시지는 ${language}로 짧게 써요`)
+
+  // 작업을 쪼개는 크기
+  const zoned = commits.map((commit) => clock(commit.at))
+  const activeDays = new Set(zoned.map((item) => item.dayNumber)).size
+  const perDay = Math.round((commits.length / Math.max(1, activeDays)) * 10) / 10
+  if (perDay >= 4) tips.push(`작업을 잘게 쪼개서 작업하는 날에는 하루에 ${perDay}개쯤 커밋해요`)
+  else tips.push('한 번에 몰아서 올리지 않고, 기능 하나가 끝날 때마다 커밋해요')
+
+  // 저장소에 마련해 둔 약속
+  const found = TEAM_FILES.filter((item) => files.some((path) => item.pattern.test(path)))
+  for (const item of found) tips.push(item.tip)
+
+  emit({
+    type: 'facts',
+    text: '이 팀이 함께 일하는 방식을 정리했어요.',
+    items: [
+      { label: '작업을 합치는 방식', value: flow },
+      { label: 'PR', value: pulls.length > 0 ? `${formatNumber(pulls.length)}개 중 ${formatNumber(merged.length)}개 머지` : '쓰지 않았어요' },
+      { label: '머지까지 걸린 시간 (중앙값)', value: median === null ? '확인할 수 없어요' : formatDuration(median) },
+      { label: '커밋 메시지 규칙', value: tagRate >= 60 ? `"태그: 내용" 형식 (${tagRate}%가 따름)` : `정해진 형식 없이 자유롭게 (태그 사용 ${tagRate}%)` },
+      { label: '커밋 메시지 언어', value: language },
+      { label: '작업하는 날의 하루 평균 커밋', value: `${perDay}개` },
+      { label: '저장소에 마련해 둔 것', value: found.length > 0 ? found.map((item) => item.label).join(', ') : '따로 없어요' },
+    ],
+  })
+  emit({ type: 'list', text: '이 팀처럼 일하고 싶다면 이렇게 해 보세요.', items: tips.slice(0, 8) })
+}
+
 function answerPulls(insights: Insights, emit: Emit) {
   const pulls = insights.pulls.filter((pull) => pull.user && !pull.user.login.endsWith('[bot]'))
   if (pulls.length === 0) {
@@ -568,6 +688,9 @@ export async function answerFollowup(options: {
       break
     case 'pulls':
       answerPulls(insights, collect)
+      break
+    case 'teamwork':
+      await answerTeamwork(insights, gh, owner, repo, clock, collect)
       break
     case 'person':
       await answerPerson(insights, clock, options.person, options.cacheKey, collect)
