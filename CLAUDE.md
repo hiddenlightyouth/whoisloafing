@@ -53,6 +53,7 @@ GitHub API, Claude API 호출은 모두 서버에서 해요. 키와 토큰은 �
 index.html            폰트 로드, 탭 제목, 파비콘, 링크 미리보기 태그
 public/favicon.svg
 public/og.png         링크 미리보기 카드에 뜨는 대표 이미지 (1200x630)
+.env.production       배포용 빌드에 들어가는 공개 값 (GA 측정 ID)
 shared/types.ts       서버와 클라이언트가 함께 쓰는 타입 (채팅 이벤트, 참여자 수치)
 shared/repo.ts        GitHub 레포 링크 판별
 supabase/schema.sql   Supabase 테이블 정의 (chats, ai_usage, ai_usage_daily 뷰)
@@ -114,7 +115,7 @@ Workers는 Express를 그대로 돌릴 수 없어서, `/api` 요청은 `worker/i
 | `SUPABASE_URL` | 일반 값 | 실행할 때 (Worker) |
 | `SUPABASE_SERVICE_ROLE_KEY` | 비밀 | 실행할 때 (Worker) |
 | `CLAUDE_MODEL` (선택) | 일반 값 | 실행할 때 (Worker) |
-| `VITE_GA_MEASUREMENT_ID` | 빌드 변수 | 빌드할 때. 바꾸면 다시 배포해야 반영돼요. |
+| `VITE_GA_MEASUREMENT_ID` (선택) | 빌드 변수 | 빌드할 때. 저장소의 `.env.production`에 이미 적혀 있어서 넣지 않아도 돼요. 넣으면 그 값이 우선하고, 바꾸면 다시 배포해야 반영돼요. |
 
 - `wrangler deploy`는 기본으로 대시보드의 일반 변수를 `wrangler.toml` 내용으로 덮어써요. 그래서 `keep_vars = true`로 대시보드 값을 남겨 두고, 실행 값은 `[vars]`에 적지 않고 대시보드에서만 관리해요.
 - 서버 코드는 값을 파일을 불러올 때 고정하지 않고 필요한 순간에 읽어요(`server/env.ts`). Worker에서는 요청마다 `applyBindings`로 Cloudflare가 준 값을 옮겨요.
@@ -124,7 +125,7 @@ Workers는 Express를 그대로 돌릴 수 없어서, `/api` 요청은 `worker/i
 
 ## 환경 변수
 
-`.env.example`에 정리되어 있어요. `.env`는 절대 커밋하지 않아요. (`.gitignore`에 등록됨)
+`.env.example`에 정리되어 있어요. `.env`는 절대 커밋하지 않아요. (`.gitignore`에 등록됨) `.env.production`은 브라우저에 공개되는 값만 담아서 저장소에 포함해요. 비밀 값은 넣지 않아요.
 
 | 이름 | 용도 |
 | --- | --- |
@@ -132,7 +133,7 @@ Workers는 Express를 그대로 돌릴 수 없어서, `/api` 요청은 `worker/i
 | `ANTHROPIC_API_KEY` | Claude API 키. 없으면 수치만 보여줘요. |
 | `PORT` (선택) | 프로덕션 서버 포트. 기본값 3001 |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Supabase 연결. 없으면 채팅 저장과 공유, AI 사용량 기록이 꺼져요. service role 키는 서버 전용 비밀 값이에요. |
-| `VITE_GA_MEASUREMENT_ID` | Google Analytics 4 측정 ID. 브라우저에 공개되는 값이고, 없으면 추적하지 않아요. |
+| `VITE_GA_MEASUREMENT_ID` | Google Analytics 4 측정 ID. 브라우저에 공개되는 값이고, 없으면 추적하지 않아요. 실제 서비스의 값은 `.env.production`에 적혀 있어서 배포용 빌드에만 들어가고, 개발 서버(`npm run dev`)에서는 `.env`에 따로 넣지 않는 한 추적하지 않아요. |
 | `CLAUDE_MODEL` (선택) | Claude 모델 변경용. 기본값 `claude-haiku-5-5`. 품질을 더 올리려면 `claude-sonnet-5-5`나 `claude-opus-5-5`를 넣어요. effort 설정을 쓰기 때문에 5.5 세대 모델만 지원해요. |
 
 ## 데이터 수집과 계산 규칙
@@ -227,7 +228,7 @@ Claude를 한 번 부를 때마다(실패와 재시도 포함) `ai_usage`에 한
 
 ## 남은 작업
 
-- 실제 Supabase 프로젝트와 GA 측정 ID를 넣고 저장, 공유, 사용량 기록, 이벤트 수집을 실사용으로 검증
+- 실제 Supabase 프로젝트를 넣고 저장, 공유, 사용량 기록을 실사용으로 검증하고, GA 실시간 보고서에서 이벤트가 들어오는지 확인
 - 내가 만든 채팅 목록 보기
 - 캐시를 메모리 대신 외부 저장소로 옮기기. 지금은 서버를 다시 시작하면 사라지고, 서버를 여러 대로 늘릴 수 없어요.
 - 커밋이 300개를 넘는 레포의 커밋 단위 분석 범위 넓히기
