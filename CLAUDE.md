@@ -37,7 +37,8 @@ GitHub 레포 링크를 입력하면 참여자별 기여도를 분석해서 채�
 
 - 프론트엔드: React + TypeScript (Vite)
 - 스타일: Tailwind CSS v4 (`@tailwindcss/vite`)
-- 서버: Express 5 + TypeScript (tsx로 실행)
+- 서버: Express 5 + TypeScript (tsx로 실행). 같은 로직이 Cloudflare Pages Functions로도 돌아가요.
+- 배포: Cloudflare Pages (정적 파일과 Functions)
 - 저장소: Supabase (Postgres). 서버에서 service role 키로만 접근하고, 브라우저는 직접 붙지 않아요.
 - 분석 도구: Google Analytics 4 (`VITE_GA_MEASUREMENT_ID`가 있을 때만 켜짐)
 - AI: Gemini API (`@google/genai`, 기본 모델 `gemini-3.8-flash`, JSON 스키마 응답을 zod로 검증)
@@ -53,10 +54,11 @@ shared/types.ts       서버와 클라이언트가 함께 쓰는 타입 (채팅 
 shared/repo.ts        GitHub 레포 링크 판별
 supabase/schema.sql   Supabase 테이블 정의 (chats, ai_usage, ai_usage_daily 뷰)
 server/
-  index.ts            Express 앱, /api/analyze SSE 라우트, 채팅 조회와 공유 라우트, 요청 횟수 제한
+  index.ts            Node에서 돌릴 때의 진입점. Express로 요청을 받아서 handlers에 넘겨요.
+  handlers.ts         API의 실제 동작 (설정, 채팅 조회와 공유, 분석 SSE, 요청 횟수 제한). Express와 Pages Functions가 같이 써요.
   store.ts            Supabase 연결, 채팅 저장과 공유, AI 사용량 기록
   context.ts          요청마다 채팅 ID를 들고 다니는 컨텍스트
-  env.ts              환경 변수 로드
+  env.ts              환경 변수를 필요한 순간에 읽기, Cloudflare가 주는 값을 옮기기
   github.ts           GitHub REST API 클라이언트 (오류와 호출 제한 처리, 통계 202 재시도)
   stats.ts            사람별 수치 계산, 제외 파일 규칙, 계정 기준 합치기, 기여도 순위
   gemini.ts           Gemini 프롬프트와 호출 (레포 요약, 역할, 코드 스타일)
@@ -64,6 +66,8 @@ server/
   insights.ts         분석 뒤 추가 질문 답변 (활동 시간, 진행 흐름, 막판 작업, 커밋 규칙, PR, 참여자 상세)
   cache.ts            만료 시간이 있는 메모리 캐시
   text.ts             금지 문자 후처리, 길이 제한
+functions/api/[[path]].ts   Cloudflare Pages에서 /api 아래 요청을 받는 함수. handlers를 그대로 불러 써요.
+wrangler.toml         Cloudflare Pages 설정 (빌드 결과 폴더, nodejs_compat)
 src/
   App.tsx             화면 전환(메인 화면과 채팅), 채팅 주소(/c/아이디) 처리, 공유
   index.css           Tailwind 테마 토큰, 자간, 애니메이션
@@ -83,9 +87,36 @@ npm run dev            # 프론트 http://localhost:5173, 서버 http://localhos
 
 - `npm run typecheck`: 클라이언트와 서버 타입 검사
 - `npm run build`: 타입 검사 후 프론트엔드 빌드 (`dist`)
+- `npm run pages:dev`: 빌드한 뒤 Cloudflare Pages 환경으로 내 컴퓨터에서 실행
 - `npm start`: 프로덕션 모드. Express가 API와 빌드된 프론트엔드를 함께 서빙해요.
 
 개발 중에는 Vite가 `/api` 요청을 Express(3001)로 프록시해요.
+
+## Cloudflare Pages 배포
+
+Pages는 Express를 그대로 돌릴 수 없어서, `/api` 요청은 `functions/api/[[path]].ts`가 받아요. 실제 동작은 `server/handlers.ts` 하나를 Express와 같이 쓰기 때문에, API를 고칠 때는 handlers만 고치면 두 곳에 모두 반영돼요.
+
+대시보드에서 Git 저장소를 연결하고 아래처럼 설정해요.
+
+- 빌드 명령: `npm run build`
+- 빌드 결과 폴더: `dist` (`wrangler.toml`에 적혀 있어요)
+- `nodejs_compat` 플래그는 `wrangler.toml`에서 켜요.
+
+환경 변수는 Pages 프로젝트의 Settings, Variables and Secrets에서 넣어요. Production과 Preview에 각각 넣어야 해요.
+
+| 이름 | 종류 | 쓰이는 시점 |
+| --- | --- | --- |
+| `GITHUB_TOKEN` | Secret | 실행할 때 (Functions) |
+| `GEMINI_API_KEY` | Secret | 실행할 때 (Functions) |
+| `SUPABASE_URL` | 일반 값 | 실행할 때 (Functions) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Secret | 실행할 때 (Functions) |
+| `GEMINI_MODEL` (선택) | 일반 값 | 실행할 때 (Functions) |
+| `VITE_GA_MEASUREMENT_ID` | 일반 값 | 빌드할 때. 바꾸면 다시 배포해야 반영돼요. |
+
+- 서버 코드는 값을 파일을 불러올 때 고정하지 않고 필요한 순간에 읽어요(`server/env.ts`). Functions에서는 요청마다 `applyBindings`로 Cloudflare가 준 값을 옮겨요.
+- 내 컴퓨터에서 Pages 환경 그대로 돌려 보려면 `.dev.vars.example`을 `.dev.vars`로 복사해서 채우고 `npm run pages:dev`를 실행해요. (http://localhost:8788)
+- 분석 한 번에 GitHub와 Gemini로 나가는 요청이 수십 개예요. Cloudflare 무료 요금제는 요청 하나에서 밖으로 나가는 요청 수와 CPU 시간이 작게 제한되어 있어서, 참여자가 많은 레포나 "빼고 계산하기"에서는 한도를 넘을 수 있어요. 그럴 때는 Workers 유료 요금제가 필요해요.
+- 결과 캐시와 요청 횟수 제한은 메모리에 있어서, Functions에서는 인스턴스가 바뀌면 사라져요. 캐시가 없으면 다시 계산할 뿐이라 동작에는 문제가 없어요.
 
 ## 환경 변수
 
@@ -188,7 +219,8 @@ Gemini를 한 번 부를 때마다(실패와 대체 모델 재시도 포함) `ai
 - 내가 만든 채팅 목록 보기
 - 캐시를 메모리 대신 외부 저장소로 옮기기. 지금은 서버를 다시 시작하면 사라지고, 서버를 여러 대로 늘릴 수 없어요.
 - 커밋이 300개를 넘는 레포의 커밋 단위 분석 범위 넓히기
-- 테스트 코드와 배포 설정
+- 테스트 코드
+- Cloudflare에 실제로 배포해서 요금제 한도 안에서 도는지 확인
 
 ## 텍스트 작성 규칙
 

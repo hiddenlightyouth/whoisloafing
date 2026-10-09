@@ -159,7 +159,7 @@ async function describeRepo(gh: GitHub, repo: Repo, baseKey: string): Promise<Re
     gh.getLanguages(owner, repo.name),
   ])
 
-  if (aiEnabled) {
+  if (aiEnabled()) {
     try {
       const result = await summarizeRepo({
         fullName: repo.full_name,
@@ -419,7 +419,7 @@ export async function runAnalysis(options: {
 
     // 레포 소개는 질문 전에 이미 보여줬어요. 여기서는 역할 분석에 참고하려고 캐시에서 다시 꺼내요.
     let repoSummary = ''
-    if (aiEnabled) {
+    if (aiEnabled()) {
       const summary = await describeRepo(gh, repo, baseKey)
       if (summary.fromAi) repoSummary = summary.text
       else cacheable = false
@@ -436,7 +436,7 @@ export async function runAnalysis(options: {
     }
 
     const idOf = (person: Ranked) => personId(person.login, person.name)
-    const needsPick = !picked && aiEnabled && ranked.length > PICK_THRESHOLD
+    const needsPick = !picked && aiEnabled() && ranked.length > PICK_THRESHOLD
 
     // 맡은 기능과 코드 스타일을 살펴볼 사람들 (기여도 순서)
     let selected: Ranked[]
@@ -452,7 +452,7 @@ export async function runAnalysis(options: {
 
     // 맡은 기능과 코드 스타일 분석은 미리 한꺼번에 시작해 두고, 화면에는 기여도 순서대로 내보내요.
     let profiles: Promise<Profile | null>[] = []
-    if (aiEnabled && selected.length > 0) {
+    if (aiEnabled() && selected.length > 0) {
       const pulls = await gh.listPulls(owner, repoName).catch(() => [] as Pull[])
       const settled = new Map<number, (profile: Profile | null) => void>()
       profiles = selected.map((_, index) => new Promise<Profile | null>((resolve) => settled.set(index, resolve)))
@@ -530,7 +530,7 @@ export async function runAnalysis(options: {
     const cards = selected.map(toPublic)
     const teamNotes: { name: string; features: string[]; style: string[] }[] = []
 
-    if (aiEnabled) {
+    if (aiEnabled()) {
       // 한 단계가 끝날 때마다 멈춰서, 사용자가 읽고 계속하기를 눌러야 다음으로 넘어가요.
       // 참여자를 직접 고른 직후에는 이미 버튼을 누른 것이라 멈추지 않고 바로 이어가요.
       // 먼저 모든 참여자의 기능을 이어서 보여주고, 그다음에 코드 스타일을 이어서 보여줘요.

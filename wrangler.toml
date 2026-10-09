@@ -1,0 +1,6 @@
+# Cloudflare Pages 설정이에요. 대시보드에서 Git 저장소를 연결하면 이 파일을 읽어요.
+name = "whoisloafing"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-09-01"
+# 서버 코드가 쓰는 Node 기능(crypto, async_hooks, process.env)을 켜요.
+compatibility_flags = ["nodejs_compat"]

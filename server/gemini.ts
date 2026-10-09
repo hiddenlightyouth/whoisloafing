@@ -5,9 +5,18 @@ import { env } from './env.ts'
 import { logAiUsage, type AiUsageRecord } from './store.ts'
 import { sanitize } from './text.ts'
 
-const client = env.geminiApiKey ? new GoogleGenAI({ apiKey: env.geminiApiKey }) : null
+// 키가 바뀌지 않는 한 클라이언트를 한 번만 만들어서 다시 써요.
+let cached: { key: string; client: GoogleGenAI } | null = null
 
-export const aiEnabled = client !== null
+function getClient(): GoogleGenAI | null {
+  const key = env.geminiApiKey
+  if (!key) return null
+  if (cached?.key !== key) cached = { key, client: new GoogleGenAI({ apiKey: key }) }
+  return cached.client
+}
+
+/** Gemini 키가 설정되어 있는지 여부 */
+export const aiEnabled = () => getClient() !== null
 
 const WRITING_RULES = `글쓰기 규칙을 반드시 지켜주세요.
 - 한국어로, 친근한 존댓말(~해요, ~네요)로 통일해서 써요. "~합니다", "~했다" 같은 말투는 쓰지 않아요.
@@ -83,7 +92,7 @@ async function generate<T extends z.ZodType>(
 
   let response
   try {
-    response = await client!.models.generateContent({
+    response = await getClient()!.models.generateContent({
       model,
       contents: user,
       config: {
@@ -128,7 +137,7 @@ const STICKY_MS = 5 * 60 * 1000
 let lastGood: { model: string; at: number } | null = null
 
 async function ask<T extends z.ZodType>(system: string, user: string, schema: T, meta: CallMeta): Promise<z.infer<T>> {
-  if (!client) throw new Error('GEMINI_API_KEY가 설정되지 않았어요.')
+  if (!getClient()) throw new Error('GEMINI_API_KEY가 설정되지 않았어요.')
 
   const chain = [...new Set([env.geminiModel, ...FALLBACK_MODELS])]
   const sticky = lastGood && Date.now() - lastGood.at < STICKY_MS ? lastGood.model : null
@@ -323,7 +332,7 @@ ${JSON.stringify(data)}
 
 /** 정해진 시간 안에 설명이 오지 않거나 실패하면 null을 돌려줘서, 기본 문장으로 대신할 수 있게 해요. */
 export async function narrateOrNull(topic: string, data: unknown, guide = '', timeoutMs = 25000): Promise<string | null> {
-  if (!aiEnabled) return null
+  if (!aiEnabled()) return null
   let timer: ReturnType<typeof setTimeout> | undefined
   try {
     return await Promise.race([
