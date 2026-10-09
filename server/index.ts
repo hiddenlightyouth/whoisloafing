@@ -3,10 +3,30 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import express from 'express'
 import session from 'express-session'
+import type { AnalyzeRequest, ChatEvent } from '../shared/types.ts'
+import { runAnalysis } from './analyze.ts'
 import { authRouter } from './auth.ts'
 import { env } from './env.ts'
 
 const SESSION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+
+// 분석 요청 횟수 제한 (IP 기준)
+const RATE_WINDOW_MS = 10 * 60 * 1000
+const RATE_MAX_REQUESTS = 20
+const recentRequests = new Map<string, number[]>()
+
+function allowRequest(ip: string): boolean {
+  const now = Date.now()
+  const times = (recentRequests.get(ip) ?? []).filter((time) => now - time < RATE_WINDOW_MS)
+  if (times.length >= RATE_MAX_REQUESTS) {
+    recentRequests.set(ip, times)
+    return false
+  }
+  times.push(now)
+  recentRequests.set(ip, times)
+  if (recentRequests.size > 5000) recentRequests.clear()
+  return true
+}
 
 const app = express()
 app.disable('x-powered-by')
@@ -29,6 +49,53 @@ app.use(
 )
 
 app.use('/api/auth', authRouter)
+
+// 분석 결과를 준비되는 대로 SSE로 한 메시지씩 흘려보내요.
+app.post('/api/analyze', async (req, res) => {
+  const body = (req.body ?? {}) as Partial<AnalyzeRequest>
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  })
+
+  let closed = false
+  res.on('close', () => {
+    closed = true
+  })
+  const emit = (event: ChatEvent) => {
+    if (!closed) res.write(`data: ${JSON.stringify(event)}\n\n`)
+  }
+  const heartbeat = setInterval(() => {
+    if (!closed) res.write(': ping\n\n')
+  }, 15000)
+
+  try {
+    if (typeof body.url !== 'string' || !body.url.trim() || body.url.length > 300) {
+      emit({ type: 'error', text: '레포 링크를 입력해 주세요.' })
+    } else if (!allowRequest(req.ip ?? 'unknown')) {
+      emit({ type: 'error', text: '요청이 너무 많아요. 잠시 뒤에 다시 시도해 주세요.' })
+    } else {
+      const { user, token } = req.session
+      await runAnalysis({
+        url: body.url,
+        excludeGenerated: body.excludeGenerated === true,
+        requester: user && token ? { id: user.id, token } : null,
+        emit,
+        isAborted: () => closed,
+      })
+    }
+  } catch (err) {
+    console.error(err)
+    emit({ type: 'error', text: '분석 중에 문제가 생겼어요. 잠시 뒤에 다시 시도해 주세요.' })
+  } finally {
+    clearInterval(heartbeat)
+    emit({ type: 'done' })
+    res.end()
+  }
+})
 
 app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'not_found' })
