@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { parseRepoUrl } from '../../shared/repo'
+import { track } from '../lib/analytics'
 
 export function RepoInput({ onSubmit }: { onSubmit: (url: string) => void }) {
   const [value, setValue] = useState('')
@@ -13,6 +14,7 @@ export function RepoInput({ onSubmit }: { onSubmit: (url: string) => void }) {
     if (!parseRepoUrl(url)) {
       setInvalid(true)
       setShaking(true)
+      track('repo_invalid_input', { length: url.length, looks_like_url: /^https?:\/\//i.test(url) })
       return
     }
     onSubmit(url)

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { track } from '../lib/analytics'
 import { ContributionBackdrop } from './ContributionBackdrop'
 import { RepoInput } from './RepoInput'
 
@@ -69,6 +70,7 @@ export function Hero({ onSubmit }: { onSubmit: (url: string) => void }) {
           href="https://hidly.dev/"
           target="_blank"
           rel="noreferrer"
+          onClick={() => track('team_link_click')}
           className="inline-flex items-center gap-1 transition-colors hover:text-gray-700"
         >
           숨은빚청년들 팀

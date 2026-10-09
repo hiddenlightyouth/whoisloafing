@@ -1,5 +1,6 @@
 import { useRef, useState, type PointerEvent } from 'react'
 import type { ContributorStats } from '../../shared/types'
+import { track } from '../lib/analytics'
 import { StatsCard } from './StatsCard'
 
 /** 참여자별 수치 카드를 말풍선 하나 안에서 좌우로 넘겨 보는 영역이에요. 터치 스와이프와 마우스 드래그를 모두 지원해요. */
@@ -62,7 +63,11 @@ export function RankingCarousel({ contributors }: { contributors: ContributorSta
     <div className="mt-3">
       <div
         ref={trackRef}
-        onScroll={() => setActive(nearestIndex())}
+        onScroll={() => {
+          const index = nearestIndex()
+          if (index !== active) track('ranking_card_view', { rank: index + 1, total: contributors.length })
+          setActive(index)
+        }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerEnd}

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { track } from '../lib/analytics'
 import { FOLLOWUP_LABELS, type FollowupPerson, type FollowupQuestion } from '../../shared/types'
 
 interface Props {
@@ -25,7 +26,9 @@ export function Followup({ people, disabled, onAsk }: Props) {
             type="button"
             disabled={disabled}
             aria-expanded={question === 'person' ? picking : undefined}
-            onClick={() => (question === 'person' ? setPicking((open) => !open) : onAsk(question, FOLLOWUP_LABELS[question]))}
+            onClick={() => (question === 'person'
+                ? (track('followup_person_picker_toggle'), setPicking((open) => !open))
+                : onAsk(question, FOLLOWUP_LABELS[question]))}
             className={`${chip} ${question === 'person' && picking && !disabled ? 'text-brand' : ''}`}
           >
             {FOLLOWUP_LABELS[question]}

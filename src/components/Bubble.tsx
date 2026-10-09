@@ -1,5 +1,6 @@
 import type { AnalyzeRequest, FollowupQuestion } from '../../shared/types'
 import type { ChatMessage } from '../hooks/useAnalysis'
+import { repoLabel, track } from '../lib/analytics'
 import { Charts, Facts } from './Charts'
 import { Followup } from './Followup'
 import { RankingCarousel } from './RankingCarousel'
@@ -38,15 +39,28 @@ export function Bubble({ message, busy, isLast, onSend }: Props) {
   const wide = WIDE_TYPES.has(event.type)
   const locked = busy || !isLast
 
-  const choose = (excludeGenerated: boolean) =>
-    request &&
+  const repo = request ? repoLabel(request.url) : 'unknown'
+
+  const choose = (excludeGenerated: boolean) => {
+    if (!request) return
+    track('calc_mode_select', { repo, exclude_generated: excludeGenerated })
     onSend(
       { url: request.url, excludeGenerated },
       excludeGenerated ? '빼고 계산해 주세요.' : '전부 포함해서 계산해 주세요.',
     )
+  }
 
-  const ask = (question: FollowupQuestion, userText: string, person?: string) =>
-    request && onSend({ url: request.url, question, person }, userText)
+  const ask = (question: FollowupQuestion, userText: string, person?: string) => {
+    if (!request) return
+    track('followup_ask', { repo, question, has_person: person !== undefined })
+    onSend({ url: request.url, question, person }, userText)
+  }
+
+  const retry = () => {
+    if (!request) return
+    track('retry_click', { repo, question: request.question ?? 'analysis' })
+    onSend(request)
+  }
 
   return (
     <div className="flex animate-rise justify-start">
@@ -117,7 +131,7 @@ export function Bubble({ message, busy, isLast, onSend }: Props) {
 
         {event.type === 'error' && event.action === 'retry' && request && (
           <div>
-            <button type="button" disabled={locked} onClick={() => onSend(request)} className={`${actionButton} mb-1.5`}>
+            <button type="button" disabled={locked} onClick={retry} className={`${actionButton} mb-1.5`}>
               다시 시도
             </button>
           </div>
