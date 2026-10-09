@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { track } from '../lib/analytics'
 import { Logo } from './Logo'
 
@@ -22,6 +22,24 @@ export function Header({ onHome, inChat, storage, busy, shared, onShare, onStop,
   const [confirming, setConfirming] = useState(false)
   const [working, setWorking] = useState(false)
   const [notice, setNotice] = useState('')
+  const actionsRef = useRef<HTMLDivElement>(null)
+
+  // 확인 창이 열려 있을 때 바깥을 누르거나 Esc를 누르면 닫아요.
+  useEffect(() => {
+    if (!confirming) return
+    const onPointerDown = (event: PointerEvent) => {
+      if (!actionsRef.current?.contains(event.target as Node)) setConfirming(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setConfirming(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [confirming])
 
   // 안내 문구는 잠깐 보여줬다가 지워요.
   useEffect(() => {
@@ -46,7 +64,7 @@ export function Header({ onHome, inChat, storage, busy, shared, onShare, onStop,
     <header className="absolute inset-x-0 top-0 z-10 flex h-14 items-center justify-between bg-white/70 px-4 backdrop-blur-md sm:px-6">
       <Logo onClick={onHome} />
 
-      <div className="relative flex items-center gap-2">
+      <div ref={actionsRef} className="relative flex items-center gap-2">
         {notice && (
           <span role="status" className="animate-rise text-xs text-gray-500">
             {notice}
