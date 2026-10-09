@@ -1,50 +1,23 @@
-import { useEffect, useState } from 'react'
 import { track } from '../lib/analytics'
 import { ContributionBackdrop } from './ContributionBackdrop'
 import { RepoInput } from './RepoInput'
 
-/** 타이틀을 어절 단위로 나눠요. focus가 있는 어절은 차례로 메인 컬러로 물들어요. */
-const TITLE_WORDS: { text: string; focus?: number }[] = [
-  { text: '누가', focus: 0 },
-  { text: '어떤', focus: 1 },
-  { text: '기능을', focus: 1 },
-  { text: '얼마나', focus: 2 },
-  { text: '많이', focus: 2 },
-  { text: '만들었을까요?' },
-]
-const FOCUS_COUNT = 3
-const FOCUS_INTERVAL_MS = 1800
+/** 타이틀을 어절 단위로 나눠요. 어절이 하나씩 흐릿하게 떠오르며 나타나요. */
+const TITLE_WORDS = ['우리', '프로젝트의', 'MVP는']
 const WORD_STAGGER_MS = 80
 
 function Title() {
-  const [focus, setFocus] = useState(-1)
-
-  // 어절이 모두 나타난 뒤부터 "누가", "어떤 기능을", "얼마나 많이"를 차례로 짚어요.
-  useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    let interval: ReturnType<typeof setInterval> | undefined
-    const start = setTimeout(() => {
-      setFocus(0)
-      interval = setInterval(() => setFocus((current) => (current + 1) % FOCUS_COUNT), FOCUS_INTERVAL_MS)
-    }, TITLE_WORDS.length * WORD_STAGGER_MS + 500)
-    return () => {
-      clearTimeout(start)
-      clearInterval(interval)
-    }
-  }, [])
-
   return (
     <h1
-      aria-label="누가 어떤 기능을 얼마나 많이 만들었을까요?"
-      className="mb-7 text-balance text-center text-[24px] font-semibold leading-snug text-gray-900 sm:mb-8 sm:text-[30px]"
+      aria-label="우리 프로젝트의 MVP는?"
+      className="text-balance text-center text-[24px] font-semibold leading-snug text-gray-900 sm:text-[30px]"
     >
       {TITLE_WORDS.map((word, index) => (
         <span key={index} aria-hidden="true">
-          <span
-            className={`inline-block animate-word transition-colors duration-500 ${word.focus === focus ? 'text-brand' : ''}`}
-            style={{ animationDelay: `${index * WORD_STAGGER_MS}ms` }}
-          >
-            {word.text}
+          <span className="inline-block animate-word" style={{ animationDelay: `${index * WORD_STAGGER_MS}ms` }}>
+            {word}
+            {/* 마지막 물음표만 메인 컬러로 강조해요. */}
+            {index === TITLE_WORDS.length - 1 && <em className="text-brand not-italic">?</em>}
           </span>
           {index < TITLE_WORDS.length - 1 && ' '}
         </span>
@@ -57,9 +30,16 @@ export function Hero({ onSubmit }: { onSubmit: (url: string) => void }) {
   return (
     <main className="relative flex flex-1 items-center justify-center overflow-hidden px-5">
       <ContributionBackdrop />
-      {/* 타이틀과 입력창을 한 덩어리로 묶어서, 그 덩어리가 화면 정중앙에 오게 해요. */}
+      {/* 타이틀, 설명, 입력창을 한 덩어리로 묶어서, 그 덩어리가 화면 정중앙에 오게 해요. */}
       <div className="relative w-full max-w-lg">
         <Title />
+        <p
+          className="mt-3 mb-7 animate-rise text-balance break-keep text-center text-[13px] leading-relaxed text-gray-500 sm:mb-8 sm:text-[14px]"
+          style={{ animationDelay: '250ms' }}
+        >
+          GitHub 레포지토리의 링크를 입력하여 통계를 분석해 누가 가장 많이 기여했고, 기여자 별로 어떤 기능을 담당했는지 쉽게 알아볼 수
+          있어요.
+        </p>
         <div className="animate-rise" style={{ animationDelay: '350ms' }}>
           <RepoInput onSubmit={onSubmit} />
         </div>
