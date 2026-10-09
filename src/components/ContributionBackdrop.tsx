@@ -205,14 +205,19 @@ export function ContributionBackdrop() {
       if (worm.speech && time > worm.speech.until) worm.speech = null
       const nearCenter = Math.abs(tip.x - width / 2) < Math.min(340, width * 0.46) && Math.abs(tip.y - height / 2) < 130
       const visible = worm.speech !== null && !nearCenter
-      if (worm.speech && bubble.textContent !== worm.speech.text) bubble.textContent = worm.speech.text
+      const label = bubble.firstElementChild as HTMLElement
+      const tail = bubble.lastElementChild as HTMLElement
+      if (worm.speech && label.textContent !== worm.speech.text) label.textContent = worm.speech.text
       bubble.style.opacity = visible ? '1' : '0'
       if (!worm.speech) return
       // 화면 밖으로 나가지 않게 좌우를 잡아 주고, 머리 바로 위에 띄워요.
       const half = bubble.offsetWidth / 2
       const x = Math.min(width - half - 8, Math.max(half + 8, tip.x))
-      const y = Math.max(92, tip.y - 16)
+      const y = Math.max(92, tip.y - 18)
       bubble.style.transform = `translate(${x - half}px, ${y}px) translateY(-100%)`
+      // 꼬리는 말풍선 가운데에 두되, 말풍선이 화면 가장자리에 걸려 밀리면 머리 쪽을 따라가요.
+      const tailX = Math.min(half * 2 - 14, Math.max(14, tip.x - (x - half)))
+      tail.style.left = `${tailX}px`
     }
 
     /** 한 번에 한 마리만, 돌아가면서 한마디씩 해요. */
@@ -275,8 +280,12 @@ export function ContributionBackdrop() {
           ref={(element) => {
             bubbleRefs.current[index] = element
           }}
-          className="absolute top-0 left-0 rounded-full rounded-bl-sm border border-gray-200 bg-white/90 px-2.5 py-1 text-[12px] font-medium whitespace-nowrap text-gray-700 opacity-0 backdrop-blur-sm transition-opacity duration-300"
-        />
+          className="absolute top-0 left-0 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[12px] font-medium whitespace-nowrap text-gray-700 opacity-0 transition-opacity duration-300"
+        >
+          <span />
+          {/* 지렁이 머리를 가리키는 말풍선 꼬리 */}
+          <span className="absolute -bottom-[4.5px] left-1/2 size-2 -translate-x-1/2 rotate-45 rounded-[1px] border-r border-b border-gray-200 bg-white" />
+        </div>
       ))}
     </div>
   )
