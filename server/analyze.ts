@@ -80,9 +80,20 @@ function repoErrorEvent(err: unknown, loggedIn: boolean): ChatEvent {
         : { type: 'error', text: '서버의 GitHub 토큰에 문제가 있어요. 관리자에게 알려주세요.' }
     }
     if (err.status === 403) {
+      // 조직이 만료 기간이 긴 fine-grained 토큰을 막아 둔 경우예요. 공개 레포여도 403이 와요.
+      if (/token's lifetime/i.test(err.detail)) {
+        return {
+          type: 'error',
+          text: loggedIn
+            ? '이 레포의 조직은 만료 기간이 366일을 넘는 GitHub 토큰의 접근을 막고 있어요.'
+            : '이 레포의 조직은 만료 기간이 366일을 넘는 GitHub 토큰의 접근을 막고 있어요. 서버의 GITHUB_TOKEN 만료 기간을 366일 이하로 바꾸면 분석할 수 있어요.',
+        }
+      }
       return {
         type: 'error',
-        text: '이 레포에 접근할 권한이 없어요. 레포의 조직에서 이 앱의 접근을 허용했는지 확인해 주세요.',
+        text: loggedIn
+          ? '이 레포에 접근할 권한이 없어요. 레포의 조직에서 이 앱의 접근을 허용했는지 확인해 주세요.'
+          : '서버의 GitHub 토큰으로는 이 레포에 접근할 수 없어요. 레포의 조직이 토큰 접근을 제한하고 있을 수 있어요.',
       }
     }
     if (err.status === 451) {

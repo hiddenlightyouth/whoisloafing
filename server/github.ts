@@ -10,6 +10,8 @@ export class GitHubError extends Error {
     public rateLimited = false,
     /** 호출 제한이 풀리는 시각 (ms) */
     public resetAt?: number,
+    /** GitHub가 응답 본문에 담아 준 오류 설명 */
+    public detail = '',
   ) {
     super(message)
   }
@@ -86,7 +88,13 @@ export function createGitHub(token?: string) {
     const reset = Number(res.headers.get('x-ratelimit-reset'))
     const retryAfter = Number(res.headers.get('retry-after'))
     const resetAt = retryAfter ? Date.now() + retryAfter * 1000 : reset ? reset * 1000 : undefined
-    throw new GitHubError(res.status, `GitHub API ${res.status}: ${path}`, rateLimited, resetAt)
+    let detail = ''
+    try {
+      detail = String((JSON.parse(body) as { message?: unknown }).message ?? '')
+    } catch {
+      // 본문이 JSON이 아니면 설명 없이 넘어가요.
+    }
+    throw new GitHubError(res.status, `GitHub API ${res.status}: ${path}`, rateLimited, resetAt, detail)
   }
 
   async function json<T>(path: string): Promise<T> {
