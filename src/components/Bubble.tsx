@@ -63,18 +63,18 @@ export function Bubble({ message, busy, isLast, onLogin, onChoose, onRetry }: Pr
             <button
               type="button"
               disabled={busy || !isLast}
-              onClick={() => onChoose(repoUrl, true)}
+              onClick={() => onChoose(repoUrl, false)}
               className={actionButton}
             >
-              빼고 계산하기
+              전부 포함하기
             </button>
             <button
               type="button"
               disabled={busy || !isLast}
-              onClick={() => onChoose(repoUrl, false)}
+              onClick={() => onChoose(repoUrl, true)}
               className={quietButton}
             >
-              전부 포함하기
+              빼고 계산하기
             </button>
           </div>
         )}
