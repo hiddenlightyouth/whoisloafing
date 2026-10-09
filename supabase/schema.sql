@@ -46,11 +46,18 @@ create index if not exists ai_usage_created_at_idx on public.ai_usage (created_a
 alter table public.chats enable row level security;
 alter table public.ai_usage enable row level security;
 
--- 날짜별, 목적별 토큰 사용량을 한눈에 보는 뷰
-create or replace view public.ai_usage_daily
+-- 시각은 timestamptz라서 어느 시간대에서 봐도 같은 순간을 가리켜요. 다만 대시보드와 SQL 결과는 데이터베이스의 시간대로 보여주는데,
+-- 기본값이 UTC라서 한국 시간보다 9시간 늦게 보여요. 한국 시간으로 보이게 데이터베이스의 시간대를 바꿔요.
+-- 이미 저장된 값은 바뀌지 않고, 보여주는 방식만 바뀌어요. 실행한 뒤에 새로 연 창부터 적용돼요.
+alter database postgres set timezone to 'Asia/Seoul';
+
+-- 날짜별, 목적별 토큰 사용량을 한눈에 보는 뷰. 하루의 경계는 한국 시간 자정이에요.
+-- day 칸의 형식이 바뀌어서, 예전 뷰가 있으면 지우고 다시 만들어요.
+drop view if exists public.ai_usage_daily;
+create view public.ai_usage_daily
 with (security_invoker = true) as
 select
-  date_trunc('day', created_at) as day,
+  (created_at at time zone 'Asia/Seoul')::date as day,
   purpose,
   model,
   count(*) as calls,
