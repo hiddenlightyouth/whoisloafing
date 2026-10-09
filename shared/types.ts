@@ -15,7 +15,8 @@ export interface ContributorStats {
 
 export type ChatEvent =
   | { type: 'text'; text: string }
-  | { type: 'stats'; text: string; contributor: ContributorStats }
+  /** 기여도 순서대로 정렬된 참여자별 수치 카드 묶음. 화면에서는 말풍선 하나 안에서 좌우로 넘겨 봐요. */
+  | { type: 'ranking'; text: string; contributors: ContributorStats[] }
   | {
       type: 'summary'
       text: string

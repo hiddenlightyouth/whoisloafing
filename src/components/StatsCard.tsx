@@ -21,10 +21,11 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
   )
 }
 
-export function StatsCard({ contributor }: { contributor: ContributorStats }) {
+export function StatsCard({ contributor, rank }: { contributor: ContributorStats; rank: number }) {
   return (
-    <div className="mt-3 rounded-xl bg-white p-4">
+    <div className="h-full rounded-xl bg-white p-4">
       <div className="flex items-center gap-2.5">
+        <span className="shrink-0 text-xs font-semibold text-brand tabular-nums">{rank}위</span>
         <Avatar contributor={contributor} className="size-8" />
         {contributor.profileUrl ? (
           <a

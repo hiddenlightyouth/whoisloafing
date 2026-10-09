@@ -56,7 +56,7 @@ src/
   lib/api.ts          서버 호출, SSE 스트림 읽기
   hooks/useAuth.ts    로그인 상태
   hooks/useAnalysis.ts  채팅 메시지 큐, 입력 중 표시 타이밍
-  components/         Header, Logo, Hero, RepoInput, Chat, Bubble, TypingDots, StatsCard, SummaryChart
+  components/         Header, Logo, Hero, RepoInput, Chat, Bubble, TypingDots, RankingCarousel, StatsCard, SummaryChart
 ```
 
 ## 실행 방법
@@ -105,7 +105,9 @@ GitHub OAuth App의 콜백 URL은 `{APP_URL}/api/auth/github/callback` 으로 �
 
 - 메인 화면 (헤더, 타이틀, 레포 링크 입력창, 분석 버튼)
 - GitHub OAuth 로그인과 로그아웃 (scope는 repo, 헤더에 프로필 이미지 표시)
-- 레포 한 문장 정의, 참여자별 수치 카드, 역할, 코드 스타일, 전체 기여도 막대 그래프
+- 레포 한 문장 정의, 역할, 코드 스타일
+- 참여자별 수치 카드는 말풍선 하나 안에서 기여도 순서대로 좌우로 넘겨 봐요. (터치 스와이프, 마우스 드래그, 아래 점 표시)
+- 전체 기여도 비교는 말풍선 하나에 커밋 수 기준과 라인 수 기준 막대 그래프를 나란히 보여줘요.
 - SSE로 메시지를 순서대로 전달하고, 말풍선 사이에 입력 중 표시
 - 분석이 끝난 뒤 하단 입력창에서 다른 레포 이어서 분석
 - 분석 전에 lock 파일과 빌드 결과물을 뺄지 묻고, 고르면 커밋 단위로 계산

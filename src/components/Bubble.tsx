@@ -1,5 +1,5 @@
 import type { ChatMessage } from '../hooks/useAnalysis'
-import { StatsCard } from './StatsCard'
+import { RankingCarousel } from './RankingCarousel'
 import { SummaryChart } from './SummaryChart'
 
 interface Props {
@@ -29,7 +29,7 @@ export function Bubble({ message, busy, isLast, onLogin, onChoose }: Props) {
   }
 
   const { event, repoUrl } = message
-  const wide = event.type === 'stats' || event.type === 'summary'
+  const wide = event.type === 'ranking' || event.type === 'summary'
 
   return (
     <div className="flex animate-rise justify-start">
@@ -40,7 +40,7 @@ export function Bubble({ message, busy, isLast, onLogin, onChoose }: Props) {
       >
         <p>{event.text}</p>
 
-        {event.type === 'stats' && <StatsCard contributor={event.contributor} />}
+        {event.type === 'ranking' && <RankingCarousel contributors={event.contributors} />}
 
         {event.type === 'summary' && (
           <SummaryChart contributors={event.contributors} othersCount={event.othersCount} />

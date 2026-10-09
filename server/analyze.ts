@@ -397,27 +397,27 @@ export async function runAnalysis(options: {
       })
     }
 
-    for (const [index, person] of detailed.entries()) {
-      if (isAborted()) return
-      const stats = toPublic(person)
-      const text =
+    const cards = detailed.map(toPublic)
+    emit({
+      type: 'ranking',
+      text:
         ranked.length === 1
-          ? `${stats.name}님이 혼자 만든 레포예요.`
-          : index === 0
-            ? `${stats.name}님이 가장 많이 기여했어요.`
-            : index === detailed.length - 1 && ranked.length === detailed.length
-              ? `마지막으로 ${stats.name}님이에요.`
-              : `다음은 ${stats.name}님이에요.`
-      emit({ type: 'stats', text, contributor: stats })
+          ? `${cards[0].name}님이 혼자 만든 레포예요.`
+          : `${cards[0].name}님이 가장 많이 기여했어요. 옆으로 넘기면 기여도 순서대로 볼 수 있어요.`,
+      contributors: cards,
+    })
 
-      if (!withProfiles) continue
-      const profile = await profiles[index]
-      if (profile) {
-        emit({ type: 'text', text: profile.role })
-        emit({ type: 'text', text: profile.style })
-      } else {
-        cacheable = false
-        emit({ type: 'text', text: `${stats.name}님의 역할과 코드 스타일은 이번에는 분석하지 못했어요.` })
+    if (withProfiles) {
+      for (const [index, card] of cards.entries()) {
+        if (isAborted()) return
+        const profile = await profiles[index]
+        if (profile) {
+          emit({ type: 'text', text: profile.role })
+          emit({ type: 'text', text: profile.style })
+        } else {
+          cacheable = false
+          emit({ type: 'text', text: `${card.name}님의 역할과 코드 스타일은 이번에는 분석하지 못했어요.` })
+        }
       }
     }
 
