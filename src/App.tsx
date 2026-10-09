@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Chat } from './components/Chat'
 import { Header } from './components/Header'
 import { Hero } from './components/Hero'
+import { LeaveDialog } from './components/LeaveDialog'
 import { useAnalysis } from './hooks/useAnalysis'
 import { initAnalytics, repoLabel, track, trackPageView } from './lib/analytics'
 import { fetchChat, fetchStorageEnabled, shareChat } from './lib/api'
@@ -20,13 +21,15 @@ async function copyLink(): Promise<boolean> {
 }
 
 export default function App() {
-  const { messages, busy, paused, send, resume, stop, reset, load, chatId } = useAnalysis()
+  const { messages, busy, paused, send, resume, stop, abandon, reset, load, chatId } = useAnalysis()
   /** 서버에 채팅 저장 기능(Supabase)이 켜져 있는지 */
   const [storage, setStorage] = useState(false)
   /** 지금 보고 있는 채팅의 상태. mine은 이 브라우저에서 만든 채팅인지, shared는 공유됐는지예요. */
   const [chat, setChat] = useState<{ mine: boolean; shared: boolean } | null>(null)
   const [opening, setOpening] = useState(() => chatIdFromPath() !== null)
   const [missing, setMissing] = useState(false)
+  /** 분석 중에 로고를 눌렀을 때 정말 떠날지 묻는 창 */
+  const [confirmingLeave, setConfirmingLeave] = useState(false)
 
   // 주소에 맞는 화면을 준비해요. 처음 들어왔을 때와 뒤로 가기, 앞으로 가기에서 불러요.
   const openFromLocation = useCallback(async () => {
@@ -83,7 +86,7 @@ export default function App() {
     [reset, send, storage],
   )
 
-  const handleHome = useCallback(() => {
+  const goHome = useCallback(() => {
     if (!reset()) return
     track('home_click', { from: chat?.shared ? 'shared_chat' : messages.length > 0 ? 'chat' : 'home' })
     setChat(null)
@@ -91,6 +94,28 @@ export default function App() {
     if (window.location.pathname !== '/') window.history.pushState(null, '', '/')
     trackPageView('home')
   }, [chat, messages.length, reset])
+
+  // 분석 중에 로고를 누르면 바로 떠나지 않고 먼저 물어봐요.
+  const handleHome = useCallback(() => {
+    if (!busy) {
+      goHome()
+      return
+    }
+    track('leave_confirm_open')
+    setConfirmingLeave(true)
+  }, [busy, goHome])
+
+  const handleLeave = useCallback(() => {
+    track('leave_confirm', { message_count: messages.length })
+    setConfirmingLeave(false)
+    abandon()
+    goHome()
+  }, [abandon, goHome, messages.length])
+
+  const handleStay = useCallback(() => {
+    track('leave_cancel')
+    setConfirmingLeave(false)
+  }, [])
 
   const handleShare = useCallback(async () => {
     const id = chatId.current
@@ -154,6 +179,7 @@ export default function App() {
           onHome={handleHome}
         />
       )}
+      {confirmingLeave && <LeaveDialog onStay={handleStay} onLeave={handleLeave} />}
     </div>
   )
 }

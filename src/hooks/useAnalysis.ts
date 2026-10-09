@@ -36,6 +36,8 @@ export function useAnalysis() {
   const abortRef = useRef<AbortController | null>(null)
   const stoppedRef = useRef(false)
   const wakeRef = useRef<(() => void) | null>(null)
+  /** 분석을 버리고 화면을 떠나면 숫자가 올라가요. 그 전에 돌던 분석은 화면을 더 건드리지 않아요. */
+  const generationRef = useRef(0)
 
   const append = useCallback((message: NewMessage) => {
     setMessages((prev) => [...prev, { ...message, id: nextId.current++ } as ChatMessage])
@@ -55,6 +57,8 @@ export function useAnalysis() {
       }
       busyRef.current = true
       setBusy(true)
+      const generation = generationRef.current
+      const abandoned = () => generationRef.current !== generation
       if (userText) append({ from: 'user', text: userText })
 
       const startedAt = Date.now()
@@ -82,7 +86,7 @@ export function useAnalysis() {
           wake?.()
         })
 
-      while (!stoppedRef.current) {
+      while (!stoppedRef.current && !abandoned()) {
         const event = queue.shift()
         if (!event) {
           if (finished) break
@@ -95,13 +99,14 @@ export function useAnalysis() {
           // 서버는 뒤에서 계속 분석하고, 화면만 사용자가 계속하기를 누를 때까지 기다려요.
           setPaused(event.next)
           await new Promise<void>((resolve) => (resumeRef.current = resolve))
+          if (abandoned()) break
           resumeRef.current = null
           setPaused(null)
           if (!stoppedRef.current) track('analysis_step_continue', { repo, next_step: event.next })
           continue
         }
         await sleep(TYPING_DELAY_MS)
-        if (stoppedRef.current) break
+        if (stoppedRef.current || abandoned()) break
         append({ from: 'bot', event, request: current, live: true })
 
         const seconds = Math.round((Date.now() - startedAt) / 1000)
@@ -118,6 +123,9 @@ export function useAnalysis() {
           track('followup_answered', { repo, question: current.question, duration_seconds: seconds })
         }
       }
+
+      // 화면을 떠난 뒤라면 새 화면의 상태를 건드리지 않고 조용히 끝내요.
+      if (abandoned()) return
 
       if (stoppedRef.current) {
         track('analysis_stop', { repo, question: current.question ?? 'analysis', duration_seconds: Math.round((Date.now() - startedAt) / 1000) })
@@ -140,6 +148,23 @@ export function useAnalysis() {
     wakeRef.current?.()
   }, [])
 
+  /** 진행 중인 분석을 버려요. 중단 안내 말풍선 없이 바로 다른 화면으로 넘어갈 때 써요. */
+  const abandon = useCallback(() => {
+    if (!busyRef.current) return
+    generationRef.current += 1
+    abortRef.current?.abort()
+    abortRef.current = null
+    const resumeWaiting = resumeRef.current
+    const wakeWaiting = wakeRef.current
+    resumeRef.current = null
+    wakeRef.current = null
+    busyRef.current = false
+    setBusy(false)
+    setPaused(null)
+    resumeWaiting?.()
+    wakeWaiting?.()
+  }, [])
+
   const resume = useCallback(() => resumeRef.current?.(), [])
 
   /** 새 채팅을 시작하거나(저장할 ID 지정), 화면을 비워요. 분석 중에는 아무것도 하지 않아요. */
@@ -157,5 +182,5 @@ export function useAnalysis() {
     setMessages(chat.messages.map((message) => ({ ...message, id: nextId.current++ }) as ChatMessage))
   }, [])
 
-  return { messages, busy, paused, send, resume, stop, reset, load, chatId: chatIdRef }
+  return { messages, busy, paused, send, resume, stop, abandon, reset, load, chatId: chatIdRef }
 }
