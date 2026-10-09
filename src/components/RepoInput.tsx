@@ -12,7 +12,11 @@ export function RepoInput({ onSubmit }: { onSubmit: (url: string) => void }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex w-full gap-2">
+    // 입력창과 버튼을 하나의 둥근 칸 안에 담아요.
+    <form
+      onSubmit={handleSubmit}
+      className="flex h-[52px] w-full items-center rounded-full border border-gray-200 bg-white pr-1.5 pl-5 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.12)] transition-[border-color,box-shadow] focus-within:border-brand focus-within:shadow-[0_0_0_4px_rgba(46,144,250,0.14)]"
+    >
       <input
         type="text"
         inputMode="url"
@@ -24,11 +28,11 @@ export function RepoInput({ onSubmit }: { onSubmit: (url: string) => void }) {
         onChange={(event) => setValue(event.target.value)}
         placeholder="github.com/owner/repo"
         aria-label="GitHub 레포 링크"
-        className="h-14 min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-5 text-base text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-brand focus:ring-4 focus:ring-brand/15"
+        className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-gray-900 outline-none placeholder:text-gray-400"
       />
       <button
         type="submit"
-        className="h-14 shrink-0 rounded-xl bg-brand px-7 text-base font-semibold text-white transition-colors hover:bg-brand-hover"
+        className="h-10 shrink-0 rounded-full bg-brand px-5 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover active:scale-[0.98]"
       >
         분석
       </button>

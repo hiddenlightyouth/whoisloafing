@@ -23,6 +23,8 @@ GitHub 레포 링크를 입력하면 참여자별 기여도를 분석해서 채�
 - 탭 제목은 WhoIsLoafing, 파비콘은 메인 컬러 배경에 흰색 W
 - 디자인 원칙: 여백 위주의 미니멀. 장식, 그라데이션, 이모지, 아이콘 남발 금지. 타이틀 위에 태그, 뱃지, 라벨을 붙이지 않아요.
 - 메인 화면은 얇은 헤더(좌측 로고), 중앙 타이틀, 입력창과 분석 버튼 하나로만 구성해요.
+- 메인 화면 타이틀은 과하게 크지 않게(데스크톱 30px), 입력창과 버튼은 하나의 둥근 칸 안에 담아요.
+- 메인 화면 배경에는 GitHub 기여도 그래프처럼 생긴 작은 칸들이 아주 옅게 반짝여요. 가운데 타이틀과 입력창 주변은 비워 두고, 움직임 줄이기 설정에서는 멈춰 있어요.
 - 헤더는 화면 위에 겹쳐 있고 반투명 흰 배경에 배경 블러를 줘서, 채팅이 헤더 아래로 흐리게 비쳐요.
 - 헤더에는 로그인 버튼을 두지 않아요. 로그인은 비공개 레포를 만났을 때 말풍선 안의 버튼으로 안내하고, 로그인한 뒤에만 헤더 우측에 프로필 이미지와 로그아웃을 보여줘요.
 
@@ -59,7 +61,7 @@ src/
   lib/api.ts          서버 호출, SSE 스트림 읽기
   hooks/useAuth.ts    로그인 상태
   hooks/useAnalysis.ts  채팅 메시지 큐, 입력 중 표시 타이밍
-  components/         Header, Logo, Hero, RepoInput, Chat, Bubble, TypingDots, RichText, RankingCarousel, StatsCard, SummaryChart, Charts, Followup
+  components/         Header, Logo, Hero, ContributionBackdrop, RepoInput, Chat, Bubble, TypingDots, RichText, RankingCarousel, StatsCard, SummaryChart, Charts, Followup
 ```
 
 ## 실행 방법
