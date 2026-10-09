@@ -104,6 +104,80 @@ export function fromStatsApi(raw: StatsContributor[]): Person[] {
 const NOREPLY_PATTERN = /^(?:\d+\+)?([^@]+)@users\.noreply\.github\.com$/
 
 /**
+ * 커밋 작성자를 GitHub 계정으로 이어 주는 함수를 만들어요.
+ * 계정이 연결된 커밋에서 이메일과 이름을 모아두고, 연결되지 않은 커밋을 같은 계정으로 묶는 데 써요.
+ */
+function createLoginResolver(commits: CommitSummary[]) {
+  const loginByEmail = new Map<string, string>()
+  const loginsByName = new Map<string, Set<string>>()
+  const knownLogins = new Map<string, string>()
+  for (const commit of commits) {
+    const login = commit.author?.login
+    const git = commit.commit.author
+    if (login) knownLogins.set(login.toLowerCase(), login)
+    if (!login || !git) continue
+    if (git.email) loginByEmail.set(git.email.toLowerCase(), login)
+    if (git.name) {
+      const set = loginsByName.get(git.name) ?? new Set<string>()
+      set.add(login)
+      loginsByName.set(git.name, set)
+    }
+  }
+
+  return function resolveLogin(commit: CommitSummary): string | null {
+    if (commit.author?.login) return commit.author.login
+    const git = commit.commit.author
+    if (!git) return null
+    const email = git.email?.toLowerCase() ?? ''
+    const byEmail = loginByEmail.get(email)
+    if (byEmail) return byEmail
+    const noreply = NOREPLY_PATTERN.exec(email)
+    if (noreply) return noreply[1]
+    const byName = loginsByName.get(git.name)
+    if (byName?.size === 1) return [...byName][0]
+    // 커밋 작성자 이름이 이미 참여 중인 계정의 아이디와 같으면 같은 사람으로 봐요.
+    return knownLogins.get(git.name?.trim().toLowerCase() ?? '') ?? null
+  }
+}
+
+/**
+ * 통계 API가 계정이 연결되지 않은 커밋을 엉뚱한 계정 몫으로 돌려주는 경우를 바로잡아요.
+ * 커밋 목록에는 한 번도 작성자로 나오지 않는 계정이 있고, 연결되지 않은 커밋이 같은 수만큼
+ * 다른 참여자의 것으로 확인되면 그 참여자에게 합쳐요. 커밋 목록 전체를 받은 경우에만 써요.
+ */
+export function mergeMisattributed(people: Person[], commits: CommitSummary[]): Person[] {
+  const targets = commits.filter((commit) => !isMergeCommit(commit))
+  const resolveLogin = createLoginResolver(targets)
+
+  const linked = new Set<string>()
+  const recovered = new Map<string, number>()
+  for (const commit of targets) {
+    if (commit.author?.login) {
+      linked.add(commit.author.login.toLowerCase())
+      continue
+    }
+    const login = resolveLogin(commit)?.toLowerCase()
+    if (login) recovered.set(login, (recovered.get(login) ?? 0) + 1)
+  }
+
+  const byLogin = new Map(people.map((person) => [person.login?.toLowerCase() ?? person.key, person]))
+  const removed = new Set<Person>()
+  for (const person of people) {
+    const login = person.login?.toLowerCase()
+    if (!login || linked.has(login)) continue
+    const owners = [...recovered].filter(([owner, count]) => count === person.commits && byLogin.has(owner))
+    if (owners.length !== 1) continue
+    const owner = byLogin.get(owners[0][0])!
+    owner.commits += person.commits
+    owner.additions += person.additions
+    owner.deletions += person.deletions
+    recovered.delete(owners[0][0])
+    removed.add(person)
+  }
+  return people.filter((person) => !removed.has(person))
+}
+
+/**
  * 커밋을 하나씩 읽어서 사람별 수치를 계산해요.
  * 같은 사람이 여러 이메일로 커밋했더라도 GitHub 계정 기준으로 합쳐요.
  */
@@ -118,33 +192,7 @@ export async function fromCommits(
   const capped = listed.length >= MAX_COMMITS
   const targets = listed.filter((commit) => !isMergeCommit(commit) && !isBot(commit.author))
 
-  // 계정이 연결된 커밋에서 이메일과 이름을 모아두고, 연결되지 않은 커밋을 같은 계정으로 묶는 데 써요.
-  const loginByEmail = new Map<string, string>()
-  const loginsByName = new Map<string, Set<string>>()
-  for (const commit of targets) {
-    const login = commit.author?.login
-    const git = commit.commit.author
-    if (!login || !git) continue
-    if (git.email) loginByEmail.set(git.email.toLowerCase(), login)
-    if (git.name) {
-      const set = loginsByName.get(git.name) ?? new Set<string>()
-      set.add(login)
-      loginsByName.set(git.name, set)
-    }
-  }
-
-  function resolveLogin(commit: CommitSummary): string | null {
-    if (commit.author?.login) return commit.author.login
-    const git = commit.commit.author
-    if (!git) return null
-    const email = git.email?.toLowerCase() ?? ''
-    const byEmail = loginByEmail.get(email)
-    if (byEmail) return byEmail
-    const noreply = NOREPLY_PATTERN.exec(email)
-    if (noreply) return noreply[1]
-    const byName = loginsByName.get(git.name)
-    return byName?.size === 1 ? [...byName][0] : null
-  }
+  const resolveLogin = createLoginResolver(targets)
 
   const details = await mapLimit(targets, COMMIT_FETCH_CONCURRENCY, (commit) => gh.getCommit(owner, repo, commit.sha))
 
@@ -155,7 +203,8 @@ export async function fromCommits(
     const summary = targets[index]
     const login = resolveLogin(summary)
     const git = summary.commit.author
-    const key = login ? `u:${login.toLowerCase()}` : `e:${(git?.email || git?.name || 'unknown').toLowerCase()}`
+    // 계정을 끝내 찾지 못한 작성자는 이름이 같으면 한 사람으로 합쳐요.
+    const key = login ? `u:${login.toLowerCase()}` : `n:${(git?.name?.trim() || git?.email || 'unknown').toLowerCase()}`
 
     let person = people.get(key)
     if (!person) {

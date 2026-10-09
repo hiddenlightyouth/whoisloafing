@@ -3,7 +3,16 @@ import { TtlCache } from './cache.ts'
 import { aiEnabled, analyzeContributor, summarizeRepo } from './claude.ts'
 import { env } from './env.ts'
 import { createGitHub, GitHubError, mapLimit, type CommitDetail, type GitHub, type Pull, type Repo } from './github.ts'
-import { fromCommits, fromStatsApi, isExcludedFile, isMergeCommit, MAX_COMMITS, rank, type Collected } from './stats.ts'
+import {
+  fromCommits,
+  fromStatsApi,
+  isExcludedFile,
+  isMergeCommit,
+  MAX_COMMITS,
+  mergeMisattributed,
+  rank,
+  type Collected,
+} from './stats.ts'
 import { formatNumber, sanitize, truncate } from './text.ts'
 
 /** 역할과 코드 스타일까지 자세히 소개하는 최대 인원 */
@@ -244,7 +253,11 @@ async function collect(
   const people = raw ? fromStatsApi(raw) : []
   // 통계가 끝내 준비되지 않았거나, 커밋이 아주 많은 레포라 라인 수가 비어 있으면 커밋을 직접 읽어요.
   const usable = people.length > 0 && people.some((person) => person.additions + person.deletions > 0)
-  if (usable) return { people, capped: false }
+  if (usable) {
+    // 커밋 목록 전체를 받을 수 있는 크기라면, 통계 API가 잘못 나눈 몫을 원래 참여자에게 합쳐요.
+    const listed = await gh.listCommits(owner, repo, { perPage: 100, maxPages: Math.ceil(MAX_COMMITS / 100) })
+    return { people: listed.length < MAX_COMMITS ? mergeMisattributed(people, listed) : people, capped: false }
+  }
   return fromCommits(gh, owner, repo, { exclude: false })
 }
 
