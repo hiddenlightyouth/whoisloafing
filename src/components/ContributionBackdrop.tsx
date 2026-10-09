@@ -25,6 +25,9 @@ const WORM_LINES = [
 const SPEECH_MS = 3800
 const SPEECH_GAP_MS = 1600
 const MAX_WORMS = 4
+/** 화면 위에 겹쳐 있는 헤더의 높이와, 머리 위 말풍선이 차지하는 높이. 지렁이는 말풍선까지 헤더 아래에 다 보이는 곳에서만 다녀요. */
+const HEADER_HEIGHT = 56
+const BUBBLE_ROOM = 52
 
 interface Cell {
   x: number
@@ -73,6 +76,7 @@ export function ContributionBackdrop() {
     let worms: Worm[] = []
     let cols = 0
     let rows = 0
+    let minRow = 0
     let offsetX = 0
     let offsetY = 0
     let width = 0
@@ -87,9 +91,9 @@ export function ContributionBackdrop() {
       x: offsetX + col * STEP + CELL / 2,
       y: offsetY + row * STEP + CELL / 2,
     })
-    const inside = (col: number, row: number) => col >= 0 && col < cols && row >= 0 && row < rows
+    const inside = (col: number, row: number) => col >= 0 && col < cols && row >= minRow && row < rows
 
-    /** 대체로 가던 방향으로 가다가 가끔 꺾어요. 뒤로 돌거나 화면 밖으로 나가지는 않아요. */
+    /** 대체로 가던 방향으로 가다가 가끔 꺾어요. 뒤로 돌거나 화면 밖이나 헤더 뒤로 나가지는 않아요. */
     function pickNext(worm: Worm) {
       const head = worm.body[0]
       const options = DIRECTIONS.filter(
@@ -118,6 +122,7 @@ export function ContributionBackdrop() {
       rows = Math.floor(height / STEP)
       offsetX = (width - cols * STEP + GAP) / 2
       offsetY = (height - rows * STEP + GAP) / 2
+      minRow = Math.max(0, Math.ceil((HEADER_HEIGHT + BUBBLE_ROOM - CELL / 2 - offsetY) / STEP))
 
       cells = new Map()
       for (let col = 0; col < cols; col++) {
@@ -136,10 +141,10 @@ export function ContributionBackdrop() {
       }
 
       // 화면이 넓을수록 지렁이가 조금 더 많아요.
-      const count = cols < 4 || rows < 4 ? 0 : Math.min(MAX_WORMS, Math.max(2, Math.round((width * height) / 380000)))
+      const count = cols < 4 || rows - minRow < 4 ? 0 : Math.min(MAX_WORMS, Math.max(2, Math.round((width * height) / 380000)))
       worms = Array.from({ length: count }, () => {
         const col = Math.floor(Math.random() * cols)
-        const row = Math.floor(Math.random() * rows)
+        const row = minRow + Math.floor(Math.random() * (rows - minRow))
         const worm: Worm = {
           body: Array.from({ length: WORM_LENGTH }, () => ({ col, row })),
           direction: DIRECTIONS[Math.floor(Math.random() * DIRECTIONS.length)],
@@ -213,8 +218,7 @@ export function ContributionBackdrop() {
       // 화면 밖으로 나가지 않게 좌우를 잡아 주고, 머리 바로 위에 띄워요.
       const half = bubble.offsetWidth / 2
       const x = Math.min(width - half - 8, Math.max(half + 8, tip.x))
-      const y = Math.max(92, tip.y - 18)
-      bubble.style.transform = `translate(${x - half}px, ${y}px) translateY(-100%)`
+      bubble.style.transform = `translate(${x - half}px, ${tip.y - 18}px) translateY(-100%)`
       // 꼬리는 말풍선 가운데에 두되, 말풍선이 화면 가장자리에 걸려 밀리면 머리 쪽을 따라가요.
       const tailX = Math.min(half * 2 - 14, Math.max(14, tip.x - (x - half)))
       tail.style.left = `${tailX}px`
