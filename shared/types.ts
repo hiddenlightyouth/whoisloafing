@@ -21,15 +21,18 @@ export type ChatEvent =
       text: string
       contributors: ContributorStats[]
       othersCount: number
-      /** lock 파일과 빌드 결과물을 빼고 다시 계산할 수 있는지 여부 */
-      canRefine: boolean
     }
+  /** 분석을 시작하기 전에 lock 파일과 빌드 결과물을 뺄지 물어봐요. */
+  | { type: 'ask'; text: string }
   | { type: 'error'; text: string; action?: 'login' }
   | { type: 'done' }
 
 export interface AnalyzeRequest {
   url: string
-  /** 커밋 단위로 분석해서 lock 파일, 빌드 결과물, 자동 생성 파일, 바이너리 파일을 라인 수에서 제외해요. */
+  /**
+   * true면 커밋 단위로 분석해서 lock 파일, 빌드 결과물, 자동 생성 파일, 바이너리 파일을 라인 수에서 제외해요.
+   * 값을 보내지 않으면 서버가 레포를 확인한 뒤 어떻게 계산할지 먼저 물어봐요.
+   */
   excludeGenerated?: boolean
 }
 

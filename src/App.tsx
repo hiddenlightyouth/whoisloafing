@@ -47,11 +47,11 @@ export default function App() {
     window.location.href = LOGIN_URL
   }, [])
 
-  const handleRefine = useCallback(
-    (repoUrl: string) =>
+  const handleChoose = useCallback(
+    (repoUrl: string, excludeGenerated: boolean) =>
       void analyze(repoUrl, {
-        excludeGenerated: true,
-        userText: 'lock 파일과 빌드 결과물은 빼고 다시 계산해 주세요.',
+        excludeGenerated,
+        userText: excludeGenerated ? '빼고 계산해 주세요.' : '전부 포함해서 계산해 주세요.',
       }),
     [analyze],
   )
@@ -64,7 +64,7 @@ export default function App() {
       {messages.length === 0 ? (
         <Hero onSubmit={handleSubmit} />
       ) : (
-        <Chat messages={messages} busy={busy} onSubmit={handleSubmit} onLogin={handleLogin} onRefine={handleRefine} />
+        <Chat messages={messages} busy={busy} onSubmit={handleSubmit} onLogin={handleLogin} onChoose={handleChoose} />
       )}
     </div>
   )

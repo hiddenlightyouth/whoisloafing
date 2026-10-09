@@ -9,10 +9,10 @@ interface Props {
   busy: boolean
   onSubmit: (url: string) => void
   onLogin: (repoUrl?: string) => void
-  onRefine: (repoUrl: string) => void
+  onChoose: (repoUrl: string, excludeGenerated: boolean) => void
 }
 
-export function Chat({ messages, busy, onSubmit, onLogin, onRefine }: Props) {
+export function Chat({ messages, busy, onSubmit, onLogin, onChoose }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -23,8 +23,15 @@ export function Chat({ messages, busy, onSubmit, onLogin, onRefine }: Props) {
     <main className="flex min-h-0 flex-1 flex-col">
       <div className="flex-1 overflow-y-auto px-4 sm:px-6">
         <div className="mx-auto flex max-w-2xl flex-col gap-2.5 py-6" aria-live="polite">
-          {messages.map((message) => (
-            <Bubble key={message.id} message={message} busy={busy} onLogin={onLogin} onRefine={onRefine} />
+          {messages.map((message, index) => (
+            <Bubble
+              key={message.id}
+              message={message}
+              busy={busy}
+              isLast={index === messages.length - 1}
+              onLogin={onLogin}
+              onChoose={onChoose}
+            />
           ))}
           {busy && <TypingDots />}
           <div ref={bottomRef} />

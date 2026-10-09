@@ -213,7 +213,8 @@ function toPublic({ key: _key, ...stats }: Ranked): ContributorStats {
 
 export async function runAnalysis(options: {
   url: string
-  excludeGenerated: boolean
+  /** 아직 정하지 않았다면 undefined. 레포를 확인한 뒤 사용자에게 먼저 물어봐요. */
+  excludeGenerated: boolean | undefined
   requester: Requester | null
   emit: Emit
   isAborted: () => boolean
@@ -251,6 +252,14 @@ export async function runAnalysis(options: {
     return
   }
 
+  if (excludeGenerated === undefined) {
+    emit({
+      type: 'ask',
+      text: `레포를 찾았어요. lock 파일, 빌드 결과물, 자동 생성 파일은 라인 수에서 빼고 계산할까요? 빼고 계산하면 더 정확하지만, 커밋을 하나씩 읽어서 시간이 더 걸리고 최근 ${formatNumber(MAX_COMMITS)}개 커밋까지만 살펴봐요.`,
+    })
+    return
+  }
+
   // 비공개 레포의 결과는 사용자별로 따로 캐싱해서 다른 사람에게 보이지 않게 해요.
   // 접근 권한은 위에서 요청자의 토큰으로 매번 다시 확인해요.
   const scope = repo.private ? `user:${requester!.id}` : 'public'
@@ -272,37 +281,29 @@ export async function runAnalysis(options: {
     // 아래에서 await하기 전에 실패해도 처리되지 않은 거절로 남지 않게 해요.
     collecting.catch(() => {})
 
-    let repoSummary = ''
-    if (excludeGenerated) {
-      emit({
-        type: 'text',
-        text: '커밋을 하나씩 살펴보면서 lock 파일, 빌드 결과물, 자동 생성 파일, 바이너리 파일은 빼고 다시 계산할게요.',
-      })
-    } else {
-      const [readme, tree, languages] = await Promise.all([
-        gh.getReadme(owner, repoName),
-        gh.getTree(owner, repoName, repo.default_branch),
-        gh.getLanguages(owner, repoName),
-      ])
+    const [readme, tree, languages] = await Promise.all([
+      gh.getReadme(owner, repoName),
+      gh.getTree(owner, repoName, repo.default_branch),
+      gh.getLanguages(owner, repoName),
+    ])
 
-      repoSummary = summaryCache.get(baseKey) ?? ''
-      if (!repoSummary && aiEnabled) {
-        try {
-          repoSummary = await summarizeRepo({
-            fullName: repo.full_name,
-            description: repo.description,
-            languages,
-            tree: compactTree(tree),
-            readme: truncate(readme, README_LIMIT),
-          })
-          summaryCache.set(baseKey, repoSummary)
-        } catch (err) {
-          console.error(err)
-          cacheable = false
-        }
+    let repoSummary = summaryCache.get(baseKey) ?? ''
+    if (!repoSummary && aiEnabled) {
+      try {
+        repoSummary = await summarizeRepo({
+          fullName: repo.full_name,
+          description: repo.description,
+          languages,
+          tree: compactTree(tree),
+          readme: truncate(readme, README_LIMIT),
+        })
+        summaryCache.set(baseKey, repoSummary)
+      } catch (err) {
+        console.error(err)
+        cacheable = false
       }
-      emit({ type: 'text', text: repoSummary || sanitize(fallbackSummary(repo, languages)) })
     }
+    emit({ type: 'text', text: repoSummary || sanitize(fallbackSummary(repo, languages)) })
 
     const collected = await collecting
     const ranked = rank(collected.people)
@@ -318,20 +319,18 @@ export async function runAnalysis(options: {
     }
 
     const detailed = ranked.slice(0, MAX_DETAILED)
-    const withProfiles = !excludeGenerated && aiEnabled
+    const withProfiles = aiEnabled
 
-    if (!excludeGenerated) {
-      emit({
-        type: 'text',
-        text:
-          ranked.length === 1
-            ? '참여한 사람은 1명이에요. 이제 분석을 시작할게요.'
-            : `참여한 사람은 총 ${formatNumber(ranked.length)}명이에요. 이제 분석을 시작할게요.`,
-      })
-      if (!aiEnabled) {
-        cacheable = false
-        emit({ type: 'text', text: 'AI 분석이 설정되어 있지 않아서 지금은 수치만 보여드릴게요.' })
-      }
+    emit({
+      type: 'text',
+      text:
+        ranked.length === 1
+          ? '참여한 사람은 1명이에요. 이제 분석을 시작할게요.'
+          : `참여한 사람은 총 ${formatNumber(ranked.length)}명이에요. 이제 분석을 시작할게요.`,
+    })
+    if (!aiEnabled) {
+      cacheable = false
+      emit({ type: 'text', text: 'AI 분석이 설정되어 있지 않아서 지금은 수치만 보여드릴게요.' })
     }
 
     // 역할과 코드 스타일 분석은 미리 한꺼번에 시작해 두고, 화면에는 기여도 순서대로 내보내요.
@@ -383,11 +382,10 @@ export async function runAnalysis(options: {
     emit({
       type: 'summary',
       text: excludeGenerated
-        ? 'lock 파일과 빌드 결과물을 빼고 다시 계산한 전체 기여도예요.'
+        ? '마지막으로 전체 기여도를 한눈에 비교해 봤어요. 라인 수는 lock 파일과 빌드 결과물을 빼고 계산했어요.'
         : '마지막으로 전체 기여도를 한눈에 비교해 봤어요.',
       contributors: ranked.slice(0, MAX_CHART).map(toPublic),
       othersCount: Math.max(0, ranked.length - MAX_CHART),
-      canRefine: !excludeGenerated,
     })
 
     if (cacheable && !isAborted()) resultCache.set(resultKey, recorded)

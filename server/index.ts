@@ -81,7 +81,7 @@ app.post('/api/analyze', async (req, res) => {
       const { user, token } = req.session
       await runAnalysis({
         url: body.url,
-        excludeGenerated: body.excludeGenerated === true,
+        excludeGenerated: typeof body.excludeGenerated === 'boolean' ? body.excludeGenerated : undefined,
         requester: user && token ? { id: user.id, token } : null,
         emit,
         isAborted: () => closed,
