@@ -18,6 +18,8 @@ interface Props {
   onSend: (request: AnalyzeRequest, userText?: string) => void
   /** 넓은 화면에서 채팅 옆에 붙여 두는 메뉴로 그릴 때 true. 타자 효과 없이 칸을 꽉 채워서 보여줘요. */
   docked?: boolean
+  /** 다른 레포 분석하기를 눌렀을 때 메인 화면으로 돌아가요. */
+  onNewRepo?: () => void
 }
 
 const actionButton =
@@ -28,7 +30,7 @@ const quietButton =
 
 const WIDE_TYPES = new Set(['ranking', 'summary', 'list', 'chart', 'facts', 'stack', 'pick'])
 
-export function Bubble({ message, busy, isLast, onSend, docked = false }: Props) {
+export function Bubble({ message, busy, isLast, onSend, docked = false, onNewRepo }: Props) {
   // 글이 타자를 치듯 다 나타난 뒤에 카드, 그래프, 버튼 같은 나머지 내용을 보여줘요.
   const [typed, setTyped] = useState(docked || !(message.from === 'bot' && message.live))
   if (message.from === 'user') {
@@ -165,11 +167,18 @@ export function Bubble({ message, busy, isLast, onSend, docked = false }: Props)
           </div>
         )}
 
-        {event.type === 'error' && event.action === 'retry' && request && (
-          <div>
-            <button type="button" disabled={locked} onClick={retry} className={`${actionButton} mb-1.5`}>
-              다시 시도
-            </button>
+        {event.type === 'error' && ((event.action === 'retry' && request) || (event.home && onNewRepo)) && (
+          <div className="mb-1.5 flex flex-wrap gap-2">
+            {event.action === 'retry' && request && (
+              <button type="button" disabled={locked} onClick={retry} className={actionButton}>
+                다시 시도하기
+              </button>
+            )}
+            {event.home && onNewRepo && (
+              <button type="button" disabled={locked} onClick={onNewRepo} className={quietButton}>
+                다른 레포 분석하기
+              </button>
+            )}
           </div>
         )}
       </>

@@ -14,6 +14,8 @@ interface Props {
   readOnly: boolean
   onResume: () => void
   onHome: () => void
+  /** 오류 말풍선의 다른 레포 분석하기. 잃을 작업이 없어서 확인 없이 바로 메인 화면으로 가요. */
+  onNewRepo: () => void
   onSend: (request: AnalyzeRequest, userText?: string) => void
 }
 
@@ -28,7 +30,7 @@ const FOCUS_MIN_OPACITY = 0.3
 /** 이만큼 스크롤되면 흐림 효과가 온전히 적용돼요. */
 const FOCUS_RAMP_PX = 240
 
-export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHome }: Props) {
+export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHome, onNewRepo }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
   const lastScrollTop = useRef(0)
@@ -130,6 +132,7 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
                 busy={busy || readOnly}
                 isLast={index === messages.length - 1}
                 onSend={onSend}
+                onNewRepo={onNewRepo}
               />
             </div>
           ))}

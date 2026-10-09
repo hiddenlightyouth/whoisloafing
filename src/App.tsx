@@ -191,6 +191,7 @@ export default function App() {
           onResume={resume}
           onSend={send}
           onHome={handleHome}
+          onNewRepo={goHome}
         />
       )}
       {confirmingLeave && <LeaveDialog onStay={handleStay} onLeave={handleLeave} />}

@@ -78,8 +78,8 @@ export type ChatEvent =
   | { type: 'pick'; text: string; people: FollowupPerson[]; top: number; max: number }
   /** 분석을 시작하기 전에 lock 파일과 빌드 결과물을 뺄지 물어봐요. */
   | { type: 'ask'; text: string }
-  /** action이 있으면 말풍선 안에 다시 시도 버튼을 보여줘요. */
-  | { type: 'error'; text: string; action?: 'retry' }
+  /** action이 있으면 말풍선 안에 다시 시도하기 버튼을, home이 true면 다른 레포 분석하기 버튼을 보여줘요. */
+  | { type: 'error'; text: string; action?: 'retry'; home?: boolean }
   /** 한 단계가 끝났어요. 사용자가 계속하기를 누를 때까지 다음 말풍선을 올리지 않아요. next는 다음 단계 안내예요. */
   | { type: 'pause'; next: string }
   | { type: 'done' }

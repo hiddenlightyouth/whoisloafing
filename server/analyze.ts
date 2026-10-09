@@ -62,7 +62,10 @@ function repoErrorEvent(err: unknown): ChatEvent {
       // 비공개 레포도 GitHub가 404로 알려줘서, 없는 레포와 구분할 수 없어요.
       return {
         type: 'error',
-        text: '레포를 찾을 수 없어요. 주소가 틀렸거나 **비공개 레포**일 수 있어요. 비공개 레포는 분석할 수 없어요.',
+        text: '찾을 수 없거나 접근할 수 없는 레포지토리예요.\n아직 비공개 상태인 레포는 분석할 수 없어요.',
+        // 방금 공개로 바꿨을 수도 있어서 다시 시도할 수 있게 하고, 다른 레포로 넘어가는 길도 같이 보여줘요.
+        action: 'retry',
+        home: true,
       }
     }
     if (err.status === 401) {
