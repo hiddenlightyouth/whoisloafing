@@ -641,12 +641,54 @@ export function followupEvent(people: FollowupPerson[], options: { text?: string
   }
 }
 
-/** 레포 소개 직후에 보여주는 메뉴예요. 참여자 목록을 받지 못해도 메뉴는 보여줘요. */
-export async function menuEvent(gh: GitHub, owner: string, repo: string, cacheKey: string): Promise<ChatEvent> {
-  const people = await loadInsights(gh, owner, repo, cacheKey)
-    .then((insights) => listPeople(insights.commits).map(({ id, name }) => ({ id, name })))
-    .catch(() => [] as FollowupPerson[])
-  return followupEvent(people, { text: MENU_TEXT, analysis: true })
+/**
+ * 레포 소개 직후에 보여주는 기본 정보와 메뉴예요.
+ * 커밋 목록을 받지 못하면 기본 정보는 건너뛰고 메뉴만 보여줘요.
+ */
+export async function introEvents(options: {
+  gh: GitHub
+  owner: string
+  repo: string
+  cacheKey: string
+  /** 레포가 만들어진 시각과 마지막으로 푸시된 시각 */
+  createdAt: string
+  pushedAt: string | null
+  timeZone?: string
+}): Promise<ChatEvent[]> {
+  const insights = await loadInsights(options.gh, options.owner, options.repo, options.cacheKey).catch(() => null)
+  const people = insights ? listPeople(insights.commits) : []
+  const menu = followupEvent(
+    people.map(({ id, name }) => ({ id, name })),
+    { text: MENU_TEXT, analysis: true },
+  )
+  if (!insights || people.length === 0) return [menu]
+
+  const clock = createClock(options.timeZone ?? 'Asia/Seoul')
+  const day = (iso: string | null) => {
+    const at = Date.parse(iso ?? '')
+    return Number.isNaN(at) ? null : dateLabel(clock(at))
+  }
+  // 커밋이 많아서 일부만 받았다면, 세어 본 숫자가 전체보다 적을 수 있어요.
+  const more = insights.capped ? ' 이상' : ''
+  const created = day(options.createdAt)
+  const pushed = day(options.pushedAt)
+  const facts: ChatEvent = {
+    type: 'facts',
+    text:
+      people.length === 1 && !insights.capped
+        ? '**혼자서** 만든 프로젝트네요!'
+        : `**${formatNumber(people.length)}명${more}**이 함께한 프로젝트네요!`,
+    items: [
+      ...(created ? [{ label: '레포를 만든 날', value: created }] : []),
+      ...(pushed ? [{ label: '마지막으로 올린 날', value: pushed }] : []),
+      { label: '참여자', value: `${formatNumber(people.length)}명${more}` },
+      { label: '커밋', value: `${formatNumber(insights.commits.length)}개${more}` },
+      ...(insights.pulls.length > 0
+        ? [{ label: 'PR', value: `${formatNumber(insights.pulls.length)}개${insights.pulls.length >= 100 ? ' 이상' : ''}` }]
+        : []),
+    ],
+  }
+  return [facts, menu]
 }
 
 /** 메뉴에서 고른 질문에 답해요. 커밋 목록과 PR 목록만으로 계산해요. */

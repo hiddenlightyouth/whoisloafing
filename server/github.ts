@@ -24,6 +24,7 @@ export interface Repo {
   description: string | null
   private: boolean
   default_branch: string
+  created_at: string
   pushed_at: string | null
   size: number
   owner: { login: string }

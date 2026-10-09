@@ -14,7 +14,7 @@ import {
   rank,
   type Collected,
 } from './stats.ts'
-import { answerFollowup, followupEvent, menuEvent, personId, rememberFeatures } from './insights.ts'
+import { answerFollowup, followupEvent, introEvents, personId, rememberFeatures } from './insights.ts'
 import { formatNumber, sanitize, truncate } from './text.ts'
 
 /** 역할과 코드 스타일까지 자세히 소개하는 최대 인원 */
@@ -383,8 +383,16 @@ export async function runAnalysis(options: {
 
   // 먼저 어떤 레포인지 한 문장으로 소개한 다음, 무엇부터 볼지 메뉴로 물어봐요.
   if (excludeGenerated === undefined && !options.start) {
-    // 메뉴에 넣을 참여자 목록은 소개를 쓰는 동안 같이 받아 둬요.
-    const menu = menuEvent(gh, owner, repoName, baseKey)
+    // 기본 정보와 메뉴에 넣을 커밋 목록은 소개를 쓰는 동안 같이 받아 둬요.
+    const intro = introEvents({
+      gh,
+      owner,
+      repo: repoName,
+      cacheKey: baseKey,
+      createdAt: repo.created_at,
+      pushedAt: repo.pushed_at,
+      timeZone: options.timeZone,
+    })
     try {
       const summary = await describeRepo(gh, repo, baseKey)
       options.emit({ type: 'text', text: summary.text })
@@ -395,7 +403,7 @@ export async function runAnalysis(options: {
       options.emit(repoErrorEvent(err))
       return
     }
-    options.emit(await menu)
+    for (const event of await intro) options.emit(event)
     return
   }
 
