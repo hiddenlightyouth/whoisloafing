@@ -48,9 +48,6 @@ interface TeamDocs {
   templateFiles: { name: string; path: string; content: string }[]
 }
 
-/** 템플릿 하나를 보여줄 때의 최대 길이 */
-const TEMPLATE_LIMIT = 2000
-
 type Emit = (event: ChatEvent) => void
 
 /** 질문마다 설명에서 짚어 주면 좋은 관점이에요. */
@@ -485,10 +482,8 @@ async function loadTeamDocs(gh: GitHub, owner: string, repo: string, files: stri
     const fallback = workflowPaths[index].split('/').pop()!.replace(/\.ya?ml$/i, '')
     return sanitize(name ?? fallback).slice(0, 40)
   })
-  const clip = (content: string) => {
-    const body = content.replace(/\r\n/g, '\n').trim()
-    return body.length > TEMPLATE_LIMIT ? `${body.slice(0, TEMPLATE_LIMIT)}\n(뒤는 생략했어요)` : body
-  }
+  // 복사해서 그대로 쓰는 파일이라 자르지 않고 전부 보여줘요.
+  const clip = (content: string) => content.replace(/\r\n/g, '\n').trim()
   const templateFiles = [
     ...(templatePath && template.trim() ? [{ name: 'PR 템플릿', path: templatePath, content: clip(template) }] : []),
     ...issuePaths
