@@ -231,6 +231,119 @@
   }
 }
 
+/* 아티클 본문. 마크다운을 변환한 태그에 직접 모양을 입혀요. */
+.article {
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--color-gray-700);
+}
+
+.article > * + * {
+  margin-top: 1.1em;
+}
+
+.article h2 {
+  margin-top: 2.6em;
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--color-gray-900);
+}
+
+.article h3 {
+  margin-top: 2em;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--color-gray-900);
+}
+
+.article strong {
+  font-weight: 600;
+  color: var(--color-gray-900);
+}
+
+.article a {
+  color: var(--color-brand);
+}
+
+.article a:hover {
+  color: var(--color-brand-hover);
+}
+
+.article ul,
+.article ol {
+  padding-left: 1.3em;
+}
+
+.article ul {
+  list-style: disc;
+}
+
+.article ol {
+  list-style: decimal;
+}
+
+.article li + li {
+  margin-top: 0.45em;
+}
+
+.article li::marker {
+  color: var(--color-gray-400);
+}
+
+.article blockquote {
+  border-left: 2px solid var(--color-gray-200);
+  padding-left: 1em;
+  color: var(--color-gray-500);
+}
+
+.article code {
+  border-radius: 6px;
+  background: var(--color-gray-100);
+  padding: 0.15em 0.4em;
+  font-size: 0.875em;
+  letter-spacing: 0;
+  color: var(--color-gray-800);
+}
+
+.article pre {
+  overflow-x: auto;
+  border-radius: 12px;
+  background: var(--color-gray-50);
+  border: 1px solid var(--color-gray-100);
+  padding: 1em 1.15em;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.article pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+
+.article table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14.5px;
+  line-height: 1.65;
+}
+
+.article th,
+.article td {
+  border-bottom: 1px solid var(--color-gray-100);
+  padding: 0.7em 0.9em 0.7em 0;
+  text-align: left;
+  vertical-align: top;
+}
+
+.article th {
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--color-gray-900);
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

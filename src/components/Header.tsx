@@ -14,11 +14,13 @@ interface Props {
   shared: boolean
   onShare: () => Promise<boolean>
   onCopyLink: () => Promise<boolean>
+  /** 아티클 화면으로 가요. 진행 중인 채팅이 있을 때는 넘기지 않아서 링크가 보이지 않아요. */
+  onArticles?: () => void
 }
 
 const quiet = 'h-8 rounded-full px-3 text-[13px] font-medium transition-colors'
 
-export function Header({ onHome, inChat, storage, busy, shared, onShare, onStop, onCopyLink }: Props) {
+export function Header({ onHome, inChat, storage, busy, shared, onShare, onStop, onCopyLink, onArticles }: Props) {
   const [confirming, setConfirming] = useState(false)
   const [working, setWorking] = useState(false)
   const [notice, setNotice] = useState('')
@@ -69,6 +71,19 @@ export function Header({ onHome, inChat, storage, busy, shared, onShare, onStop,
           <span role="status" className="animate-rise text-xs text-gray-500">
             {notice}
           </span>
+        )}
+
+        {onArticles && (
+          <a
+            href="/articles"
+            onClick={(event) => {
+              event.preventDefault()
+              onArticles()
+            }}
+            className={`${quiet} inline-flex items-center text-gray-600 hover:text-gray-900`}
+          >
+            아티클
+          </a>
         )}
 
         {shared ? (

@@ -33,7 +33,7 @@ GitHub 레포 링크를 입력하면 참여자별 기여도를 분석해서 채�
 - 타이틀, 설명, 입력창은 한 덩어리로 묶어서 화면 정중앙에 둬요. 입력창은 반투명 배경에 블러를 줘서 뒤의 배경이 흐릿하게 비쳐요. 입력창에 포커스가 가도 테두리 색이나 바깥 링은 바뀌지 않아요.
 - 메인 화면 배경에는 GitHub 기여도 그래프처럼 생긴 작은 칸들이 아주 옅게 반짝이고, 지렁이 몇 마리가 칸을 따라 기어다니면서 켜진 칸을 먹어요. 지렁이들은 돌아가면서 머리 위 작은 말풍선으로 한마디씩 말해요. 이 서비스가 해 주는 일을 알려 주는 말과 지렁이다운 혼잣말을 섞어 두고, 들어올 때마다 순서를 섞어요. 문구는 `ContributionBackdrop`의 `WORM_LINES`에 있어요. 지렁이는 헤더 뒤로 들어가지 않고, 머리 위 말풍선까지 헤더 아래에 다 보이는 곳에서만 다녀요. 가운데 타이틀과 입력창 주변은 비워 두고, 움직임 줄이기 설정에서는 멈춰 있어요.
 - 헤더는 화면 위에 겹쳐 있고 반투명 흰 배경에 배경 블러를 줘서, 채팅이 헤더 아래로 흐리게 비쳐요.
-- 헤더 왼쪽에는 로고, 오른쪽에는 채팅 화면에서만 중단하기 또는 공유하기 버튼을 둬요.
+- 헤더 왼쪽에는 로고, 오른쪽에는 아티클 링크와, 채팅 화면에서만 중단하기 또는 공유하기 버튼을 둬요. 아티클 링크는 내가 진행 중인 채팅이 있을 때는 숨겨서, 눌렀다가 작업을 잃지 않게 해요.
 
 ## 기술 스택
 
@@ -43,6 +43,7 @@ GitHub 레포 링크를 입력하면 참여자별 기여도를 분석해서 채�
 - 배포: Cloudflare Workers (정적 파일 assets와 Worker 코드)
 - 저장소: Supabase (Postgres). 서버에서 service role 키로만 접근하고, 브라우저는 직접 붙지 않아요.
 - 분석 도구: Google Analytics 4 (`VITE_GA_MEASUREMENT_ID`가 있을 때만 켜짐)
+- 아티클: 마크다운 파일을 `marked`로 변환해서 보여줘요.
 - AI: Claude API (`@anthropic-ai/sdk`, 기본 모델 `claude-haiku-5-5`, 구조화된 출력으로 JSON을 받고 zod로 검증)
 
 GitHub API, Claude API 호출은 모두 서버에서 해요. 키와 토큰은 클라이언트에 절대 노출하지 않아요.
@@ -56,6 +57,7 @@ public/og.png         링크 미리보기 카드에 뜨는 대표 이미지 (120
 .env.production       배포용 빌드에 들어가는 공개 값 (GA 측정 ID)
 shared/types.ts       서버와 클라이언트가 함께 쓰는 타입 (채팅 이벤트, 참여자 수치)
 shared/repo.ts        GitHub 레포 링크 판별
+articles/             아티클 원문 (마크다운 파일, 글 하나에 파일 하나)
 supabase/schema.sql   Supabase 테이블 정의 (chats, ai_usage, ai_usage_daily 뷰)
 server/
   index.ts            Node에서 돌릴 때의 진입점. Express로 요청을 받아서 handlers에 넘겨요.
@@ -77,8 +79,9 @@ src/
   index.css           Tailwind 테마 토큰, 자간, 애니메이션
   lib/api.ts          서버 호출, SSE 스트림 읽기, 브라우저 소유자 키
   lib/analytics.ts    Google Analytics 이벤트 전송
+  lib/articles.ts     아티클 마크다운 읽기와 변환
   hooks/useAnalysis.ts  채팅 메시지 큐, 입력 중 표시 타이밍
-  components/         Header, Logo, Hero, ContributionBackdrop, RepoInput, Chat, Bubble, TypingDots, RichText, PeoplePicker, AssistantOrb, LeaveDialog, RankingCarousel, StatsCard, SummaryChart, Charts, Followup
+  components/         Header, Logo, Hero, ContributionBackdrop, RepoInput, Chat, Bubble, TypingDots, RichText, Articles, PeoplePicker, AssistantOrb, LeaveDialog, RankingCarousel, StatsCard, SummaryChart, Charts, Followup
 ```
 
 ## 실행 방법
@@ -160,6 +163,19 @@ Supabase 프로젝트의 SQL Editor에서 `supabase/schema.sql`을 한 번 실�
 - 헤더 오른쪽에는 분석 중일 때 중단하기 버튼이, 그 밖에는 공유하기 버튼이 보여요. 저장 기능(Supabase)이 꺼져 있으면 공유하기를 눌렀을 때 공유할 수 없다고 안내해요. 공유하면 `shared_at`이 기록되고, 그 뒤로는 링크를 아는 누구나 열람할 수 있지만 아무도 이어서 작업할 수 없어요. 서버도 공유된 채팅의 분석 요청을 거절해요.
 - 공유는 되돌릴 수 없어서, 누르기 전에 확인 창으로 한 번 더 물어봐요.
 
+## 아티클
+
+헤더의 아티클 링크로 들어가는 읽을거리예요. 주소는 목록이 `/articles`, 글 하나가 `/articles/{이름}`이에요.
+
+- 글은 저장소의 `articles` 폴더에 마크다운 파일로 보관해요. 파일을 추가하고 다시 빌드하면 목록에 나오고, 코드는 고치지 않아도 돼요.
+- 파일 이름은 `순서-주소.md` 형식이에요. 앞의 숫자는 목록 순서를 정하고, 주소에는 숫자를 뗀 나머지가 쓰여요. (`03-project-to-portfolio.md`는 `/articles/project-to-portfolio`)
+- 파일 맨 위의 `---` 사이에 `title`, `description`, `date`(2026-10-10 형식)를 적어요. 본문은 제목 2단계(`##`)부터 쓰고, 글 제목은 `title`로만 적어요.
+- 본문 모양은 `src/index.css`의 `.article` 규칙으로 입혀요. 제목, 목록, 표, 인용, 코드를 지원해요.
+- 글 아래에는 레포 분석하러 가기 버튼과 다음 글 링크가 자동으로 붙어요. 글을 열면 탭 제목이 글 제목으로 바뀌어요.
+- 글도 화면에 노출되는 문구라서 아래의 텍스트 작성 규칙을 그대로 지켜요. 굵게 강조하는 부분 바로 뒤에 조사가 붙을 때, 강조가 따옴표나 괄호로 끝나면 변환이 되지 않으니 한 칸 띄어요.
+- 서비스가 하는 일을 설명하는 내용이 많아서, 기능이 바뀌면 글도 같이 확인해요.
+- 아티클 화면과 변환 코드는 아티클을 열 때만 받아서, 메인 화면이 무거워지지 않아요.
+
 ## AI 사용량 기록
 
 Claude를 한 번 부를 때마다(실패와 재시도 포함) `ai_usage`에 한 줄을 남겨요. 채팅 ID, 목적(`repo_summary`, `contributor_profile`, `narration`), 대상, 모델, 성공 여부와 오류, 시스템 프롬프트와 사용자 프롬프트 전문, 응답 전문, 입력과 출력 토큰 수(생각에 쓴 토큰은 출력에 포함), 걸린 시간이 들어가요. 프롬프트에는 분석 대상 레포의 README와 diff가 그대로 들어 있어요. 날짜별 합계는 `ai_usage_daily` 뷰로 봐요. 기록은 분석을 기다리게 하지 않고, 실패해도 분석은 계속돼요.
@@ -170,7 +186,7 @@ Claude를 한 번 부를 때마다(실패와 재시도 포함) `ai_usage`에 한
 
 | 이벤트 | 언제 | 주요 값 |
 | --- | --- | --- |
-| `page_view` | 화면이 바뀔 때 | `screen`(home, chat, shared_chat), `repo`, `is_owner` |
+| `page_view` | 화면이 바뀔 때 | `screen`(home, chat, shared_chat, articles, article), `repo`, `is_owner`, `slug` |
 | `repo_submit` | 메인 화면에서 링크를 냈을 때 | `repo` |
 | `repo_invalid_input` | 링크가 아닌 값을 냈을 때 | `length`, `looks_like_url` |
 | `menu_analysis_select` | 메뉴에서 기여도 분석을 골랐을 때 | `repo` |
@@ -192,10 +208,13 @@ Claude를 한 번 부를 때마다(실패와 재시도 포함) `ai_usage`에 한
 | `leave_confirm_open`, `leave_confirm`, `leave_cancel` | 분석 중에 로고를 눌러 확인 창이 뜨고, 떠나거나 남았을 때 | `message_count` |
 | `home_click` | 로고나 홈 버튼으로 돌아갈 때 | `from` |
 | `team_link_click` | 팀 홈페이지 링크를 눌렀을 때 | |
+| `article_nav_click` | 헤더의 아티클 링크를 눌렀을 때 | `from` |
+| `article_cta_click` | 글 아래의 레포 분석하러 가기를 눌렀을 때 | `slug` |
 
 ## 현재까지 구현된 기능
 
 - 메인 화면 (헤더, 타이틀, 설명, 레포 링크 입력창, 분석 버튼)
+- 아티클 목록과 글 화면 (위의 아티클 절 참고)
 - 레포 한 문장 정의, 참여자별 맡은 기능 목록과 코드 스타일 목록(둘 다 번호가 붙은 목록 말풍선)
 - 참여자별 수치 카드는 말풍선 하나 안에서 기여도 순서대로 좌우로 넘겨 봐요. (터치 스와이프, 마우스 드래그, 아래 점 표시)
 - 전체 기여도 비교는 말풍선 하나에 커밋 수 기준과 라인 수 기준 막대 그래프를 나란히 보여줘요.

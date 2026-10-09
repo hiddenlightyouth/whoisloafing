@@ -37,13 +37,25 @@ export function track(event: string, params: Params = {}): void {
   window.gtag('event', event, params)
 }
 
+const PAGE_TITLES = {
+  home: 'WhoIsLoafing',
+  chat: 'WhoIsLoafing 분석',
+  shared_chat: 'WhoIsLoafing 공유된 분석',
+  articles: 'WhoIsLoafing 아티클',
+  article: 'WhoIsLoafing 아티클',
+}
+
 /** 화면이 바뀔 때마다 불러요. 채팅 ID는 경로에 넣지 않고 따로 보내서 보고서의 경로가 흩어지지 않게 해요. */
-export function trackPageView(screen: 'home' | 'chat' | 'shared_chat', params: Params = {}): void {
-  const path = screen === 'home' ? '/' : '/c/[id]'
+export function trackPageView(
+  screen: 'home' | 'chat' | 'shared_chat' | 'articles' | 'article',
+  params: Params = {},
+): void {
+  const path =
+    screen === 'home' ? '/' : screen === 'articles' ? '/articles' : screen === 'article' ? `/articles/${params.slug}` : '/c/[id]'
   track('page_view', {
     page_path: path,
     page_location: `${window.location.origin}${path}`,
-    page_title: screen === 'home' ? 'WhoIsLoafing' : screen === 'chat' ? 'WhoIsLoafing 분석' : 'WhoIsLoafing 공유된 분석',
+    page_title: PAGE_TITLES[screen],
     screen,
     ...params,
   })

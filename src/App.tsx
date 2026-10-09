@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { Chat } from './components/Chat'
 import { Header } from './components/Header'
 import { Hero } from './components/Hero'
@@ -10,6 +10,17 @@ import { fetchChat, fetchStorageEnabled, shareChat } from './lib/api'
 const CHAT_PATH = /^\/c\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i
 
 const chatIdFromPath = () => CHAT_PATH.exec(window.location.pathname)?.[1] ?? null
+
+const ARTICLE_PATH = /^\/articles(?:\/([^/]+))?\/?$/
+
+/** 아티클 주소면 보고 있는 글을 돌려줘요. slug가 null이면 목록이에요. */
+function articleFromPath(): { slug: string | null } | null {
+  const match = ARTICLE_PATH.exec(window.location.pathname)
+  return match ? { slug: match[1] ?? null } : null
+}
+
+// 아티클 글과 마크다운 변환 코드는 아티클 화면을 열 때만 받아요.
+const Articles = lazy(() => import('./components/Articles').then((module) => ({ default: module.Articles })))
 
 async function copyLink(): Promise<boolean> {
   try {
@@ -28,13 +39,24 @@ export default function App() {
   const [chat, setChat] = useState<{ mine: boolean; shared: boolean } | null>(null)
   const [opening, setOpening] = useState(() => chatIdFromPath() !== null)
   const [missing, setMissing] = useState(false)
+  /** 아티클 화면을 보고 있는지. slug가 null이면 목록이에요. */
+  const [article, setArticle] = useState(articleFromPath)
   /** 분석 중에 로고를 눌렀을 때 정말 떠날지 묻는 창 */
   const [confirmingLeave, setConfirmingLeave] = useState(false)
 
   // 주소에 맞는 화면을 준비해요. 처음 들어왔을 때와 뒤로 가기, 앞으로 가기에서 불러요.
   const openFromLocation = useCallback(async () => {
     const id = chatIdFromPath()
+    const nextArticle = articleFromPath()
     setMissing(false)
+    setArticle(nextArticle)
+    if (nextArticle) {
+      reset()
+      setChat(null)
+      setOpening(false)
+      trackPageView(nextArticle.slug ? 'article' : 'articles', { slug: nextArticle.slug ?? undefined })
+      return
+    }
     if (!id) {
       reset()
       setChat(null)
@@ -88,12 +110,26 @@ export default function App() {
 
   const goHome = useCallback(() => {
     if (!reset()) return
-    track('home_click', { from: chat?.shared ? 'shared_chat' : messages.length > 0 ? 'chat' : 'home' })
+    track('home_click', { from: article ? 'articles' : chat?.shared ? 'shared_chat' : messages.length > 0 ? 'chat' : 'home' })
     setChat(null)
     setMissing(false)
+    setArticle(null)
     if (window.location.pathname !== '/') window.history.pushState(null, '', '/')
     trackPageView('home')
-  }, [chat, messages.length, reset])
+  }, [article, chat, messages.length, reset])
+
+  /** 아티클 목록(slug가 null)이나 글 하나를 열어요. */
+  const openArticle = useCallback(
+    (slug: string | null) => {
+      if (!reset()) return
+      setChat(null)
+      setMissing(false)
+      setArticle({ slug })
+      window.history.pushState(null, '', slug ? `/articles/${slug}` : '/articles')
+      trackPageView(slug ? 'article' : 'articles', { slug: slug ?? undefined })
+    },
+    [reset],
+  )
 
   // 공유된 채팅과 다른 브라우저에서 만든 채팅은 읽기만 할 수 있어요.
   const readOnly = chat !== null && (chat.shared || !chat.mine)
@@ -162,8 +198,20 @@ export default function App() {
         shared={chat?.shared === true}
         onShare={handleShare}
         onCopyLink={handleCopyLink}
+        onArticles={
+          working
+            ? undefined
+            : () => {
+                track('article_nav_click', { from: article ? 'articles' : messages.length > 0 ? 'chat' : 'home' })
+                openArticle(null)
+              }
+        }
       />
-      {opening ? (
+      {article ? (
+        <Suspense fallback={<main className="flex-1" />}>
+          <Articles slug={article.slug} onOpen={openArticle} onHome={goHome} />
+        </Suspense>
+      ) : opening ? (
         <main className="flex flex-1 items-center justify-center text-[15px] text-gray-400">채팅을 불러오고 있어요.</main>
       ) : missing ? (
         <main className="flex flex-1 flex-col items-center justify-center gap-4 px-5 text-center">
