@@ -931,8 +931,8 @@ export async function introEvents(options: {
     type: 'facts',
     text:
       people.length === 1 && !insights.capped
-        ? '**혼자서** 만든 프로젝트네요!'
-        : `**${formatNumber(people.length)}명${more}**이 함께한 프로젝트네요!`,
+        ? '🎉 **혼자서** 만든 프로젝트네요!'
+        : `🎉 **${formatNumber(people.length)}명${more}**이 함께한 프로젝트네요!`,
     items: [
       ...(created ? [{ label: '레포를 만든 날', value: created }] : []),
       ...(pushed ? [{ label: '마지막으로 올린 날', value: pushed }] : []),
