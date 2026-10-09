@@ -200,7 +200,7 @@ function topDirectories(commits: CommitDetail[]): string[] {
 
 interface Profile {
   features: string[]
-  style: string
+  style: string[]
 }
 
 async function profileContributor(
@@ -418,13 +418,13 @@ export async function runAnalysis(options: {
     if (withProfiles) {
       // 먼저 모든 참여자의 기능을 이어서 보여주고, 그다음에 코드 스타일을 이어서 보여줘요.
       emit({ type: 'text', text: '누가 어떤 기능을 맡았는지 분석해볼게요!' })
-      const styles: string[] = []
+      const styles: { name: string; items: string[] }[] = []
       for (const [index, card] of cards.entries()) {
         if (isAborted()) return
         const profile = await profiles[index]
         if (profile) {
-          emit({ type: 'features', text: `${card.name}님이 맡은 기능이에요.`, items: profile.features })
-          styles.push(profile.style)
+          emit({ type: 'list', text: `${card.name}님이 맡은 기능이에요.`, items: profile.features })
+          styles.push({ name: card.name, items: profile.style })
         } else {
           cacheable = false
           emit({ type: 'text', text: `${card.name}님이 맡은 기능은 이번에는 분석하지 못했어요.` })
@@ -433,7 +433,13 @@ export async function runAnalysis(options: {
 
       if (styles.length > 0) {
         emit({ type: 'text', text: '참여자의 코드 스타일 분석을 시작할게요.' })
-        for (const style of styles) emit({ type: 'text', text: style })
+        for (const style of styles) {
+          emit(
+            style.items.length > 0
+              ? { type: 'list', text: `${style.name}님의 코드 스타일이에요.`, items: style.items }
+              : { type: 'text', text: `${style.name}님은 살펴볼 코드 변경이 적어서 코드 스타일을 파악하기 어려웠어요.` },
+          )
+        }
       }
     } else {
       cacheable = false

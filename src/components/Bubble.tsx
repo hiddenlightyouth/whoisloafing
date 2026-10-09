@@ -29,7 +29,7 @@ export function Bubble({ message, busy, isLast, onLogin, onChoose }: Props) {
   }
 
   const { event, repoUrl } = message
-  const wide = event.type === 'ranking' || event.type === 'summary' || event.type === 'features'
+  const wide = event.type === 'ranking' || event.type === 'summary' || event.type === 'list'
 
   return (
     <div className="flex animate-rise justify-start">
@@ -42,7 +42,7 @@ export function Bubble({ message, busy, isLast, onLogin, onChoose }: Props) {
 
         {event.type === 'ranking' && <RankingCarousel contributors={event.contributors} />}
 
-        {event.type === 'features' && (
+        {event.type === 'list' && (
           <ul className="mt-3 mb-1.5 divide-y divide-gray-100 rounded-xl bg-white px-4">
             {event.items.map((item, index) => (
               <li key={`${index}:${item}`} className="flex gap-3 py-2.5 text-[14px] leading-snug">

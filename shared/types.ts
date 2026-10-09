@@ -23,8 +23,8 @@ export type ChatEvent =
       contributors: ContributorStats[]
       othersCount: number
     }
-  /** 참여자가 개발한 기능 목록 */
-  | { type: 'features'; text: string; items: string[] }
+  /** 번호가 붙은 목록 말풍선. 참여자가 맡은 기능과 코드 스타일에 써요. */
+  | { type: 'list'; text: string; items: string[] }
   /** 분석을 시작하기 전에 lock 파일과 빌드 결과물을 뺄지 물어봐요. */
   | { type: 'ask'; text: string }
   | { type: 'error'; text: string; action?: 'login' }

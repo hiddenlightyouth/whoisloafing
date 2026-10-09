@@ -23,7 +23,7 @@ const RepoSummary = z.object({
 
 const ContributorProfile = z.object({
   features: z.array(z.string()),
-  style: z.string(),
+  style: z.array(z.string()),
 })
 
 /** 기본 모델이 혼잡하거나 호출 제한에 걸리면 차례로 대신 써 보는 모델이에요. */
@@ -138,7 +138,7 @@ export interface ContributorInput {
 }
 
 /** 참여자가 개발한 기능 목록과 코드 스타일을 분석해요. */
-export async function analyzeContributor(input: ContributorInput): Promise<{ features: string[]; style: string }> {
+export async function analyzeContributor(input: ContributorInput): Promise<{ features: string[]; style: string[] }> {
   const system = `당신은 GitHub 레포지토리 참여자의 커밋 기록을 보고 그 사람이 어떤 기능을 개발했고 어떤 스타일로 코드를 쓰는지 정리하는 분석가예요.
 
 두 가지를 써주세요.
@@ -150,10 +150,12 @@ features: 주로 수정한 파일과 디렉터리, 커밋 메시지, PR 제목�
 - 비슷한 작업은 하나로 묶고, 비중이 큰 기능부터 적어요.
 - 기능 개발이 아닌 작업(리팩토링, 설정, 문서, 배포 등)이 주된 기여라면 "CI 배포 설정", "예외 처리 구조 정리"처럼 그 작업을 항목으로 적어요.
 
-style: 대표 커밋의 diff를 보고 네이밍 규칙, 함수 길이, 주석 습관, 테스트 작성 여부 같은 코드 스타일을 요약해요.
-- 여러 참여자의 결과를 이어서 보여주기 때문에, 누구 이야기인지 알 수 있게 "${input.name}님은"으로 시작해서 한두 문장으로 써요.
-- 예시: "${input.name}님은 함수를 짧게 나누고, 변수 이름을 길고 명확하게 짓는 편이에요."
-- diff가 거의 없거나 설정 파일뿐이라 판단하기 어렵다면, 그렇다고 솔직하게 말해요.
+style: 대표 커밋의 diff를 보고 이 사람의 코드 스타일을 목록으로 정리해요.
+- 네이밍 규칙, 함수 길이와 분리 방식, 주석 습관, 테스트 작성 여부, 예외 처리 방식, 자주 쓰는 문법이나 패턴 같은 관점에서 diff에서 실제로 확인되는 특징만 3개에서 5개 사이로 적어요.
+- 각 항목은 "DTO를 Record로 간결하게 정의", "공개 메서드마다 Javadoc 주석 작성", "함수를 짧게 나누고 이름을 길고 명확하게 지음"처럼 한 가지 특징만 담은 짧은 구로 써요. 문장으로 길게 쓰지 않고, 마침표를 붙이지 않아요.
+- 각 항목은 "~해요", "~하네요", "~하는 편이에요" 같은 서술어로 끝내지 말고 "~ 작성", "~ 정의", "~ 분리", "~ 사용"처럼 명사형으로 끝내요.
+- 누구에게나 해당하는 뻔한 말("가독성이 좋음")은 적지 않아요.
+- diff가 거의 없거나 설정 파일뿐이라 판단하기 어렵다면, 빈 목록으로 두세요.
 
 ${WRITING_RULES}`
 
@@ -179,10 +181,13 @@ ${input.diffs || '없음'}
 ${input.name}님이 개발한 기능 목록과 코드 스타일을 정리해 주세요.`
 
   const result = await ask(system, user, ContributorProfile)
-  const features = result.features
-    .map((item) => sanitize(item).replace(/[.]+$/, ''))
-    .filter(Boolean)
-    .slice(0, 8)
+  const clean = (items: string[], max: number) =>
+    items
+      .map((item) => sanitize(item).replace(/[.]+$/, ''))
+      .filter(Boolean)
+      .slice(0, max)
+
+  const features = clean(result.features, 8)
   if (features.length === 0) throw new Error('개발한 기능을 찾지 못했어요.')
-  return { features, style: sanitize(result.style) }
+  return { features, style: clean(result.style, 5) }
 }
