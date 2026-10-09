@@ -101,7 +101,10 @@ export function Chat({ messages, busy, paused, onResume, onLogin, onSend }: Prop
           ))}
           {/* 말풍선이 하나 올라올 때마다 새로 그려서, 오래 기다릴 때만 문구가 나오게 해요. */}
           {paused ? (
-            <div className="mt-2 flex animate-rise flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="mt-2 flex animate-rise flex-wrap items-center justify-end gap-x-3 gap-y-2">
+              <p className="text-[13px] text-gray-500">
+                다음 단계 <span className="ml-1 font-medium text-gray-900">{paused}</span>
+              </p>
               <button
                 type="button"
                 autoFocus
@@ -113,9 +116,6 @@ export function Chat({ messages, busy, paused, onResume, onLogin, onSend }: Prop
                   <path d="M8 3.5v9M4.5 9L8 12.5 11.5 9" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
-              <p className="text-[13px] text-gray-500">
-                다음 단계 <span className="ml-1 font-medium text-gray-900">{paused}</span>
-              </p>
             </div>
           ) : (
             busy && <TypingDots key={messages.length} />
