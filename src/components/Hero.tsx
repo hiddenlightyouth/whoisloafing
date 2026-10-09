@@ -35,8 +35,8 @@ export function Hero({ onSubmit }: { onSubmit: (url: string) => void }) {
           className="mt-3 mb-7 animate-rise text-balance break-keep text-center text-[13px] leading-relaxed text-gray-500 sm:mb-8 sm:text-[14px]"
           style={{ animationDelay: '250ms' }}
         >
-          GitHub 레포지토리의 링크를 입력하여 통계를 분석해 누가 가장 많이 기여했고, 기여자 별로 어떤 기능을 담당했는지 쉽게 알아볼 수
-          있어요.
+          GitHub Repository 링크를 입력하여 누가 프로젝트에 가장 많이 기여했는지, 어떤 기능을 개발했는지 그리고 이 프로젝트의 협업
+          방식을 알아보거나 훔칠 수도 있답니다.
         </p>
         <div className="animate-rise" style={{ animationDelay: '350ms' }}>
           <RepoInput onSubmit={onSubmit} />

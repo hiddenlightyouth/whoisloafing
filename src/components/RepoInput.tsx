@@ -45,7 +45,7 @@ export function RepoInput({ onSubmit }: { onSubmit: (url: string) => void }) {
             setValue(event.target.value)
             setInvalid(false)
           }}
-          placeholder="깃헙 레포 주소 입력하고 시작하기"
+          placeholder="https://github.com/owner/repository"
           aria-label="GitHub 레포 링크"
           aria-invalid={invalid}
           aria-describedby={invalid ? 'repo-input-error' : undefined}
