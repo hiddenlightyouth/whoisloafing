@@ -1,41 +1,73 @@
 import { useState, type FormEvent } from 'react'
+import { parseRepoUrl } from '../../shared/repo'
 
 export function RepoInput({ onSubmit }: { onSubmit: (url: string) => void }) {
   const [value, setValue] = useState('')
+  const [invalid, setInvalid] = useState(false)
+  // 흔들림이 끝나면 꺼 뒀다가, 잘못된 링크를 다시 내면 또 흔들어요.
+  const [shaking, setShaking] = useState(false)
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     const url = value.trim()
-    if (!url) return
+    if (!parseRepoUrl(url)) {
+      setInvalid(true)
+      setShaking(true)
+      return
+    }
     onSubmit(url)
     setValue('')
   }
 
   return (
-    // 입력창과 버튼을 하나의 둥근 칸 안에 담아요. 반투명한 유리처럼 뒤 배경이 흐릿하게 비쳐요.
-    <form
-      onSubmit={handleSubmit}
-      className="flex h-[52px] w-full items-center rounded-full border border-gray-200/90 bg-white/55 pr-1.5 pl-5 backdrop-blur-md shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.12)]"
-    >
-      <input
-        type="text"
-        inputMode="url"
-        autoComplete="off"
-        autoCapitalize="none"
-        spellCheck={false}
-        autoFocus
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        placeholder="GitHub 레포지토리 링크를 입력해 보세요!"
-        aria-label="GitHub 레포 링크"
-        className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-gray-900 outline-none placeholder:text-gray-400"
-      />
-      <button
-        type="submit"
-        className="h-10 shrink-0 rounded-full bg-brand px-5 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover active:scale-[0.98]"
+    <div className="relative">
+      {/* 입력창과 버튼을 하나의 둥근 칸 안에 담아요. 반투명한 유리처럼 뒤 배경이 흐릿하게 비쳐요. */}
+      <form
+        onSubmit={handleSubmit}
+        onAnimationEnd={() => setShaking(false)}
+        noValidate
+        className={`flex h-[52px] w-full items-center rounded-full border bg-white/55 pr-1.5 pl-5 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.12)] backdrop-blur-md transition-colors ${
+          invalid ? 'border-red-400' : 'border-gray-200/90'
+        } ${shaking ? 'animate-shake' : ''
+        }`}
       >
-        분석
-      </button>
-    </form>
+        <input
+          type="text"
+          inputMode="url"
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          autoFocus
+          value={value}
+          onChange={(event) => {
+            setValue(event.target.value)
+            setInvalid(false)
+          }}
+          placeholder="GitHub 레포지토리 링크를 입력해 보세요!"
+          aria-label="GitHub 레포 링크"
+          aria-invalid={invalid}
+          aria-describedby={invalid ? 'repo-input-error' : undefined}
+          className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-gray-900 outline-none placeholder:text-gray-400"
+        />
+        <button
+          type="submit"
+          className="h-10 shrink-0 rounded-full bg-brand px-5 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover active:scale-[0.98]"
+        >
+          분석
+        </button>
+      </form>
+
+      {invalid && (
+        <p
+          id="repo-input-error"
+          role="alert"
+          className="absolute top-full left-5 mt-2.5 animate-rise rounded-lg bg-red-500 px-3 py-1.5 text-[13px] font-medium text-white shadow-sm"
+        >
+          {/* 입력창을 가리키는 말풍선 꼬리 */}
+          <span className="absolute -top-1 left-4 size-2 rotate-45 rounded-[1px] bg-red-500" aria-hidden="true" />
+          GitHub 레포지토리 링크가 맞나요?
+        </p>
+      )}
+    </div>
   )
 }
