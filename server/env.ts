@@ -18,11 +18,11 @@ export const env = {
   get githubToken() {
     return read('GITHUB_TOKEN')
   },
-  get geminiApiKey() {
-    return read('GEMINI_API_KEY')
+  get anthropicApiKey() {
+    return read('ANTHROPIC_API_KEY')
   },
-  get geminiModel() {
-    return read('GEMINI_MODEL') ?? 'gemini-3.8-flash'
+  get claudeModel() {
+    return read('CLAUDE_MODEL') ?? 'claude-haiku-5-5'
   },
   get supabaseUrl() {
     return read('SUPABASE_URL')

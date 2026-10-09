@@ -17,7 +17,7 @@ create table if not exists public.chats (
 
 create index if not exists chats_created_at_idx on public.chats (created_at desc);
 
--- AI 호출 기록. Gemini를 한 번 부를 때마다 한 줄이 쌓여요. (실패한 호출도 남겨요)
+-- AI 호출 기록. Claude를 한 번 부를 때마다 한 줄이 쌓여요. (실패한 호출도 남겨요)
 create table if not exists public.ai_usage (
   id uuid primary key default gen_random_uuid(),
   chat_id uuid,

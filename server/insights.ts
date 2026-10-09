@@ -1,6 +1,6 @@
 import { FOLLOWUP_LABELS, type ChartSpec, type ChatEvent, type FollowupPerson, type FollowupQuestion } from '../shared/types.ts'
 import { TtlCache } from './cache.ts'
-import { aiEnabled, analyzeContributor, narrateOrNull } from './gemini.ts'
+import { aiEnabled, analyzeContributor, narrateOrNull } from './claude.ts'
 import type { GitHub, Pull } from './github.ts'
 import { createLoginResolver, isBot, isMergeCommit } from './stats.ts'
 import { formatNumber, sanitize, truncate } from './text.ts'

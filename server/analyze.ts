@@ -1,7 +1,7 @@
 import type { ChatEvent, ContributorStats, FollowupQuestion, StackGroup } from '../shared/types.ts'
 import { parseRepoUrl } from '../shared/repo.ts'
 import { TtlCache } from './cache.ts'
-import { aiEnabled, analyzeContributor, narrateOrNull, summarizeRepo } from './gemini.ts'
+import { aiEnabled, analyzeContributor, narrateOrNull, summarizeRepo } from './claude.ts'
 import { env } from './env.ts'
 import { createGitHub, GitHubError, mapLimit, type CommitDetail, type GitHub, type Pull, type Repo } from './github.ts'
 import {
@@ -29,7 +29,7 @@ const PICK_TOP = 5
 /** 직접 고를 때 보여주는 최대 인원 */
 const PICK_LIST_MAX = 30
 
-// Gemini에 보내는 자료 길이 제한 (비용 절감)
+// Claude에 보내는 자료 길이 제한 (비용 절감)
 const README_LIMIT = 6000
 const TREE_LIMIT = 150
 const SAMPLE_COMMITS = 5
