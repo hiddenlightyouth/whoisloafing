@@ -103,7 +103,18 @@ export function Charts({ charts }: { charts: ChartSpec[] }) {
     <div className="mt-3 space-y-5 rounded-xl bg-white p-4">
       {charts.map((chart) => (
         <section key={chart.title}>
-          <h3 className="text-xs font-medium text-gray-500">{chart.title}</h3>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-xs font-medium text-gray-500">{chart.title}</h3>
+            {/* 색의 진하기가 커밋 수라는 것을 말 대신 옅은 칸에서 진한 칸으로 이어지는 범례로 보여줘요. */}
+            {chart.kind === 'heatmap' && (
+              <span className="flex shrink-0 items-center gap-[2px]" role="img" aria-label="색이 진할수록 커밋이 많아요">
+                <span className="size-2.5 rounded-[2px] bg-gray-100" />
+                {[0.25, 0.5, 0.75, 1].map((opacity) => (
+                  <span key={opacity} className="size-2.5 rounded-[2px] bg-brand" style={{ opacity }} />
+                ))}
+              </span>
+            )}
+          </div>
           {chart.kind === 'heatmap' ? (
             <Heatmap {...chart} />
           ) : chart.kind === 'columns' ? (

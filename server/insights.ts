@@ -207,7 +207,7 @@ function answerHours(insights: Insights, clock: Clock, emit: Emit) {
     charts: [
       hourChart('시간대별 커밋 수', hours),
       {
-        title: '참여자별 활동 시간 (색이 진할수록 그 시간에 많이 커밋했어요)',
+        title: '참여자별 활동 시간',
         kind: 'heatmap',
         columns: HOUR_COLUMNS,
         rows: people.map((person) => ({ label: person.name, values: hourCounts(person.commits, clock) })),
