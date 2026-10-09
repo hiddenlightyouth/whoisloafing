@@ -159,7 +159,7 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
           track('scroll_to_bottom_click')
           scrollToBottom()
         }}
-        className={`absolute bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 flex size-9 -translate-x-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm transition-all duration-200 hover:text-brand ${
+        className={`absolute bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 flex size-9 -translate-x-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 transition-all duration-200 hover:text-brand ${
           atBottom ? 'pointer-events-none translate-y-2 opacity-0' : 'opacity-100'
         }`}
       >

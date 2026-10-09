@@ -64,7 +64,7 @@ export function RepoInput({ onSubmit }: { onSubmit: (url: string) => void }) {
         <p
           id="repo-input-error"
           role="alert"
-          className="absolute top-full left-5 mt-2.5 animate-rise rounded-lg bg-red-500 px-3 py-1.5 text-[13px] font-medium text-white shadow-sm"
+          className="absolute top-full left-5 mt-2.5 animate-rise rounded-lg bg-red-500 px-3 py-1.5 text-[13px] font-medium text-white"
         >
           {/* 입력창을 가리키는 말풍선 꼬리 */}
           <span className="absolute -top-1 left-4 size-2 rotate-45 rounded-[1px] bg-red-500" aria-hidden="true" />
