@@ -83,6 +83,14 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
     return () => window.removeEventListener('resize', updateFocus)
   }, [messages.length, busy, updateFocus])
 
+  // 위로 올려서 읽던 중이라도, 질문을 고르거나 다시 시도해서 새 요청을 보내면 맨 아래로 내려가서 답을 따라가요.
+  useEffect(() => {
+    if (!busy) return
+    pinned.current = true
+    setAtBottom(true)
+    scrollToBottom()
+  }, [busy, scrollToBottom])
+
   // 아래에 붙어 있을 때만 새 말풍선을 따라 내려가요. 위로 올려서 읽는 중이면 그대로 둬요.
   useEffect(() => {
     if (pinned.current) scrollToBottom()
