@@ -72,6 +72,18 @@ export interface Pull {
   base?: { ref: string } | null
 }
 
+/** 이슈 목록의 한 줄. GitHub는 PR도 이슈로 돌려줘서, pull_request가 있으면 PR이에요. */
+export interface Issue {
+  number: number
+  title: string
+  state: string
+  user: { login: string } | null
+  labels: ({ name?: string } | string)[]
+  assignees?: { login: string }[] | null
+  milestone?: { title: string } | null
+  pull_request?: unknown
+}
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export function createGitHub(token?: string) {
@@ -196,6 +208,12 @@ export function createGitHub(token?: string) {
 
     getCommit: (owner: string, repo: string, sha: string) =>
       json<CommitDetail>(`${base(owner, repo)}/commits/${sha}`),
+
+    /** 최근에 바뀐 이슈 100개. PR은 빼고 돌려줘요. */
+    async listIssues(owner: string, repo: string): Promise<Issue[]> {
+      const items = await json<Issue[]>(`${base(owner, repo)}/issues?state=all&sort=updated&direction=desc&per_page=100`)
+      return items.filter((item) => !item.pull_request)
+    },
 
     listPulls: (owner: string, repo: string) =>
       json<Pull[]>(`${base(owner, repo)}/pulls?state=all&sort=updated&direction=desc&per_page=100`),

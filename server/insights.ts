@@ -1,7 +1,7 @@
 import { FOLLOWUP_LABELS, type ChartSpec, type ChatEvent, type FollowupPerson, type FollowupQuestion } from '../shared/types.ts'
 import { TtlCache } from './cache.ts'
 import { aiEnabled, analyzeContributor, narrateOrNull } from './claude.ts'
-import type { GitHub, Pull } from './github.ts'
+import type { GitHub, Issue, Pull } from './github.ts'
 import { createLoginResolver, isBot, isMergeCommit } from './stats.ts'
 import { formatNumber, sanitize, truncate } from './text.ts'
 
@@ -32,6 +32,8 @@ interface Insights {
   /** 협업 방식을 볼 때 한 번 받아 두는 파일 목록과 템플릿 내용 */
   files?: string[]
   team?: TeamDocs
+  /** 협업 방식을 볼 때 한 번 받아 두는 이슈 목록 (최근 100개) */
+  issues?: Issue[]
 }
 
 /** 저장소에 적어 둔 협업 약속에서 꺼낸 내용 */
@@ -40,6 +42,8 @@ interface TeamDocs {
   pullTemplate: string[]
   /** 자동으로 돌리는 작업(GitHub Actions) 이름 */
   workflows: string[]
+  /** 이슈 템플릿 이름 */
+  issueTemplates: string[]
 }
 
 type Emit = (event: ChatEvent) => void
@@ -459,15 +463,28 @@ function templateSections(markdown: string): string[] {
 async function loadTeamDocs(gh: GitHub, owner: string, repo: string, files: string[]): Promise<TeamDocs> {
   const templatePath = files.find((path) => /(^|\/)pull_request_template[^/]*\.md$/i.test(path))
   const workflowPaths = files.filter((path) => /^\.github\/workflows\/.+\.ya?ml$/i.test(path)).slice(0, 5)
-  const [template, ...workflowFiles] = await Promise.all(
-    [templatePath, ...workflowPaths].map((path) => (path ? gh.getFile(owner, repo, path).catch(() => '') : '')),
+  const issuePaths = files
+    .filter((path) => /(^|\/)issue_template\/.+\.(md|ya?ml)$/i.test(path) && !/config\.ya?ml$/i.test(path))
+    .slice(0, 4)
+  const [template, ...rest] = await Promise.all(
+    [templatePath, ...workflowPaths, ...issuePaths].map((path) => (path ? gh.getFile(owner, repo, path).catch(() => '') : '')),
   )
+  const workflowFiles = rest.slice(0, workflowPaths.length)
+  const nameOf = (content: string, path: string) => {
+    const name = /^name:\s*["']?(.+?)["']?\s*$/m.exec(content)?.[1]
+    return sanitize(name ?? path.split('/').pop()!.replace(/\.(md|ya?ml)$/i, '')).slice(0, 40)
+  }
+  const issueTemplates = rest.slice(workflowPaths.length).map((content, index) => nameOf(content, issuePaths[index]))
   const workflows = workflowFiles.map((content, index) => {
     const name = /^name:\s*["']?(.+?)["']?\s*$/m.exec(content)?.[1]
     const fallback = workflowPaths[index].split('/').pop()!.replace(/\.ya?ml$/i, '')
     return sanitize(name ?? fallback).slice(0, 40)
   })
-  return { pullTemplate: templateSections(template), workflows: [...new Set(workflows)].filter(Boolean) }
+  return {
+    pullTemplate: templateSections(template),
+    workflows: [...new Set(workflows)].filter(Boolean),
+    issueTemplates: [...new Set(issueTemplates)].filter(Boolean),
+  }
 }
 
 /** 고르게 뽑은 실제 예시. 같은 앞머리나 태그만 나오지 않게 종류별로 하나씩 먼저 골라요. */
@@ -500,7 +517,8 @@ async function answerTeamwork(insights: Insights, gh: GitHub, owner: string, rep
   const pulls = insights.pulls.filter((pull) => pull.user && !pull.user.login.endsWith('[bot]'))
   insights.files ??= await gh.getTree(owner, repo, 'HEAD').catch(() => [] as string[])
   const files = insights.files
-  insights.team ??= await loadTeamDocs(gh, owner, repo, files).catch(() => ({ pullTemplate: [], workflows: [] }))
+  insights.team ??= await loadTeamDocs(gh, owner, repo, files).catch(() => ({ pullTemplate: [], workflows: [], issueTemplates: [] }))
+  insights.issues ??= await gh.listIssues(owner, repo).catch(() => [] as Issue[])
   const team = insights.team
 
   // 화면에 보여주는 적용 순서와, 복사해서 쓰는 팀 규칙 문서를 같이 쌓아 가요.
@@ -554,7 +572,7 @@ async function answerTeamwork(insights: Insights, gh: GitHub, owner: string, rep
     flow = branchRule ? `${prefixList} 브랜치에서 작업하고 PR로 합쳐요` : '브랜치에서 작업하고 PR로 합쳐요'
     steps.push(
       branchRule
-        ? `브랜치 이름 규칙부터 정해요. 이 팀은 "${topPrefixes[0]}/${issueNumbers ? '이슈 번호와 작업 이름' : '작업 이름'}"처럼 작업 종류(${topPrefixes.join(', ')})를 앞에 붙여요`
+        ? `브랜치 이름 규칙을 정해요. 이 팀은 "${topPrefixes[0]}/${issueNumbers ? '이슈 번호와 작업 이름' : '작업 이름'}"처럼 작업 종류(${topPrefixes.join(', ')})를 앞에 붙여요`
         : '작업마다 브랜치를 새로 만들기로 정해요',
     )
     steps.push(
@@ -581,6 +599,68 @@ async function answerTeamwork(insights: Insights, gh: GitHub, owner: string, rep
     section('브랜치와 PR', [
       pulls.length > 0 ? '작은 수정은 기본 브랜치에 바로 커밋하고, 큰 작업만 PR로 올려요.' : '기본 브랜치에 바로 커밋해요.',
       '같은 파일을 동시에 고치지 않게, 작업을 시작하기 전에 누가 무엇을 맡는지 먼저 알려요.',
+    ])
+  }
+
+  // 이슈
+  const issues = insights.issues.filter((issue) => issue.user && !issue.user.login.endsWith('[bot]'))
+  const closedIssues = issues.filter((issue) => issue.state === 'closed').length
+  // 이슈가 몇 개 없으면 관리 방식이라고 말하기 어려워요.
+  const usesIssues = issues.length >= 3
+  const issueMore = issues.length >= 100 ? ' 이상' : ''
+  const issueKind = (issue: Issue) => (/^\[([^\]]+)\]/.exec(issue.title)?.[1] ?? TAG_PATTERN.exec(issue.title)?.[1] ?? '').toLowerCase()
+  const bracketed = issues.filter((issue) => /^\[[^\]]+\]/.test(issue.title)).length
+  const prefixed = issues.filter((issue) => TAG_PATTERN.test(issue.title)).length
+  const issueTitleRule =
+    bracketed * 10 >= issues.length * 6 ? '"[종류] 내용"' : prefixed * 10 >= issues.length * 6 ? '"종류: 내용"' : null
+  const labelCounts = new Map<string, number>()
+  let labeled = 0
+  let assigned = 0
+  let milestoned = 0
+  for (const issue of issues) {
+    const names = issue.labels.map((label) => (typeof label === 'string' ? label : (label.name ?? ''))).filter(Boolean)
+    if (names.length > 0) labeled += 1
+    for (const name of names) labelCounts.set(name, (labelCounts.get(name) ?? 0) + 1)
+    if ((issue.assignees?.length ?? 0) > 0) assigned += 1
+    if (issue.milestone) milestoned += 1
+  }
+  const topLabels = [...labelCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name]) => sanitize(name))
+  const labelRate = percent(labeled, issues.length)
+  const assignRate = percent(assigned, issues.length)
+  // 브랜치 이름이나 커밋 제목에 이슈 번호를 적어서 작업과 이슈를 이어 두는지 봐요.
+  const linkedCommits = commits.filter((commit) => /#\d+/.test(commit.title)).length
+  const linksIssues = usesIssues && (issueNumbers || linkedCommits * 10 >= commits.length * 3)
+  const issueExamples = usesIssues ? pickExamples(issues, issueKind, (issue) => issue.title, 5) : []
+  const issueNotes: string[] = []
+  if (usesIssues) {
+    issueNotes.push(`할 일을 이슈로 만들어 두고 작업해요. 최근 이슈 ${formatNumber(issues.length)}개${issueMore} 중 ${formatNumber(closedIssues)}개를 닫았어요`)
+    if (issueTitleRule) issueNotes.push(`이슈 제목은 ${issueTitleRule} 형식으로 써요`)
+    if (team.issueTemplates.length > 0) issueNotes.push(`이슈 템플릿을 종류별로 만들어 뒀어요. ${team.issueTemplates.join(', ')}`)
+    if (labelRate >= 50 && topLabels.length > 0) issueNotes.push(`이슈마다 라벨을 붙여서 종류를 나눠요. 자주 쓴 라벨은 ${topLabels.join(', ')}예요`)
+    if (assignRate >= 50) issueNotes.push(`이슈마다 담당자를 정해요. 담당자가 있는 이슈가 ${assignRate}%예요`)
+    if (milestoned * 2 >= issues.length) issueNotes.push('이슈를 마일스톤으로 묶어서 일정 단위로 관리해요')
+    if (linksIssues) {
+      issueNotes.push(
+        issueNumbers
+          ? '브랜치 이름과 커밋 메시지에 이슈 번호를 적어서, 어떤 이슈의 작업인지 바로 알 수 있게 해요'
+          : '커밋 메시지에 이슈 번호를 적어서, 어떤 이슈의 작업인지 바로 알 수 있게 해요',
+      )
+    }
+    // 이슈를 만드는 것이 작업의 첫 단계라서 맨 앞에 둬요.
+    steps.unshift(
+      `작업을 시작하기 전에 이슈부터 만들어요${issueTitleRule ? `. 제목은 ${issueTitleRule} 형식으로 써요` : ''}${
+        assignRate >= 50 ? '. 담당자도 같이 정해요' : ''
+      }`,
+    )
+    if (linksIssues) steps.push('브랜치 이름이나 커밋 메시지에 이슈 번호를 적어서 작업과 이슈를 이어 둬요')
+    section('이슈', [
+      '작업을 시작하기 전에 이슈를 먼저 만들어요.',
+      ...(issueTitleRule ? [`제목은 ${issueTitleRule} 형식으로 써요.`] : []),
+      ...(team.issueTemplates.length > 0 ? [`이슈 템플릿: ${team.issueTemplates.join(', ')}`] : []),
+      ...(labelRate >= 50 && topLabels.length > 0 ? [`라벨로 종류를 나눠요: ${topLabels.join(', ')}`] : []),
+      ...(assignRate >= 50 ? ['이슈마다 담당자를 정해요.'] : []),
+      ...(linksIssues ? ['브랜치 이름이나 커밋 메시지에 이슈 번호를 적어요.'] : []),
+      ...issueExamples.slice(0, 3).map((title) => `예시: \`${title}\``),
     ])
   }
 
@@ -631,7 +711,7 @@ async function answerTeamwork(insights: Insights, gh: GitHub, owner: string, rep
       steps.push(`PR 템플릿을 만들어요. 이 팀은 ${team.pullTemplate.slice(0, 4).join(', ')} 같은 항목을 적어요`)
     } else if (item.label === '자동 검사와 배포' && team.workflows.length > 0) {
       steps.push(`GitHub Actions로 ${team.workflows.slice(0, 3).join(', ')} 같은 작업을 자동으로 돌려요`)
-    } else {
+    } else if (!(item.label === '이슈 템플릿' && usesIssues)) {
       steps.push(item.tip)
     }
     setup.push(`${item.tip}.`)
@@ -646,6 +726,14 @@ async function answerTeamwork(insights: Insights, gh: GitHub, owner: string, rep
       { label: '작업을 합치는 방식', value: flow },
       { label: 'PR', value: pulls.length > 0 ? `${formatNumber(pulls.length)}개 중 ${formatNumber(merged.length)}개 머지` : '쓰지 않았어요' },
       ...(usesPulls && mergeLabel ? [{ label: 'PR을 합치는 방법', value: mergeLabel }] : []),
+      {
+        label: '이슈',
+        value: usesIssues
+          ? `${formatNumber(issues.length)}개${issueMore} 중 ${formatNumber(closedIssues)}개 닫음`
+          : issues.length > 0
+            ? `거의 쓰지 않았어요 (${formatNumber(issues.length)}개)`
+            : '쓰지 않았어요',
+      },
       { label: '커밋 메시지 규칙', value: usesTags ? `"태그: 내용" 형식 (${tagRate}%가 따름)` : `정해진 형식 없이 자유롭게 (태그 사용 ${tagRate}%)` },
       { label: '커밋 메시지 언어', value: language },
       { label: '작업하는 날의 하루 평균 커밋', value: `${perDay}개` },
@@ -653,13 +741,15 @@ async function answerTeamwork(insights: Insights, gh: GitHub, owner: string, rep
     ],
   })
   // 규칙만 말하면 와닿지 않아서, 이 팀이 실제로 쓴 이름과 메시지를 그대로 보여줘요.
+  if (issueNotes.length > 0) emit({ type: 'list', text: '이슈는 이렇게 관리해요.', items: issueNotes })
+  if (issueExamples.length > 0) emit({ type: 'list', text: '이슈 제목은 실제로 이렇게 썼어요.', items: issueExamples })
   if (branchExamples.length > 0) emit({ type: 'list', text: '브랜치 이름은 실제로 이렇게 지었어요.', items: branchExamples })
   if (commitExamples.length > 0) emit({ type: 'list', text: '커밋 메시지는 실제로 이렇게 썼어요.', items: commitExamples })
   if (team.pullTemplate.length > 0) emit({ type: 'list', text: 'PR을 올릴 때는 이 항목을 채워요.', items: team.pullTemplate })
   emit({
     type: 'list',
     text: '우리 팀에 적용하려면 이 순서로 정해 보세요. 아래 버튼을 누르면 팀 규칙 문서로 복사돼요.',
-    items: steps.slice(0, 8),
+    items: steps.slice(0, 9),
     copy: { label: '팀 규칙 문서 복사하기', text: doc.join('\n') },
   })
 }
