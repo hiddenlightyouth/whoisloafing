@@ -1,10 +1,9 @@
-import Anthropic from '@anthropic-ai/sdk'
-import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod'
+import { GoogleGenAI } from '@google/genai'
 import { z } from 'zod'
 import { env } from './env.ts'
 import { sanitize } from './text.ts'
 
-const client = env.anthropicApiKey ? new Anthropic({ apiKey: env.anthropicApiKey }) : null
+const client = env.geminiApiKey ? new GoogleGenAI({ apiKey: env.geminiApiKey }) : null
 
 export const aiEnabled = client !== null
 
@@ -27,24 +26,26 @@ const ContributorProfile = z.object({
 })
 
 async function ask<T extends z.ZodType>(system: string, user: string, schema: T): Promise<z.infer<T>> {
-  if (!client) throw new Error('ANTHROPIC_API_KEY가 설정되지 않았어요.')
+  if (!client) throw new Error('GEMINI_API_KEY가 설정되지 않았어요.')
 
-  const response = await client.beta.messages.parse({
-    model: env.anthropicModel,
-    max_tokens: 4000,
-    // 짧은 요약 작업이라 낮은 effort로 비용을 줄여요.
-    output_config: { effort: 'low', format: betaZodOutputFormat(schema) },
-    // 안전 분류기가 요청을 거절하면 서버가 대체 모델로 다시 시도해요.
-    betas: ['server-side-fallback-2026-07-01'],
-    fallbacks: 'default',
-    system,
-    messages: [{ role: 'user', content: user }],
+  // Gemini가 지원하지 않는 $schema 선언은 빼고 보내요.
+  const { $schema: _dialect, ...jsonSchema } = z.toJSONSchema(schema)
+
+  const response = await client.models.generateContent({
+    model: env.geminiModel,
+    contents: user,
+    config: {
+      systemInstruction: system,
+      // 스키마에 맞는 JSON만 돌려받아요.
+      responseMimeType: 'application/json',
+      responseJsonSchema: jsonSchema,
+      maxOutputTokens: 4000,
+    },
   })
 
-  if (response.stop_reason === 'refusal' || !response.parsed_output) {
-    throw new Error(`AI 응답을 해석하지 못했어요. (${response.stop_reason})`)
-  }
-  return response.parsed_output as z.infer<T>
+  const text = response.text
+  if (!text) throw new Error('AI 응답이 비어 있어요.')
+  return schema.parse(JSON.parse(text))
 }
 
 export interface RepoSummaryInput {

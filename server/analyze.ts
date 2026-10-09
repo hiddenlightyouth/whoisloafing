@@ -1,6 +1,6 @@
 import type { ChatEvent, ContributorStats } from '../shared/types.ts'
 import { TtlCache } from './cache.ts'
-import { aiEnabled, analyzeContributor, summarizeRepo } from './claude.ts'
+import { aiEnabled, analyzeContributor, summarizeRepo } from './gemini.ts'
 import { env } from './env.ts'
 import { createGitHub, GitHubError, mapLimit, type CommitDetail, type GitHub, type Pull, type Repo } from './github.ts'
 import {
@@ -21,7 +21,7 @@ const MAX_DETAILED = 10
 const MAX_CHART = 15
 const AI_CONCURRENCY = 3
 
-// Claude에 보내는 자료 길이 제한 (비용 절감)
+// Gemini에 보내는 자료 길이 제한 (비용 절감)
 const README_LIMIT = 6000
 const TREE_LIMIT = 150
 const SAMPLE_COMMITS = 3

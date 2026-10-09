@@ -32,9 +32,9 @@ GitHub 레포 링크를 입력하면 참여자별 기여도를 분석해서 채�
 - 스타일: Tailwind CSS v4 (`@tailwindcss/vite`)
 - 서버: Express 5 + TypeScript (tsx로 실행)
 - 세션: express-session (httpOnly 쿠키, 메모리 저장소)
-- AI: Claude API (`@anthropic-ai/sdk`, 기본 모델 `claude-opus-5-5`, 구조화 출력은 zod)
+- AI: Gemini API (`@google/genai`, 기본 모델 `gemini-3.8-flash`, JSON 스키마 응답을 zod로 검증)
 
-GitHub API, Claude API 호출과 로그인 처리는 모두 서버에서 해요. 키와 토큰은 클라이언트에 절대 노출하지 않아요. GitHub 액세스 토큰은 서버 세션에만 보관하고, 클라이언트 코드나 localStorage에 저장하지 않아요.
+GitHub API, Gemini API 호출과 로그인 처리는 모두 서버에서 해요. 키와 토큰은 클라이언트에 절대 노출하지 않아요. GitHub 액세스 토큰은 서버 세션에만 보관하고, 클라이언트 코드나 localStorage에 저장하지 않아요.
 
 ## 프로젝트 구조
 
@@ -48,7 +48,7 @@ server/
   auth.ts             GitHub OAuth 로그인, 로그아웃, 내 정보
   github.ts           GitHub REST API 클라이언트 (오류와 호출 제한 처리, 통계 202 재시도)
   stats.ts            사람별 수치 계산, 제외 파일 규칙, 계정 기준 합치기, 기여도 순위
-  claude.ts           Claude 프롬프트와 호출 (레포 요약, 역할, 코드 스타일)
+  gemini.ts           Gemini 프롬프트와 호출 (레포 요약, 역할, 코드 스타일)
   analyze.ts          분석 파이프라인, 채팅 메시지 생성, 예외 안내, 캐싱
   cache.ts            만료 시간이 있는 메모리 캐시
   text.ts             금지 문자 후처리, 길이 제한
@@ -82,12 +82,12 @@ npm run dev            # 프론트 http://localhost:5173, 서버 http://localhos
 | 이름 | 용도 |
 | --- | --- |
 | `GITHUB_TOKEN` | 로그인하지 않은 사용자의 공개 레포 분석에 쓰는 서버 토큰 |
-| `ANTHROPIC_API_KEY` | Claude API 키. 없으면 수치만 보여줘요. |
+| `GEMINI_API_KEY` | Gemini API 키. 없으면 수치만 보여줘요. |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub OAuth App |
 | `SESSION_SECRET` | 세션 쿠키 서명. 프로덕션에서는 필수 |
 | `APP_URL` (선택) | 브라우저에서 접속하는 주소. 기본값 `http://localhost:5173` |
 | `PORT` (선택) | 프로덕션 서버 포트. 기본값 3001 |
-| `ANTHROPIC_MODEL` (선택) | Claude 모델 변경용. 기본값 `claude-opus-5-5` |
+| `GEMINI_MODEL` (선택) | Gemini 모델 변경용. 기본값 `gemini-3.8-flash` |
 
 GitHub OAuth App의 콜백 URL은 `{APP_URL}/api/auth/github/callback` 으로 등록해요.
 
@@ -100,7 +100,7 @@ GitHub OAuth App의 콜백 URL은 `{APP_URL}/api/auth/github/callback` 으로 �
 - 여러 이메일로 커밋한 사람은 GitHub 계정 기준으로 합쳐요. 계정이 연결되지 않은 커밋은 같은 이메일, noreply 주소, 같은 이름, 계정 아이디와 같은 이름 순서로 계정을 찾아요. 끝내 계정을 찾지 못한 작성자는 이름이 같으면 한 사람으로 합쳐요.
 - 통계 API가 계정이 연결되지 않은 커밋을 엉뚱한 계정 몫으로 돌려주는 경우가 있어요. 커밋이 300개 미만인 레포는 커밋 목록과 대조해서 원래 참여자에게 합쳐요. (`mergeMisattributed`)
 - 기여도는 커밋 수 기준과 라인 수(추가 + 삭제) 기준을 각각 계산하고, 소개 순서는 두 값의 평균이 큰 순서예요.
-- 역할과 코드 스타일은 상위 10명까지만 Claude로 분석해요. 참여자별로 대표 커밋 3개를 고르고 diff 길이를 제한해서 보내요. 길이 제한 상수는 `server/analyze.ts` 위쪽에 모여 있어요.
+- 역할과 코드 스타일은 상위 10명까지만 Gemini로 분석해요. 참여자별로 대표 커밋 3개를 고르고 diff 길이를 제한해서 보내요. 길이 제한 상수는 `server/analyze.ts` 위쪽에 모여 있어요.
 - 캐싱: 결과는 레포와 마지막 푸시 시각을 키로 24시간 메모리에 캐싱해요. 비공개 레포는 사용자 ID별로 키를 분리하고, 캐시를 쓰기 전에 항상 요청자의 토큰으로 접근 권한을 다시 확인해요.
 
 ## 현재까지 구현된 기능
@@ -121,7 +121,7 @@ GitHub OAuth App의 콜백 URL은 `{APP_URL}/api/auth/github/callback` 으로 �
 
 ## 남은 작업
 
-- 실제 `ANTHROPIC_API_KEY`와 OAuth App으로 AI 분석과 로그인 흐름 실사용 검증
+- 실제 `GEMINI_API_KEY`와 OAuth App으로 AI 분석과 로그인 흐름 실사용 검증
 - 세션과 캐시를 메모리 대신 외부 저장소(Redis 등)로 옮기기. 지금은 서버를 다시 시작하면 사라지고, 서버를 여러 대로 늘릴 수 없어요.
 - 커밋이 300개를 넘는 레포의 커밋 단위 분석 범위 넓히기
 - 테스트 코드와 배포 설정
@@ -131,7 +131,7 @@ GitHub OAuth App의 콜백 URL은 `{APP_URL}/api/auth/github/callback` 으로 �
 - 화면에 노출되는 모든 문구와 AI가 생성하는 분석 결과에서 긴 대시, 가운데점, 화살표 기호 같은 특수문자를 쓰지 않아요. 쉼표나 마침표로 자연스럽게 연결해요.
 - 말투는 친근한 존댓말(~해요, ~네요)로 통일해요.
 - 이모지를 쓰지 않아요.
-- Claude 프롬프트(`server/claude.ts`의 `WRITING_RULES`)에 이 규칙과 말투 규칙을 명시하고, 응답은 `server/text.ts`의 `sanitize`로 후처리해서 금지 문자를 제거해요.
+- Gemini 프롬프트(`server/gemini.ts`의 `WRITING_RULES`)에 이 규칙과 말투 규칙을 명시하고, 응답은 `server/text.ts`의 `sanitize`로 후처리해서 금지 문자를 제거해요.
 - 안내와 오류는 모두 채팅 말풍선으로 보여줘요.
 
 ## Git 작업 규칙

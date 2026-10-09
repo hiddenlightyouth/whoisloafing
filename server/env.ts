@@ -18,7 +18,7 @@ export const env = {
   githubToken: process.env.GITHUB_TOKEN || undefined,
   githubClientId: process.env.GITHUB_CLIENT_ID || undefined,
   githubClientSecret: process.env.GITHUB_CLIENT_SECRET || undefined,
-  anthropicApiKey: process.env.ANTHROPIC_API_KEY || undefined,
-  anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-opus-5-5',
+  geminiApiKey: process.env.GEMINI_API_KEY || undefined,
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
   sessionSecret: sessionSecret(),
 }
