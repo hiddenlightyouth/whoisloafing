@@ -65,7 +65,7 @@ export function RepoInput({ onSubmit }: { onSubmit: (url: string) => void }) {
         >
           {/* 입력창을 가리키는 말풍선 꼬리 */}
           <span className="absolute -top-1 left-4 size-2 rotate-45 rounded-[1px] bg-red-500" aria-hidden="true" />
-          올바른 레포 링크가 아닌 거 같은데요?
+          올바른 링크가 맞는지 확인해 주세요
         </p>
       )}
     </div>
