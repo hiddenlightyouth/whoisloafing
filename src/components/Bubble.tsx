@@ -28,6 +28,27 @@ const actionButton =
 const quietButton =
   'mt-3 inline-flex h-9 items-center rounded-lg bg-white px-3.5 text-[13px] font-semibold text-gray-700 transition-colors hover:text-brand disabled:text-gray-400'
 
+/** 목록 말풍선에 딸린 글을 클립보드에 복사해요. 공유된 채팅에서도 누를 수 있어요. */
+function CopyButton({ label, text, repo }: { label: string; text: string; repo: string }) {
+  const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle')
+
+  async function copy() {
+    const ok = await navigator.clipboard.writeText(text).then(
+      () => true,
+      () => false,
+    )
+    track('list_copy', { repo, success: ok })
+    setState(ok ? 'done' : 'failed')
+    setTimeout(() => setState('idle'), 2000)
+  }
+
+  return (
+    <button type="button" onClick={copy} className={`${actionButton} mt-1.5 mb-1.5`}>
+      {state === 'done' ? '복사했어요' : state === 'failed' ? '복사하지 못했어요' : label}
+    </button>
+  )
+}
+
 const WIDE_TYPES = new Set(['ranking', 'summary', 'list', 'chart', 'facts', 'stack', 'pick'])
 
 export function Bubble({ message, busy, isLast, onSend, docked = false, onNewRepo }: Props) {
@@ -119,6 +140,8 @@ export function Bubble({ message, busy, isLast, onSend, docked = false, onNewRep
             ))}
           </ul>
         )}
+
+        {event.type === 'list' && event.copy && <CopyButton label={event.copy.label} text={event.copy.text} repo={repo} />}
 
         {event.type === 'summary' && (
           <SummaryChart contributors={event.contributors} othersCount={event.othersCount} />
