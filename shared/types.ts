@@ -67,6 +67,8 @@ export type ChatEvent =
     }
   /** 번호가 붙은 목록 말풍선. 참여자가 맡은 기능과 코드 스타일에 써요. copy가 있으면 그 글을 복사하는 버튼을 같이 보여줘요. */
   | { type: 'list'; text: string; items: string[]; copy?: { label: string; text: string } }
+  /** 레포에 있는 템플릿 파일을 내용 그대로 보여줘요. 파일마다 복사 버튼이 붙어요. */
+  | { type: 'templates'; text: string; templates: { name: string; path: string; content: string }[] }
   /** 레포에서 사용한 기술 스택 */
   | { type: 'stack'; text: string; groups: StackGroup[] }
   | { type: 'chart'; text: string; charts: ChartSpec[] }

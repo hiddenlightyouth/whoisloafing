@@ -44,7 +44,12 @@ interface TeamDocs {
   workflows: string[]
   /** 이슈 템플릿 이름 */
   issueTemplates: string[]
+  /** PR 템플릿과 이슈 템플릿의 파일 내용 */
+  templateFiles: { name: string; path: string; content: string }[]
 }
+
+/** 템플릿 하나를 보여줄 때의 최대 길이 */
+const TEMPLATE_LIMIT = 2000
 
 type Emit = (event: ChatEvent) => void
 
@@ -480,7 +485,18 @@ async function loadTeamDocs(gh: GitHub, owner: string, repo: string, files: stri
     const fallback = workflowPaths[index].split('/').pop()!.replace(/\.ya?ml$/i, '')
     return sanitize(name ?? fallback).slice(0, 40)
   })
+  const clip = (content: string) => {
+    const body = content.replace(/\r\n/g, '\n').trim()
+    return body.length > TEMPLATE_LIMIT ? `${body.slice(0, TEMPLATE_LIMIT)}\n(뒤는 생략했어요)` : body
+  }
+  const templateFiles = [
+    ...(templatePath && template.trim() ? [{ name: 'PR 템플릿', path: templatePath, content: clip(template) }] : []),
+    ...issuePaths
+      .map((path, index) => ({ name: `이슈 템플릿 (${issueTemplates[index]})`, path, content: clip(rest[workflowPaths.length + index]) }))
+      .filter((file) => file.content),
+  ]
   return {
+    templateFiles,
     pullTemplate: templateSections(template),
     workflows: [...new Set(workflows)].filter(Boolean),
     issueTemplates: [...new Set(issueTemplates)].filter(Boolean),
@@ -517,7 +533,7 @@ async function answerTeamwork(insights: Insights, gh: GitHub, owner: string, rep
   const pulls = insights.pulls.filter((pull) => pull.user && !pull.user.login.endsWith('[bot]'))
   insights.files ??= await gh.getTree(owner, repo, 'HEAD').catch(() => [] as string[])
   const files = insights.files
-  insights.team ??= await loadTeamDocs(gh, owner, repo, files).catch(() => ({ pullTemplate: [], workflows: [], issueTemplates: [] }))
+  insights.team ??= await loadTeamDocs(gh, owner, repo, files).catch(() => ({ pullTemplate: [], workflows: [], issueTemplates: [], templateFiles: [] }))
   insights.issues ??= await gh.listIssues(owner, repo).catch(() => [] as Issue[])
   const team = insights.team
 
@@ -745,7 +761,13 @@ async function answerTeamwork(insights: Insights, gh: GitHub, owner: string, rep
   if (issueExamples.length > 0) emit({ type: 'list', text: '이슈 제목은 실제로 이렇게 썼어요.', items: issueExamples })
   if (branchExamples.length > 0) emit({ type: 'list', text: '브랜치 이름은 실제로 이렇게 지었어요.', items: branchExamples })
   if (commitExamples.length > 0) emit({ type: 'list', text: '커밋 메시지는 실제로 이렇게 썼어요.', items: commitExamples })
-  if (team.pullTemplate.length > 0) emit({ type: 'list', text: 'PR을 올릴 때는 이 항목을 채워요.', items: team.pullTemplate })
+  if (team.templateFiles.length > 0) {
+    emit({
+      type: 'templates',
+      text: '이 팀이 쓰는 템플릿이에요. 복사해서 우리 레포의 같은 위치에 넣으면 바로 쓸 수 있어요.',
+      templates: team.templateFiles,
+    })
+  }
   emit({
     type: 'list',
     text: '우리 팀에 적용하려면 이 순서로 정해 보세요. 아래 버튼을 누르면 팀 규칙 문서로 복사돼요.',
@@ -984,7 +1006,9 @@ export async function answerFollowup(options: {
   const first = answer[0]
   if (first && (first.type === 'chart' || first.type === 'facts')) {
     const topic = question === 'person' ? `${options.person} 참여자는 어떻게 작업했나요?` : FOLLOWUP_LABELS[question]
-    const story = await narrateOrNull(topic, answer, NARRATION_GUIDES[question])
+    // 템플릿 본문과 복사용 문서는 해설에 필요 없어서 빼고 보내요.
+    const data = answer.filter((event) => event.type !== 'templates').map((event) => (event.type === 'list' ? { ...event, copy: undefined } : event))
+    const story = await narrateOrNull(topic, data, NARRATION_GUIDES[question])
     if (story) first.text = story
   }
   answer.forEach(emit)

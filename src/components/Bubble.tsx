@@ -29,7 +29,7 @@ const quietButton =
   'mt-3 inline-flex h-9 items-center rounded-lg bg-white px-3.5 text-[13px] font-semibold text-gray-700 transition-colors hover:text-brand disabled:text-gray-400'
 
 /** 목록 말풍선에 딸린 글을 클립보드에 복사해요. 공유된 채팅에서도 누를 수 있어요. */
-function CopyButton({ label, text, repo }: { label: string; text: string; repo: string }) {
+function CopyButton({ label, text, repo, quiet = false }: { label: string; text: string; repo: string; quiet?: boolean }) {
   const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle')
 
   async function copy() {
@@ -43,13 +43,21 @@ function CopyButton({ label, text, repo }: { label: string; text: string; repo: 
   }
 
   return (
-    <button type="button" onClick={copy} className={`${actionButton} mt-1.5 mb-1.5`}>
+    <button
+      type="button"
+      onClick={copy}
+      className={
+        quiet
+          ? 'shrink-0 rounded-full bg-brand-soft px-3 py-1 text-[12px] font-medium text-brand-hover transition-colors hover:bg-brand hover:text-white'
+          : `${actionButton} mt-1.5 mb-1.5`
+      }
+    >
       {state === 'done' ? '복사했어요' : state === 'failed' ? '복사하지 못했어요' : label}
     </button>
   )
 }
 
-const WIDE_TYPES = new Set(['ranking', 'summary', 'list', 'chart', 'facts', 'stack', 'pick'])
+const WIDE_TYPES = new Set(['ranking', 'summary', 'list', 'templates', 'chart', 'facts', 'stack', 'pick'])
 
 export function Bubble({ message, busy, isLast, onSend, docked = false, onNewRepo }: Props) {
   // 글이 타자를 치듯 다 나타난 뒤에 카드, 그래프, 버튼 같은 나머지 내용을 보여줘요.
@@ -142,6 +150,25 @@ export function Bubble({ message, busy, isLast, onSend, docked = false, onNewRep
         )}
 
         {event.type === 'list' && event.copy && <CopyButton label={event.copy.label} text={event.copy.text} repo={repo} />}
+
+        {event.type === 'templates' && (
+          <div className="mt-3 mb-1.5 flex flex-col gap-2.5">
+            {event.templates.map((template) => (
+              <div key={template.path} className="rounded-xl bg-white px-4 pt-3 pb-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                  <p className="min-w-0 text-[13px] font-semibold text-gray-900">
+                    {template.name}
+                    <span className="ml-2 font-normal break-all text-gray-400">{template.path}</span>
+                  </p>
+                  <CopyButton label="복사하기" text={template.content} repo={repo} quiet />
+                </div>
+                <pre className="mt-2.5 max-h-60 overflow-auto rounded-lg bg-gray-50 px-3 py-2.5 font-mono text-[12px] leading-relaxed tracking-normal whitespace-pre-wrap text-gray-700">
+                  {template.content}
+                </pre>
+              </div>
+            ))}
+          </div>
+        )}
 
         {event.type === 'summary' && (
           <SummaryChart contributors={event.contributors} othersCount={event.othersCount} />
