@@ -2,6 +2,7 @@ import { ApiError, GoogleGenAI } from '@google/genai'
 import { z } from 'zod'
 import type { StackGroup } from '../shared/types.ts'
 import { env } from './env.ts'
+import { logAiUsage, type AiUsageRecord } from './store.ts'
 import { sanitize } from './text.ts'
 
 const client = env.geminiApiKey ? new GoogleGenAI({ apiKey: env.geminiApiKey }) : null
@@ -52,36 +53,81 @@ function isRetryable(err: unknown): boolean {
   return err instanceof SyntaxError || err instanceof z.ZodError || err instanceof EmptyResponseError
 }
 
-async function generate<T extends z.ZodType>(model: string, system: string, user: string, schema: T): Promise<z.infer<T>> {
+/** 어떤 목적의 호출인지. AI 사용량 기록에 남겨요. */
+interface CallMeta {
+  purpose: AiUsageRecord['purpose']
+  label?: string
+}
+
+async function generate<T extends z.ZodType>(
+  model: string,
+  system: string,
+  user: string,
+  schema: T,
+  meta: CallMeta,
+): Promise<z.infer<T>> {
   // Gemini가 지원하지 않는 $schema 선언은 빼고 보내요.
   const { $schema: _dialect, ...jsonSchema } = z.toJSONSchema(schema)
 
-  const response = await client!.models.generateContent({
-    model,
-    contents: user,
-    config: {
-      systemInstruction: system,
-      // 스키마에 맞는 JSON만 돌려받아요.
-      responseMimeType: 'application/json',
-      responseJsonSchema: jsonSchema,
-      // 생각하는 데 쓰는 토큰도 여기에 포함돼서, 너무 작게 잡으면 답이 중간에 잘려요.
-      maxOutputTokens: 16000,
-    },
-  })
+  const startedAt = Date.now()
+  // 성공이든 실패든 호출 한 번마다 프롬프트, 응답, 토큰 수를 기록해요.
+  const record = (fields: Pick<AiUsageRecord, 'status'> & Partial<AiUsageRecord>) =>
+    logAiUsage({
+      ...meta,
+      model,
+      systemPrompt: system,
+      userPrompt: user,
+      durationMs: Date.now() - startedAt,
+      ...fields,
+    })
+
+  let response
+  try {
+    response = await client!.models.generateContent({
+      model,
+      contents: user,
+      config: {
+        systemInstruction: system,
+        // 스키마에 맞는 JSON만 돌려받아요.
+        responseMimeType: 'application/json',
+        responseJsonSchema: jsonSchema,
+        // 생각하는 데 쓰는 토큰도 여기에 포함돼서, 너무 작게 잡으면 답이 중간에 잘려요.
+        maxOutputTokens: 16000,
+      },
+    })
+  } catch (err) {
+    record({ status: 'error', error: String((err as Error).message).slice(0, 2000) })
+    throw err
+  }
 
   const text = response.text
-  if (!text) {
-    const reason = response.candidates?.[0]?.finishReason ?? response.promptFeedback?.blockReason ?? '알 수 없음'
-    throw new EmptyResponseError(`AI 응답이 비어 있어요. (${reason})`)
+  const usage = {
+    response: text,
+    inputTokens: response.usageMetadata?.promptTokenCount,
+    outputTokens: response.usageMetadata?.candidatesTokenCount,
+    thinkingTokens: response.usageMetadata?.thoughtsTokenCount,
+    totalTokens: response.usageMetadata?.totalTokenCount,
   }
-  return schema.parse(JSON.parse(text))
+
+  try {
+    if (!text) {
+      const reason = response.candidates?.[0]?.finishReason ?? response.promptFeedback?.blockReason ?? '알 수 없음'
+      throw new EmptyResponseError(`AI 응답이 비어 있어요. (${reason})`)
+    }
+    const parsed = schema.parse(JSON.parse(text))
+    record({ status: 'ok', ...usage })
+    return parsed
+  } catch (err) {
+    record({ status: 'error', error: String((err as Error).message).slice(0, 2000), ...usage })
+    throw err
+  }
 }
 
 /** 방금 성공한 모델을 잠깐 기억해 뒀다가 먼저 써요. 혼잡한 모델을 매번 다시 두드리며 기다리지 않으려는 거예요. */
 const STICKY_MS = 5 * 60 * 1000
 let lastGood: { model: string; at: number } | null = null
 
-async function ask<T extends z.ZodType>(system: string, user: string, schema: T): Promise<z.infer<T>> {
+async function ask<T extends z.ZodType>(system: string, user: string, schema: T, meta: CallMeta): Promise<z.infer<T>> {
   if (!client) throw new Error('GEMINI_API_KEY가 설정되지 않았어요.')
 
   const chain = [...new Set([env.geminiModel, ...FALLBACK_MODELS])]
@@ -93,7 +139,7 @@ async function ask<T extends z.ZodType>(system: string, user: string, schema: T)
   for (let round = 1; round <= ROUNDS; round++) {
     for (const model of models) {
       try {
-        const result = await generate(model, system, user, schema)
+        const result = await generate(model, system, user, schema, meta)
         lastGood = { model, at: Date.now() }
         return result
       } catch (err) {
@@ -160,7 +206,7 @@ ${input.manifests || '없음'}
 
 이 레포를 한 문장으로 정의하고, 기술 스택을 정리해 주세요.`
 
-  const result = await ask(system, user, RepoSummary)
+  const result = await ask(system, user, RepoSummary, { purpose: 'repo_summary', label: input.fullName })
   // 같은 종류가 두 번 오면 합치고, 정해 둔 순서대로 보여줘요.
   const stack = STACK_CATEGORIES.map((category) => ({
     category,
@@ -230,7 +276,7 @@ ${input.diffs || '없음'}
 
 ${input.name}님이 개발한 기능 목록과 코드 스타일을 정리해 주세요.`
 
-  const result = await ask(system, user, ContributorProfile)
+  const result = await ask(system, user, ContributorProfile, { purpose: 'contributor_profile', label: input.name })
   const clean = (items: string[], max: number) =>
     items
       .map((item) => sanitize(item).replace(/[.]+$/, ''))
@@ -269,7 +315,7 @@ ${JSON.stringify(data)}
 
 이 자료를 읽고 "${topic}"에 대해 풀어서 설명해 주세요.`
 
-  const { text } = await ask(system, user, Narration)
+  const { text } = await ask(system, user, Narration, { purpose: 'narration', label: topic })
   const clean = sanitize(text)
   if (!clean) throw new Error('설명이 비어 있어요.')
   return clean

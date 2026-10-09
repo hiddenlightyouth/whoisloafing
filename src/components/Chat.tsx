@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AnalyzeRequest } from '../../shared/types'
 import type { ChatMessage } from '../hooks/useAnalysis'
+import { track } from '../lib/analytics'
 import { Bubble } from './Bubble'
 import { TypingDots } from './TypingDots'
 
@@ -9,7 +10,10 @@ interface Props {
   busy: boolean
   /** 계속하기를 기다리는 중이면 다음 단계 안내 */
   paused: string | null
+  /** 공유된 채팅처럼 읽기만 할 수 있는 상태 */
+  readOnly: boolean
   onResume: () => void
+  onHome: () => void
   onSend: (request: AnalyzeRequest, userText?: string) => void
 }
 
@@ -24,7 +28,7 @@ const FOCUS_MIN_OPACITY = 0.3
 /** 이만큼 스크롤되면 흐림 효과가 온전히 적용돼요. */
 const FOCUS_RAMP_PX = 240
 
-export function Chat({ messages, busy, paused, onResume, onSend }: Props) {
+export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHome }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
   const lastScrollTop = useRef(0)
@@ -91,7 +95,7 @@ export function Chat({ messages, busy, paused, onResume, onSend }: Props) {
             <div key={message.id} data-focus className="transition-opacity duration-200 ease-out">
               <Bubble
                 message={message}
-                busy={busy}
+                busy={busy || readOnly}
                 isLast={index === messages.length - 1}
                 onSend={onSend}
               />
@@ -118,6 +122,18 @@ export function Chat({ messages, busy, paused, onResume, onSend }: Props) {
           ) : (
             busy && <TypingDots key={messages.length} />
           )}
+          {readOnly && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-brand-soft px-4 py-3">
+              <p className="text-[13px] text-gray-600">공유된 채팅이라 읽기만 할 수 있어요.</p>
+              <button
+                type="button"
+                onClick={onHome}
+                className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover"
+              >
+                다른 레포 분석해 보기
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -125,7 +141,10 @@ export function Chat({ messages, busy, paused, onResume, onSend }: Props) {
         type="button"
         aria-label="맨 아래로 이동"
         tabIndex={atBottom ? -1 : 0}
-        onClick={() => scrollToBottom()}
+        onClick={() => {
+          track('scroll_to_bottom_click')
+          scrollToBottom()
+        }}
         className={`absolute bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 flex size-9 -translate-x-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 shadow-sm transition-all duration-200 hover:text-brand ${
           atBottom ? 'pointer-events-none translate-y-2 opacity-0' : 'opacity-100'
         }`}

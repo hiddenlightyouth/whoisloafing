@@ -78,8 +78,28 @@ export type ChatEvent =
   | { type: 'pause'; next: string }
   | { type: 'done' }
 
+/** 저장된 채팅의 말풍선 하나. 화면에 올라간 순서대로 쌓여요. */
+export type StoredMessage =
+  | { from: 'user'; text: string }
+  | { from: 'bot'; event: Exclude<ChatEvent, { type: 'done' | 'pause' }>; request?: AnalyzeRequest }
+
+/** 서버가 저장된 채팅을 돌려줄 때의 모양 */
+export interface ChatSnapshot {
+  id: string
+  repoUrl: string
+  /** 공유된 채팅은 누구나 열람할 수 있고, 더 이상 이어서 작업할 수 없어요. */
+  shared: boolean
+  /** 지금 보고 있는 브라우저가 이 채팅을 만든 곳인지 여부 */
+  owner: boolean
+  messages: StoredMessage[]
+}
+
 export interface AnalyzeRequest {
   url: string
+  /** 저장할 채팅방의 ID. Supabase가 켜져 있을 때만 써요. */
+  chatId?: string
+  /** 이 요청과 함께 화면에 올라간 사용자 말풍선의 글. 채팅을 저장할 때 같이 남겨요. */
+  userText?: string
   /**
    * true면 커밋 단위로 분석해서 lock 파일, 빌드 결과물, 자동 생성 파일, 바이너리 파일을 라인 수에서 제외해요.
    * 값을 보내지 않으면 서버가 레포를 확인한 뒤 어떻게 계산할지 먼저 물어봐요.

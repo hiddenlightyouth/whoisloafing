@@ -28,7 +28,7 @@ GitHub 레포 링크를 입력하면 참여자별 기여도를 분석해서 채�
 - 메인 화면 왼쪽 아래에는 숨은빚청년들 팀 홈페이지(https://hidly.dev/) 링크를, 오른쪽 아래에는 저작권 문구를 작게 둬요.
 - 메인 화면에서 GitHub 레포 링크가 아닌 값을 내면 서버로 보내지 않고, 입력창이 흔들리면서 테두리가 빨갛게 바뀌고 아래에 "올바른 링크가 맞는지 확인해 주세요" 툴팁이 나와요. 링크 판별은 `shared/repo.ts`를 서버와 함께 써요.
 - 입력창은 화면 정중앙에 두고, 타이틀은 그 위에 얹어요. 입력창은 반투명 배경에 블러를 줘서 뒤의 배경이 흐릿하게 비쳐요. 입력창에 포커스가 가도 테두리 색이나 바깥 링은 바뀌지 않아요.
-- 메인 화면 배경에는 GitHub 기여도 그래프처럼 생긴 작은 칸들이 아주 옅게 반짝이고, 지렁이 몇 마리가 칸을 따라 기어다니면서 켜진 칸을 먹어요. 가운데 타이틀과 입력창 주변은 비워 두고, 움직임 줄이기 설정에서는 멈춰 있어요.
+- 메인 화면 배경에는 GitHub 기여도 그래프처럼 생긴 작은 칸들이 아주 옅게 반짝이고, 지렁이 몇 마리가 칸을 따라 기어다니면서 켜진 칸을 먹어요. 지렁이들은 돌아가면서 머리 위 작은 말풍선으로 이 서비스가 해 주는 일을 한마디씩 말해요. 문구는 `ContributionBackdrop`의 `WORM_LINES`에 있어요. 가운데 타이틀과 입력창 주변은 비워 두고, 움직임 줄이기 설정에서는 멈춰 있어요.
 - 헤더는 화면 위에 겹쳐 있고 반투명 흰 배경에 배경 블러를 줘서, 채팅이 헤더 아래로 흐리게 비쳐요.
 - 헤더에는 로고만 둬요.
 
@@ -37,6 +37,8 @@ GitHub 레포 링크를 입력하면 참여자별 기여도를 분석해서 채�
 - 프론트엔드: React + TypeScript (Vite)
 - 스타일: Tailwind CSS v4 (`@tailwindcss/vite`)
 - 서버: Express 5 + TypeScript (tsx로 실행)
+- 저장소: Supabase (Postgres). 서버에서 service role 키로만 접근하고, 브라우저는 직접 붙지 않아요.
+- 분석 도구: Google Analytics 4 (`VITE_GA_MEASUREMENT_ID`가 있을 때만 켜짐)
 - AI: Gemini API (`@google/genai`, 기본 모델 `gemini-3.8-flash`, JSON 스키마 응답을 zod로 검증)
 
 GitHub API, Gemini API 호출은 모두 서버에서 해요. 키와 토큰은 클라이언트에 절대 노출하지 않아요.
@@ -48,8 +50,11 @@ index.html            폰트 로드, 탭 제목, 파비콘
 public/favicon.svg
 shared/types.ts       서버와 클라이언트가 함께 쓰는 타입 (채팅 이벤트, 참여자 수치)
 shared/repo.ts        GitHub 레포 링크 판별
+supabase/schema.sql   Supabase 테이블 정의 (chats, ai_usage, ai_usage_daily 뷰)
 server/
-  index.ts            Express 앱, /api/analyze SSE 라우트, 요청 횟수 제한
+  index.ts            Express 앱, /api/analyze SSE 라우트, 채팅 조회와 공유 라우트, 요청 횟수 제한
+  store.ts            Supabase 연결, 채팅 저장과 공유, AI 사용량 기록
+  context.ts          요청마다 채팅 ID를 들고 다니는 컨텍스트
   env.ts              환경 변수 로드
   github.ts           GitHub REST API 클라이언트 (오류와 호출 제한 처리, 통계 202 재시도)
   stats.ts            사람별 수치 계산, 제외 파일 규칙, 계정 기준 합치기, 기여도 순위
@@ -59,9 +64,10 @@ server/
   cache.ts            만료 시간이 있는 메모리 캐시
   text.ts             금지 문자 후처리, 길이 제한
 src/
-  App.tsx             화면 전환(메인 화면과 채팅)
+  App.tsx             화면 전환(메인 화면과 채팅), 채팅 주소(/c/아이디) 처리, 공유
   index.css           Tailwind 테마 토큰, 자간, 애니메이션
-  lib/api.ts          서버 호출, SSE 스트림 읽기
+  lib/api.ts          서버 호출, SSE 스트림 읽기, 브라우저 소유자 키
+  lib/analytics.ts    Google Analytics 이벤트 전송
   hooks/useAnalysis.ts  채팅 메시지 큐, 입력 중 표시 타이밍
   components/         Header, Logo, Hero, ContributionBackdrop, RepoInput, Chat, Bubble, TypingDots, RichText, RankingCarousel, StatsCard, SummaryChart, Charts, Followup
 ```
@@ -89,6 +95,8 @@ npm run dev            # 프론트 http://localhost:5173, 서버 http://localhos
 | `GITHUB_TOKEN` | 공개 레포 분석에 쓰는 서버 토큰. 만료 기간은 366일 이하로 발급해요. |
 | `GEMINI_API_KEY` | Gemini API 키. 없으면 수치만 보여줘요. |
 | `PORT` (선택) | 프로덕션 서버 포트. 기본값 3001 |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Supabase 연결. 없으면 채팅 저장과 공유, AI 사용량 기록이 꺼져요. service role 키는 서버 전용 비밀 값이에요. |
+| `VITE_GA_MEASUREMENT_ID` | Google Analytics 4 측정 ID. 브라우저에 공개되는 값이고, 없으면 추적하지 않아요. |
 | `GEMINI_MODEL` (선택) | Gemini 모델 변경용. 기본값 `gemini-3.8-flash` |
 
 ## 데이터 수집과 계산 규칙
@@ -103,6 +111,44 @@ npm run dev            # 프론트 http://localhost:5173, 서버 http://localhos
 - 개발한 기능 목록과 코드 스타일은 상위 10명까지만 Gemini로 분석해요. 기능은 한 문장으로 뭉뚱그리지 않고 3개에서 8개 항목으로 나눠서 보여줘요. 모델이 혼잡하거나(503) 호출 제한에 걸리면(429) `gemini-3.7-flash`, `gemini-3.5-flash`, `gemini-3.5-flash-lite` 순서로 바로 넘어가고, 성공한 모델은 5분 동안 먼저 써요. 참여자별로 대표 커밋 5개를 고르고 diff 길이를 제한해서 보내요. 길이 제한 상수는 `server/analyze.ts` 위쪽에 모여 있어요.
 - 캐싱: 결과는 레포와 마지막 푸시 시각을 키로 24시간 메모리에 캐싱해요.
 - 비공개 레포는 분석하지 않아요. 서버 토큰으로 볼 수 있는 비공개 레포여도 결과를 내보내지 않고, 분석할 수 없다고 안내해요.
+
+## 채팅 저장과 공유
+
+Supabase 프로젝트의 SQL Editor에서 `supabase/schema.sql`을 한 번 실행해야 해요.
+
+- 채팅은 UUID로 구분하고 주소는 `/c/{uuid}`예요. 링크를 내는 순간 브라우저가 UUID를 만들고, 요청이 끝날 때마다 서버가 그 요청에서 올라간 말풍선을 `chats.messages`에 이어 붙여요.
+- 브라우저마다 무작위 소유자 키를 localStorage에 하나 두고 `X-Owner-Key` 헤더로 보내요. 로그인 정보나 토큰이 아니고, 서버에는 해시만 저장해요.
+- 공유하기 전의 채팅은 만든 브라우저에서만 열고 이어서 쓸 수 있어요. 다른 브라우저에서는 열 수 없다고 안내해요.
+- 헤더의 공유 버튼은 분석이 끝난(전체 기여도 비교까지 나온) 내 채팅에서만 보여요. 공유하면 `shared_at`이 기록되고, 그 뒤로는 링크를 아는 누구나 열람할 수 있지만 아무도 이어서 작업할 수 없어요. 서버도 공유된 채팅의 분석 요청을 거절해요.
+- 공유는 되돌릴 수 없어서, 누르기 전에 확인 창으로 한 번 더 물어봐요.
+
+## AI 사용량 기록
+
+Gemini를 한 번 부를 때마다(실패와 대체 모델 재시도 포함) `ai_usage`에 한 줄을 남겨요. 채팅 ID, 목적(`repo_summary`, `contributor_profile`, `narration`), 대상, 모델, 성공 여부와 오류, 시스템 프롬프트와 사용자 프롬프트 전문, 응답 전문, 입력과 출력과 생각 토큰 수, 걸린 시간이 들어가요. 프롬프트에는 분석 대상 레포의 README와 diff가 그대로 들어 있어요. 날짜별 합계는 `ai_usage_daily` 뷰로 봐요. 기록은 분석을 기다리게 하지 않고, 실패해도 분석은 계속돼요.
+
+## Google Analytics 이벤트
+
+`src/lib/analytics.ts`의 `track`으로 보내요. 화면 전환은 `page_view`를 직접 보내고, 채팅 주소는 `/c/[id]`로 묶어서 보내요. 레포는 `owner/repo` 형태의 `repo` 값으로 남겨요.
+
+| 이벤트 | 언제 | 주요 값 |
+| --- | --- | --- |
+| `page_view` | 화면이 바뀔 때 | `screen`(home, chat, shared_chat), `repo`, `is_owner` |
+| `repo_submit` | 메인 화면에서 링크를 냈을 때 | `repo` |
+| `repo_invalid_input` | 링크가 아닌 값을 냈을 때 | `length`, `looks_like_url` |
+| `calc_mode_select` | 계산 방식을 골랐을 때 | `exclude_generated` |
+| `analysis_step_continue` | 계속하기를 눌렀을 때 | `next_step` |
+| `analysis_complete` | 전체 기여도 비교까지 나왔을 때 | `contributors`, `duration_seconds` |
+| `analysis_error` | 오류 말풍선이 나왔을 때 | `message`, `retryable` |
+| `retry_click` | 다시 시도를 눌렀을 때 | `question` |
+| `followup_ask`, `followup_answered` | 추가 질문을 고르고 답을 받았을 때 | `question`, `duration_seconds` |
+| `followup_person_picker_toggle` | 참여자 고르기를 열고 닫을 때 | |
+| `ranking_card_view` | 순위 카드를 넘겨 봤을 때 | `rank`, `total` |
+| `scroll_to_bottom_click` | 맨 아래로 이동을 눌렀을 때 | |
+| `share_open`, `share_cancel`, `share_confirm`, `share_failed` | 공유 확인 창을 열고, 취소하고, 공유했을 때 | `message_count` |
+| `share_link_copy` | 공유 링크를 복사했을 때 | `success`, `is_owner` |
+| `chat_open_failed` | 열 수 없는 채팅 주소로 들어왔을 때 | |
+| `home_click` | 로고나 홈 버튼으로 돌아갈 때 | `from` |
+| `team_link_click` | 팀 홈페이지 링크를 눌렀을 때 | |
 
 ## 현재까지 구현된 기능
 
@@ -119,6 +165,7 @@ npm run dev            # 프론트 http://localhost:5173, 서버 http://localhos
 - 채팅을 위로 올리면 화면 하단 중앙에 맨 아래로 이동 버튼이 나오고, 위로 올려서 읽는 동안에는 새 말풍선이 와도 스크롤을 끌어내리지 않아요.
 - 분석 전에 lock 파일과 빌드 결과물을 뺄지 묻고, 고르면 커밋 단위로 계산
 - 결과 캐싱
+- 채팅 저장과 공유, AI 사용량 기록, Google Analytics 이벤트 추적 (위의 각 절 참고)
 - 분석이 끝나면 "더 궁금한 점이 있나요?" 말풍선에서 추가 질문을 고를 수 있어요. 활동 시간대, 진행 흐름, 막판에 몰아서 작업한 사람, 커밋 메시지 규칙, PR 현황, 특정 참여자 상세를 지원하고, 답한 뒤에 다시 질문을 고를 수 있어요.
 - 추가 질문의 숫자와 그래프는 커밋 목록(최근 1,000개)과 PR 목록(최근 100개)으로 계산하고, 시간은 사용자 기기의 시간대 기준이에요. 참여자별 활동 시간은 히트맵으로 보여줘요.
 - 숫자를 그대로 읽어 주지 않고, 숫자가 뜻하는 바를 풀어서 설명해요. 순위 카드 다음의 기여도 해설, 마지막 팀 총평, 추가 질문의 답은 계산한 숫자를 Gemini에 넘겨서 "밤늦게 몰아서 작업하는 팀이네요" 같은 설명으로 받아요. 25초 안에 받지 못하면 기본 문장으로 대신해요.
@@ -128,7 +175,8 @@ npm run dev            # 프론트 http://localhost:5173, 서버 http://localhos
 
 ## 남은 작업
 
-- 채팅 내역 저장과 공유 (Supabase를 DB로 쓰고 Express에서 붙이는 방향으로 검토 중)
+- 실제 Supabase 프로젝트와 GA 측정 ID를 넣고 저장, 공유, 사용량 기록, 이벤트 수집을 실사용으로 검증
+- 내가 만든 채팅 목록 보기
 - 캐시를 메모리 대신 외부 저장소로 옮기기. 지금은 서버를 다시 시작하면 사라지고, 서버를 여러 대로 늘릴 수 없어요.
 - 커밋이 300개를 넘는 레포의 커밋 단위 분석 범위 넓히기
 - 테스트 코드와 배포 설정

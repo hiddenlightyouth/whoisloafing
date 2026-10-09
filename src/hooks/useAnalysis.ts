@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
-import type { AnalyzeRequest, ChatEvent } from '../../shared/types'
+import type { AnalyzeRequest, ChatEvent, ChatSnapshot } from '../../shared/types'
+import { repoLabel, track } from '../lib/analytics'
 import { streamAnalysis } from '../lib/api'
 
 export type ChatMessage =
@@ -27,6 +28,8 @@ export function useAnalysis() {
   const resumeRef = useRef<(() => void) | null>(null)
   const busyRef = useRef(false)
   const nextId = useRef(1)
+  /** 저장할 채팅방의 ID. 저장 기능이 꺼져 있으면 null이에요. */
+  const chatIdRef = useRef<string | null>(null)
 
   const append = useCallback((message: NewMessage) => {
     setMessages((prev) => [...prev, { ...message, id: nextId.current++ } as ChatMessage])
@@ -37,10 +40,18 @@ export function useAnalysis() {
     async (request: AnalyzeRequest, userText?: string) => {
       const url = request.url.trim()
       if (!url || busyRef.current) return
-      const current = { ...request, url }
+      const current: AnalyzeRequest = {
+        url,
+        excludeGenerated: request.excludeGenerated,
+        question: request.question,
+        person: request.person,
+      }
       busyRef.current = true
       setBusy(true)
       if (userText) append({ from: 'user', text: userText })
+
+      const startedAt = Date.now()
+      const repo = repoLabel(url)
 
       // 서버에서 온 메시지를 큐에 쌓아 두고, 입력 중 표시를 거쳐 하나씩 화면에 올려요.
       const queue: ChatEvent[] = []
@@ -51,7 +62,7 @@ export function useAnalysis() {
         wake?.()
       }
 
-      streamAnalysis(current, push)
+      streamAnalysis({ ...current, chatId: chatIdRef.current ?? undefined, userText }, push)
         .catch(() =>
           push({ type: 'error', text: '서버와 연결이 끊어졌어요. 잠시 뒤에 다시 시도해 주세요.', action: 'retry' }),
         )
@@ -75,10 +86,25 @@ export function useAnalysis() {
           await new Promise<void>((resolve) => (resumeRef.current = resolve))
           resumeRef.current = null
           setPaused(null)
+          track('analysis_step_continue', { repo, next_step: event.next })
           continue
         }
         await sleep(TYPING_DELAY_MS)
         append({ from: 'bot', event, request: current })
+
+        const seconds = Math.round((Date.now() - startedAt) / 1000)
+        if (event.type === 'error') {
+          track('analysis_error', { repo, message: event.text.slice(0, 100), retryable: event.action === 'retry' })
+        } else if (event.type === 'summary') {
+          track('analysis_complete', {
+            repo,
+            contributors: event.contributors.length + event.othersCount,
+            exclude_generated: current.excludeGenerated === true,
+            duration_seconds: seconds,
+          })
+        } else if (event.type === 'followup' && current.question) {
+          track('followup_answered', { repo, question: current.question, duration_seconds: seconds })
+        }
       }
 
       busyRef.current = false
@@ -89,9 +115,20 @@ export function useAnalysis() {
 
   const resume = useCallback(() => resumeRef.current?.(), [])
 
-  const reset = useCallback(() => {
-    if (!busyRef.current) setMessages([])
+  /** 새 채팅을 시작하거나(저장할 ID 지정), 화면을 비워요. 분석 중에는 아무것도 하지 않아요. */
+  const reset = useCallback((chatId: string | null = null): boolean => {
+    if (busyRef.current) return false
+    chatIdRef.current = chatId
+    setMessages([])
+    return true
   }, [])
 
-  return { messages, busy, paused, send, resume, reset }
+  /** 저장된 채팅을 그대로 화면에 올려요. */
+  const load = useCallback((chat: ChatSnapshot) => {
+    if (busyRef.current) return
+    chatIdRef.current = chat.id
+    setMessages(chat.messages.map((message) => ({ ...message, id: nextId.current++ }) as ChatMessage))
+  }, [])
+
+  return { messages, busy, paused, send, resume, reset, load, chatId: chatIdRef }
 }
