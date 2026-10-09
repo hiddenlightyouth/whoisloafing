@@ -26,7 +26,7 @@ export function RepoInput({ onSubmit }: { onSubmit: (url: string) => void }) {
         onSubmit={handleSubmit}
         onAnimationEnd={() => setShaking(false)}
         noValidate
-        className={`flex h-[52px] w-full items-center rounded-full border bg-white/55 pr-1.5 pl-5 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.12)] backdrop-blur-md transition-colors ${
+        className={`flex h-[52px] w-full items-center rounded-full border bg-white/55 pr-1.5 pl-5 backdrop-blur-md transition-colors ${
           invalid ? 'border-red-400' : 'border-gray-200/90'
         } ${shaking ? 'animate-shake' : ''
         }`}
