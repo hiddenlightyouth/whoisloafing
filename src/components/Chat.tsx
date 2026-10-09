@@ -98,7 +98,7 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
     return () => observer.disconnect()
   }, [scrollToBottom, updateFocus])
 
-  // 넓은 화면에서는 질문 메뉴를 말풍선으로 올리지 않고 채팅 옆에 붙여 둬요. 답을 읽으려고 스크롤을 올릴 필요가 없어요.
+  // 넓은 화면에서는 질문 메뉴를 말풍선으로 올리지 않고, 채팅 입력창이 있을 자리인 화면 아래에 붙여 둬요. 답을 읽으려고 스크롤을 올릴 필요가 없어요.
   // 메뉴가 방금 나왔거나 메뉴에서 고른 질문의 답이 오가는 동안에만 보여주고, 기여도 분석이 진행되는 동안에는 숨겨요.
   const isMenu = (message: ChatMessage) => message.from === 'bot' && message.event.type === 'followup'
   const menuIndex = readOnly ? -1 : messages.map(isMenu).lastIndexOf(true)
@@ -108,92 +108,91 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
       : null
 
   return (
-    <main className="relative flex min-h-0 flex-1 flex-col">
-      {/* 화면이 아주 넓지 않으면 옆 메뉴와 겹치지 않게 채팅 칸을 왼쪽으로 조금 비켜 둬요. */}
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="flex-1 overflow-y-auto px-4 pt-14 sm:px-6 lg:max-xl:pr-[300px]"
-      >
-        <div
-          ref={contentRef}
-          className="mx-auto flex max-w-2xl flex-col gap-2.5 pt-6 pb-[max(2.5rem,env(safe-area-inset-bottom))]"
-          aria-live="polite"
-        >
-          {messages.map((message, index) => (
-            // 말풍선 자체에는 등장 애니메이션이 걸려 있어서, 밝기는 바깥 칸에서 따로 조절해요.
-            <div
-              key={message.id}
-              data-focus
-              className={`transition-opacity duration-200 ease-out ${isMenu(message) ? 'lg:hidden' : ''}`}
-            >
-              <Bubble
-                message={message}
-                busy={busy || readOnly}
-                isLast={index === messages.length - 1}
-                onSend={onSend}
-                onNewRepo={onNewRepo}
-              />
-            </div>
-          ))}
-          {/* 말풍선이 하나 올라올 때마다 새로 그려서, 오래 기다릴 때만 문구가 나오게 해요. */}
-          {paused ? (
-            <div className="mt-2 flex animate-rise flex-wrap items-center justify-end gap-x-3 gap-y-2">
-              <p className="text-[13px] text-gray-500">
-                다음 단계 <span className="ml-1 font-medium text-gray-900">{paused}</span>
-              </p>
-              <button
-                type="button"
-                autoFocus
-                onClick={onResume}
-                className="inline-flex h-10 items-center gap-1.5 rounded-full bg-brand pr-3.5 pl-4 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover"
+    <main className="flex min-h-0 flex-1 flex-col">
+      <div className="relative min-h-0 flex-1">
+        <div ref={scrollRef} onScroll={handleScroll} className="h-full overflow-y-auto px-4 pt-14 sm:px-6">
+          <div
+            ref={contentRef}
+            className="mx-auto flex max-w-2xl flex-col gap-2.5 pt-6 pb-[max(2.5rem,env(safe-area-inset-bottom))]"
+            aria-live="polite"
+          >
+            {messages.map((message, index) => (
+              // 말풍선 자체에는 등장 애니메이션이 걸려 있어서, 밝기는 바깥 칸에서 따로 조절해요.
+              <div
+                key={message.id}
+                data-focus
+                className={`transition-opacity duration-200 ease-out ${isMenu(message) ? 'md:hidden' : ''}`}
               >
-                계속하기
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-4" aria-hidden="true">
-                  <path d="M8 3.5v9M4.5 9L8 12.5 11.5 9" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-            </div>
-          ) : (
-            busy && <TypingDots key={messages.length} />
-          )}
-          {readOnly && (
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-brand-soft px-4 py-3">
-              <p className="text-[13px] text-gray-600">읽기 전용 채팅으로 전환됨</p>
-              <button
-                type="button"
-                onClick={onHome}
-                className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover"
-              >
-                다른 레포 분석해 보기
-              </button>
-            </div>
-          )}
+                <Bubble
+                  message={message}
+                  busy={busy || readOnly}
+                  isLast={index === messages.length - 1}
+                  onSend={onSend}
+                  onNewRepo={onNewRepo}
+                />
+              </div>
+            ))}
+            {/* 말풍선이 하나 올라올 때마다 새로 그려서, 오래 기다릴 때만 문구가 나오게 해요. */}
+            {paused ? (
+              <div className="mt-2 flex animate-rise flex-wrap items-center justify-end gap-x-3 gap-y-2">
+                <p className="text-[13px] text-gray-500">
+                  다음 단계 <span className="ml-1 font-medium text-gray-900">{paused}</span>
+                </p>
+                <button
+                  type="button"
+                  autoFocus
+                  onClick={onResume}
+                  className="inline-flex h-10 items-center gap-1.5 rounded-full bg-brand pr-3.5 pl-4 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover"
+                >
+                  계속하기
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-4" aria-hidden="true">
+                    <path d="M8 3.5v9M4.5 9L8 12.5 11.5 9" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </div>
+            ) : (
+              busy && <TypingDots key={messages.length} />
+            )}
+            {readOnly && (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-brand-soft px-4 py-3">
+                <p className="text-[13px] text-gray-600">읽기 전용 채팅으로 전환됨</p>
+                <button
+                  type="button"
+                  onClick={onHome}
+                  className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover"
+                >
+                  다른 레포 분석해 보기
+                </button>
+              </div>
+            )}
+          </div>
         </div>
+
+        <button
+          type="button"
+          aria-label="맨 아래로 이동"
+          tabIndex={atBottom ? -1 : 0}
+          onClick={() => {
+            track('scroll_to_bottom_click')
+            scrollToBottom()
+          }}
+          className={`absolute bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 flex size-9 -translate-x-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 transition-all duration-200 hover:text-brand ${
+            atBottom ? 'pointer-events-none translate-y-2 opacity-0' : 'opacity-100'
+          }`}
+        >
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-4" aria-hidden="true">
+            <path d="M10 4v12M5 11l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       </div>
 
       {menu && (
-        <aside className="absolute top-20 right-[max(1.5rem,calc(50%-336px-1.5rem-252px))] hidden max-h-[calc(100%-6.5rem)] w-[252px] overflow-y-auto lg:block">
-          <Bubble key={menu.id} message={menu} busy={busy} isLast={menuIndex === messages.length - 1} onSend={onSend} docked />
-        </aside>
+        <div className="hidden shrink-0 px-6 pt-2 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:block">
+          <div className="mx-auto max-h-[45vh] max-w-2xl overflow-y-auto">
+            <Bubble key={menu.id} message={menu} busy={busy} isLast={menuIndex === messages.length - 1} onSend={onSend} docked />
+          </div>
+        </div>
       )}
-
-      <button
-        type="button"
-        aria-label="맨 아래로 이동"
-        tabIndex={atBottom ? -1 : 0}
-        onClick={() => {
-          track('scroll_to_bottom_click')
-          scrollToBottom()
-        }}
-        className={`absolute bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 flex size-9 -translate-x-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 transition-all duration-200 hover:text-brand ${
-          atBottom ? 'pointer-events-none translate-y-2 opacity-0' : 'opacity-100'
-        }`}
-      >
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-4" aria-hidden="true">
-          <path d="M10 4v12M5 11l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </button>
     </main>
   )
 }

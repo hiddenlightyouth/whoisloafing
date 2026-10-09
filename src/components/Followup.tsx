@@ -8,6 +8,8 @@ interface Props {
   onAsk: (question: FollowupQuestion, userText: string, person?: string) => void
   /** 아직 기여도 분석 전이면 있어요. 맨 위에 기여도 분석을 시작하는 버튼을 보여줘요. */
   onStart?: () => void
+  /** 화면 아래에 붙여 둘 때는 버튼을 가로로 늘어놓아서 높이를 덜 차지하게 해요. */
+  row?: boolean
 }
 
 const chip =
@@ -16,12 +18,12 @@ const chip =
 const QUESTIONS = Object.keys(FOLLOWUP_LABELS) as FollowupQuestion[]
 
 /** 살펴볼 내용을 고르는 버튼 묶음이에요. 레포 소개 직후와 답이 끝날 때마다 나와요. */
-export function Followup({ people, disabled, onAsk, onStart }: Props) {
+export function Followup({ people, disabled, onAsk, onStart, row = false }: Props) {
   const [picking, setPicking] = useState(false)
 
   return (
     <div className="mt-3 mb-1.5">
-      <div className="flex flex-col items-start gap-1.5">
+      <div className={`flex gap-1.5 ${row ? 'flex-wrap' : 'flex-col items-start'}`}>
         {onStart && (
           <button
             type="button"

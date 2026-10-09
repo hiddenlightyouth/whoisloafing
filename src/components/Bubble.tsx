@@ -16,7 +16,7 @@ interface Props {
   isLast: boolean
   /** userText가 있으면 사용자 말풍선을 올리고 요청을 보내요. 없으면 조용히 다시 시도해요. */
   onSend: (request: AnalyzeRequest, userText?: string) => void
-  /** 넓은 화면에서 채팅 옆에 붙여 두는 메뉴로 그릴 때 true. 타자 효과 없이 칸을 꽉 채워서 보여줘요. */
+  /** 넓은 화면에서 화면 아래에 붙여 두는 메뉴로 그릴 때 true. 타자 효과 없이 칸을 꽉 채워서 보여줘요. */
   docked?: boolean
   /** 다른 레포 분석하기를 눌렀을 때 메인 화면으로 돌아가요. */
   onNewRepo?: () => void
@@ -149,7 +149,7 @@ export function Bubble({ message, busy, isLast, onSend, docked = false, onNewRep
         {event.type === 'facts' && <Facts items={event.items} />}
 
         {event.type === 'followup' && request && (
-          <Followup people={event.people} disabled={locked} onAsk={ask} onStart={event.analysis ? start : undefined} />
+          <Followup people={event.people} disabled={locked} onAsk={ask} onStart={event.analysis ? start : undefined} row={docked} />
         )}
 
         {event.type === 'pick' && request && (
