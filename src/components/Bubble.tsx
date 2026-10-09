@@ -3,6 +3,7 @@ import type { ChatMessage } from '../hooks/useAnalysis'
 import { Charts, Facts } from './Charts'
 import { Followup } from './Followup'
 import { RankingCarousel } from './RankingCarousel'
+import { RichText } from './RichText'
 import { SummaryChart } from './SummaryChart'
 
 interface Props {
@@ -55,7 +56,9 @@ export function Bubble({ message, busy, isLast, onLogin, onSend }: Props) {
           wide ? 'w-full pb-4' : 'max-w-[85%]'
         }`}
       >
-        <p className="whitespace-pre-line">{event.text}</p>
+        <p className="whitespace-pre-line">
+          <RichText text={event.text} />
+        </p>
 
         {event.type === 'ranking' && <RankingCarousel contributors={event.contributors} />}
 
@@ -64,7 +67,9 @@ export function Bubble({ message, busy, isLast, onLogin, onSend }: Props) {
             {event.items.map((item, index) => (
               <li key={`${index}:${item}`} className="flex gap-3 py-2.5 text-[14px] leading-snug">
                 <span className="w-4 shrink-0 text-xs leading-5 font-semibold text-brand tabular-nums">{index + 1}</span>
-                <span className="min-w-0">{item}</span>
+                <span className="min-w-0">
+                  <RichText text={item} />
+                </span>
               </li>
             ))}
           </ul>

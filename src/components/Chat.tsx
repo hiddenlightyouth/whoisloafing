@@ -14,6 +14,12 @@ interface Props {
 /** 맨 아래에서 이만큼 안쪽이면 아래에 붙어 있는 것으로 봐요. */
 const BOTTOM_THRESHOLD_PX = 80
 
+// 지난 말풍선을 흐리게 하는 효과
+const HEADER_HEIGHT_PX = 56
+/** 화면 위에서부터 이 비율만큼의 구간에서 서서히 밝아져요. */
+const FOCUS_FADE_RATIO = 0.4
+const FOCUS_MIN_OPACITY = 0.3
+
 export function Chat({ messages, busy, onLogin, onSend }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
@@ -35,7 +41,32 @@ export function Chat({ messages, busy, onLogin, onSend }: Props) {
     else if (el.scrollTop < lastScrollTop.current - 2) pinned.current = false
     lastScrollTop.current = el.scrollTop
     setAtBottom(near || pinned.current)
+    updateFocus()
   }
+
+  // 화면 위쪽으로 밀려난 지난 말풍선은 흐리게 두고, 아래로 내려올수록 서서히 밝아지게 해요.
+  const updateFocus = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const view = el.getBoundingClientRect()
+    const fadeStart = view.top + HEADER_HEIGHT_PX
+    const fadeRange = (view.height - HEADER_HEIGHT_PX) * FOCUS_FADE_RATIO
+    for (const item of el.querySelectorAll<HTMLElement>('[data-focus]')) {
+      const rect = item.getBoundingClientRect()
+      // 화면에 보이는 부분의 가운데를 기준으로 해요. 화면보다 긴 말풍선도 자연스럽게 밝아져요.
+      const visibleTop = Math.max(rect.top, fadeStart)
+      const visibleBottom = Math.min(rect.bottom, view.bottom)
+      const center = visibleBottom > visibleTop ? (visibleTop + visibleBottom) / 2 : rect.bottom
+      const progress = Math.min(1, Math.max(0, (center - fadeStart) / fadeRange))
+      item.style.opacity = String(FOCUS_MIN_OPACITY + (1 - FOCUS_MIN_OPACITY) * progress)
+    }
+  }, [])
+
+  useEffect(() => {
+    updateFocus()
+    window.addEventListener('resize', updateFocus)
+    return () => window.removeEventListener('resize', updateFocus)
+  }, [messages.length, busy, updateFocus])
 
   // 아래에 붙어 있을 때만 새 말풍선을 따라 내려가요. 위로 올려서 읽는 중이면 그대로 둬요.
   useEffect(() => {
@@ -50,14 +81,16 @@ export function Chat({ messages, busy, onLogin, onSend }: Props) {
           aria-live="polite"
         >
           {messages.map((message, index) => (
-            <Bubble
-              key={message.id}
-              message={message}
-              busy={busy}
-              isLast={index === messages.length - 1}
-              onLogin={onLogin}
-              onSend={onSend}
-            />
+            // 말풍선 자체에는 등장 애니메이션이 걸려 있어서, 밝기는 바깥 칸에서 따로 조절해요.
+            <div key={message.id} data-focus className="transition-opacity duration-200 ease-out">
+              <Bubble
+                message={message}
+                busy={busy}
+                isLast={index === messages.length - 1}
+                onLogin={onLogin}
+                onSend={onSend}
+              />
+            </div>
           ))}
           {/* 말풍선이 하나 올라올 때마다 새로 그려서, 오래 기다릴 때만 문구가 나오게 해요. */}
           {busy && <TypingDots key={messages.length} />}

@@ -59,7 +59,7 @@ src/
   lib/api.ts          서버 호출, SSE 스트림 읽기
   hooks/useAuth.ts    로그인 상태
   hooks/useAnalysis.ts  채팅 메시지 큐, 입력 중 표시 타이밍
-  components/         Header, Logo, Hero, RepoInput, Chat, Bubble, TypingDots, RankingCarousel, StatsCard, SummaryChart, Charts, Followup
+  components/         Header, Logo, Hero, RepoInput, Chat, Bubble, TypingDots, RichText, RankingCarousel, StatsCard, SummaryChart, Charts, Followup
 ```
 
 ## 실행 방법
@@ -114,6 +114,8 @@ GitHub OAuth App의 콜백 URL은 `{APP_URL}/api/auth/github/callback` 으로 �
 - SSE로 메시지를 순서대로 전달하고, 말풍선 사이에 입력 중 표시. 오래 기다릴 때는 점 옆에 "커밋 기록 뒤적이는 중" 같은 문구가 번갈아 나와요.
 - 채팅 흐름: 레포 소개, 계산 방식 질문, 통계 가져오는 중 안내, 참여 인원, 순위 카드, 기능 분석 시작 안내와 참여자별 기능 목록, 코드 스타일 분석 시작 안내와 참여자별 코드 스타일, 전체 기여도 비교 순서예요.
 - 채팅 화면에는 입력창을 두지 않아요. 다른 레포를 분석하려면 로고를 눌러 메인 화면으로 돌아가요.
+- 화면 위쪽으로 밀려난 지난 말풍선은 흐리게 보이고, 스크롤해서 아래로 내려올수록 서서히 밝아져요.
+- 말풍선 글에서 핵심 표현은 굵게 보여줘요. 서버가 보내는 글에서 별표 두 개로 감싼 부분만 굵게 그리고, 그 밖의 마크다운은 쓰지 않아요. AI 프롬프트에도 핵심 두세 군데만 강조하라고 적어 뒀어요.
 - 채팅을 위로 올리면 화면 하단 중앙에 맨 아래로 이동 버튼이 나오고, 위로 올려서 읽는 동안에는 새 말풍선이 와도 스크롤을 끌어내리지 않아요.
 - 분석 전에 lock 파일과 빌드 결과물을 뺄지 묻고, 고르면 커밋 단위로 계산
 - 결과 캐싱 (비공개 레포는 사용자별 분리)

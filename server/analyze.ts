@@ -124,7 +124,7 @@ function compactTree(paths: string[]): string {
 
 function fallbackSummary(repo: Repo, languages: Record<string, number>): string {
   const top = Object.entries(languages).sort((a, b) => b[1] - a[1])[0]?.[0]
-  return top ? `${top}로 만든 ${repo.name} 레포지토리네요!` : `${repo.name} 레포지토리네요!`
+  return top ? `**${top}**로 만든 **${repo.name}** 레포지토리네요!` : `**${repo.name}** 레포지토리네요!`
 }
 
 /** 어떤 서비스의 어떤 레포인지 한 문장으로 정의해요. AI를 쓸 수 없으면 언어와 이름으로 대신해요. */
@@ -317,7 +317,7 @@ export async function runAnalysis(options: {
   }
 
   if (repo.private && !requester) {
-    emit({ type: 'error', text: '비공개 레포예요! GitHub로 로그인하면 분석을 이어나갈 수 있어요.', action: 'login' })
+    emit({ type: 'error', text: '**비공개 레포**예요! GitHub로 로그인하면 분석을 이어나갈 수 있어요.', action: 'login' })
     return
   }
 
@@ -404,8 +404,8 @@ export async function runAnalysis(options: {
       type: 'text',
       text:
         ranked.length === 1
-          ? '🎉 이 프로젝트는 1명이 혼자 만들었네요!'
-          : `🎉 이 프로젝트에 ${formatNumber(ranked.length)}명이 참여했네요!`,
+          ? '🎉 이 프로젝트는 **1명**이 혼자 만들었네요!'
+          : `🎉 이 프로젝트에 **${formatNumber(ranked.length)}명**이 참여했네요!`,
     })
 
     // 역할과 코드 스타일 분석은 미리 한꺼번에 시작해 두고, 화면에는 기여도 순서대로 내보내요.
@@ -446,8 +446,8 @@ export async function runAnalysis(options: {
       type: 'ranking',
       text:
         ranked.length === 1
-          ? `${cards[0].name}님이 혼자 만든 레포예요.`
-          : `${cards[0].name}님이 가장 많이 기여했어요. ${cards
+          ? `**${cards[0].name}**님이 혼자 만든 레포예요.`
+          : `**${cards[0].name}**님이 가장 많이 기여했어요. ${cards
               .slice(1, 3)
               .map((card, index) => `${index + 2}위는 ${card.name}님`)
               .join(', ')}이에요.`,
@@ -468,7 +468,7 @@ export async function runAnalysis(options: {
         if (isAborted()) return
         const profile = await profiles[index]
         if (profile) {
-          emit({ type: 'list', text: `${card.name}님이 맡은 기능이에요.`, items: profile.features })
+          emit({ type: 'list', text: `**${card.name}**님이 맡은 기능이에요.`, items: profile.features })
           styles.push({ name: card.name, items: profile.style })
           teamNotes.push({ name: card.name, features: profile.features, style: profile.style })
         } else {
@@ -482,7 +482,7 @@ export async function runAnalysis(options: {
         for (const style of styles) {
           emit(
             style.items.length > 0
-              ? { type: 'list', text: `${style.name}님의 코드 스타일이에요.`, items: style.items }
+              ? { type: 'list', text: `**${style.name}**님의 코드 스타일이에요.`, items: style.items }
               : { type: 'text', text: `${style.name}님은 살펴볼 코드 변경이 적어서 코드 스타일을 파악하기 어려웠어요.` },
           )
         }

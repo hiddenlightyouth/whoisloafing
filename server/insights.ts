@@ -203,7 +203,7 @@ function answerHours(insights: Insights, clock: Clock, emit: Emit) {
 
   emit({
     type: 'chart',
-    text: `주로 ${hourLabel(peakIndex(hours))}쯤 가장 활발했어요. 요일로는 ${peakDay}요일에 가장 많이 작업했고, 자정부터 새벽 6시 사이 커밋은 전체의 ${percent(lateNight, commits.length)}%예요. 시간은 지금 쓰는 기기의 시간대 기준이에요.`,
+    text: `주로 **${hourLabel(peakIndex(hours))}쯤** 가장 활발했어요. 요일로는 **${peakDay}요일**에 가장 많이 작업했고, 자정부터 새벽 6시 사이 커밋은 전체의 ${percent(lateNight, commits.length)}%예요. 시간은 지금 쓰는 기기의 시간대 기준이에요.`,
     charts: [
       hourChart('시간대별 커밋 수', hours),
       {
@@ -253,7 +253,7 @@ function answerTimeline(insights: Insights, clock: Clock, emit: Emit) {
 
   emit({
     type: 'chart',
-    text: `${dateLabel(first)}에 시작해서 ${dateLabel(last)}까지 ${formatNumber(spanDays)}일 동안 이어졌어요. 그중 실제로 커밋이 있었던 날은 ${formatNumber(activeDays)}일이에요.`,
+    text: `${dateLabel(first)}에 시작해서 ${dateLabel(last)}까지 **${formatNumber(spanDays)}일 동안** 이어졌어요. 그중 실제로 커밋이 있었던 날은 ${formatNumber(activeDays)}일이에요.`,
     charts: [
       {
         title: `${unit} 단위 커밋 수`,
@@ -309,7 +309,7 @@ function answerSpurt(insights: Insights, emit: Emit) {
     text:
       top.late === 0
         ? `마지막 ${stretchDays}일 동안에는 커밋이 거의 없었어요. 막판에 몰아서 작업한 사람은 없어요.`
-        : `마지막 ${stretchDays}일 동안 ${top.name}님이 자기 커밋의 ${top.share}%를 올렸어요. 팀 전체로는 커밋의 ${overall}%가 이 기간에 몰려 있어요.`,
+        : `마지막 ${stretchDays}일 동안 ${top.name}님이 **자기 커밋의 ${top.share}%**를 올렸어요. 팀 전체로는 커밋의 ${overall}%가 이 기간에 몰려 있어요.`,
     charts: [
       {
         title: `마지막 ${stretchDays}일에 올린 커밋 비율 (각자 커밋 대비)`,
@@ -366,8 +366,8 @@ function answerConvention(insights: Insights, emit: Emit) {
     type: 'chart',
     text:
       rate >= 60
-        ? `커밋 메시지의 ${rate}%가 "태그: 내용" 형식을 따르고 있어요. 가장 많이 쓴 태그는 ${topTags[0][0]}예요. 제목 길이는 평균 ${Math.round(titleLength / commits.length)}자예요.`
-        : `"태그: 내용" 형식을 따른 커밋은 ${rate}%예요. 정해진 규칙보다는 자유롭게 쓴 편이에요. 제목 길이는 평균 ${Math.round(titleLength / commits.length)}자예요.`,
+        ? `커밋 메시지의 **${rate}%**가 "태그: 내용" 형식을 따르고 있어요. 가장 많이 쓴 태그는 ${topTags[0][0]}예요. 제목 길이는 평균 ${Math.round(titleLength / commits.length)}자예요.`
+        : `"태그: 내용" 형식을 따른 커밋은 **${rate}%**예요. 정해진 규칙보다는 자유롭게 쓴 편이에요. 제목 길이는 평균 ${Math.round(titleLength / commits.length)}자예요.`,
     charts,
   })
 }
@@ -442,7 +442,7 @@ function answerPerson(insights: Insights, clock: Clock, id: string | undefined, 
 
   emit({
     type: 'facts',
-    text: `${person.name}님을 자세히 살펴봤어요.`,
+    text: `**${person.name}**님을 자세히 살펴봤어요.`,
     items: [
       { label: '커밋 수', value: `${formatNumber(person.commits.length)}개 (전체의 ${percent(person.commits.length, insights.commits.length)}%)` },
       { label: '첫 커밋', value: dateLabel(first) },
