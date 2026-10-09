@@ -56,6 +56,11 @@ export default function App() {
     [analyze],
   )
 
+  const handleRetry = useCallback(
+    (repoUrl: string, excludeGenerated?: boolean) => void analyze(repoUrl, { excludeGenerated, silent: true }),
+    [analyze],
+  )
+
   const handleSubmit = useCallback((url: string) => void analyze(url), [analyze])
 
   return (
@@ -64,7 +69,7 @@ export default function App() {
       {messages.length === 0 ? (
         <Hero onSubmit={handleSubmit} />
       ) : (
-        <Chat messages={messages} busy={busy} onLogin={handleLogin} onChoose={handleChoose} />
+        <Chat messages={messages} busy={busy} onLogin={handleLogin} onChoose={handleChoose} onRetry={handleRetry} />
       )}
     </div>
   )

@@ -76,7 +76,7 @@ app.post('/api/analyze', async (req, res) => {
     if (typeof body.url !== 'string' || !body.url.trim() || body.url.length > 300) {
       emit({ type: 'error', text: '레포 링크를 입력해 주세요.' })
     } else if (!allowRequest(req.ip ?? 'unknown')) {
-      emit({ type: 'error', text: '요청이 너무 많아요. 잠시 뒤에 다시 시도해 주세요.' })
+      emit({ type: 'error', text: '요청이 너무 많아요. 잠시 뒤에 다시 시도해 주세요.', action: 'retry' })
     } else {
       const { user, token } = req.session
       await runAnalysis({
@@ -89,7 +89,7 @@ app.post('/api/analyze', async (req, res) => {
     }
   } catch (err) {
     console.error(err)
-    emit({ type: 'error', text: '분석 중에 문제가 생겼어요. 잠시 뒤에 다시 시도해 주세요.' })
+    emit({ type: 'error', text: '분석 중에 문제가 생겼어요. 잠시 뒤에 다시 시도해 주세요.', action: 'retry' })
   } finally {
     clearInterval(heartbeat)
     emit({ type: 'done' })

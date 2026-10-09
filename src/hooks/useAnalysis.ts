@@ -4,7 +4,14 @@ import { streamAnalysis } from '../lib/api'
 
 export type ChatMessage =
   | { id: number; from: 'user'; text: string }
-  | { id: number; from: 'bot'; event: Exclude<ChatEvent, { type: 'done' }>; repoUrl?: string }
+  | {
+      id: number
+      from: 'bot'
+      event: Exclude<ChatEvent, { type: 'done' }>
+      repoUrl?: string
+      /** 이 말풍선을 만든 요청의 계산 방식. 다시 시도할 때 그대로 써요. */
+      excludeGenerated?: boolean
+    }
 
 type NewMessage = ChatMessage extends infer M ? (M extends unknown ? Omit<M, 'id'> : never) : never
 
@@ -29,12 +36,13 @@ export function useAnalysis() {
   )
 
   const analyze = useCallback(
-    async (url: string, options: { excludeGenerated?: boolean; userText?: string } = {}) => {
+    async (url: string, options: { excludeGenerated?: boolean; userText?: string; silent?: boolean } = {}) => {
       const trimmed = url.trim()
       if (!trimmed || busyRef.current) return
       busyRef.current = true
       setBusy(true)
-      append({ from: 'user', text: options.userText ?? trimmed })
+      // 다시 시도할 때는 같은 말을 한 번 더 올리지 않아요.
+      if (!options.silent) append({ from: 'user', text: options.userText ?? trimmed })
 
       // 서버에서 온 메시지를 큐에 쌓아 두고, 입력 중 표시를 거쳐 하나씩 화면에 올려요.
       const queue: ChatEvent[] = []
@@ -46,7 +54,9 @@ export function useAnalysis() {
       }
 
       streamAnalysis({ url: trimmed, excludeGenerated: options.excludeGenerated }, push)
-        .catch(() => push({ type: 'error', text: '서버와 연결이 끊어졌어요. 잠시 뒤에 다시 시도해 주세요.' }))
+        .catch(() =>
+          push({ type: 'error', text: '서버와 연결이 끊어졌어요. 잠시 뒤에 다시 시도해 주세요.', action: 'retry' }),
+        )
         .finally(() => {
           finished = true
           wake?.()
@@ -62,7 +72,7 @@ export function useAnalysis() {
         }
         if (event.type === 'done') break
         await sleep(TYPING_DELAY_MS)
-        append({ from: 'bot', event, repoUrl: trimmed })
+        append({ from: 'bot', event, repoUrl: trimmed, excludeGenerated: options.excludeGenerated })
       }
 
       busyRef.current = false

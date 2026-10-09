@@ -8,12 +8,13 @@ interface Props {
   busy: boolean
   onLogin: (repoUrl?: string) => void
   onChoose: (repoUrl: string, excludeGenerated: boolean) => void
+  onRetry: (repoUrl: string, excludeGenerated?: boolean) => void
 }
 
 /** 맨 아래에서 이만큼 안쪽이면 아래에 붙어 있는 것으로 봐요. */
 const BOTTOM_THRESHOLD_PX = 80
 
-export function Chat({ messages, busy, onLogin, onChoose }: Props) {
+export function Chat({ messages, busy, onLogin, onChoose, onRetry }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
   const [atBottom, setAtBottom] = useState(true)
@@ -51,6 +52,7 @@ export function Chat({ messages, busy, onLogin, onChoose }: Props) {
               isLast={index === messages.length - 1}
               onLogin={onLogin}
               onChoose={onChoose}
+              onRetry={onRetry}
             />
           ))}
           {/* 말풍선이 하나 올라올 때마다 새로 그려서, 오래 기다릴 때만 문구가 나오게 해요. */}

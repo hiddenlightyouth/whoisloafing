@@ -27,7 +27,8 @@ export type ChatEvent =
   | { type: 'list'; text: string; items: string[] }
   /** 분석을 시작하기 전에 lock 파일과 빌드 결과물을 뺄지 물어봐요. */
   | { type: 'ask'; text: string }
-  | { type: 'error'; text: string; action?: 'login' }
+  /** action이 있으면 말풍선 안에 로그인 버튼이나 다시 시도 버튼을 보여줘요. */
+  | { type: 'error'; text: string; action?: 'login' | 'retry' }
   | { type: 'done' }
 
 export interface AnalyzeRequest {

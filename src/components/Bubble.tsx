@@ -9,6 +9,7 @@ interface Props {
   isLast: boolean
   onLogin: (repoUrl?: string) => void
   onChoose: (repoUrl: string, excludeGenerated: boolean) => void
+  onRetry: (repoUrl: string, excludeGenerated?: boolean) => void
 }
 
 const actionButton =
@@ -17,7 +18,7 @@ const actionButton =
 const quietButton =
   'mt-3 inline-flex h-9 items-center rounded-lg bg-white px-3.5 text-[13px] font-semibold text-gray-700 transition-colors hover:text-brand disabled:text-gray-400'
 
-export function Bubble({ message, busy, isLast, onLogin, onChoose }: Props) {
+export function Bubble({ message, busy, isLast, onLogin, onChoose, onRetry }: Props) {
   if (message.from === 'user') {
     return (
       <div className="flex animate-rise justify-end">
@@ -28,7 +29,7 @@ export function Bubble({ message, busy, isLast, onLogin, onChoose }: Props) {
     )
   }
 
-  const { event, repoUrl } = message
+  const { event, repoUrl, excludeGenerated } = message
   const wide = event.type === 'ranking' || event.type === 'summary' || event.type === 'list'
 
   return (
@@ -74,6 +75,19 @@ export function Bubble({ message, busy, isLast, onLogin, onChoose }: Props) {
               className={quietButton}
             >
               전부 포함하기
+            </button>
+          </div>
+        )}
+
+        {event.type === 'error' && event.action === 'retry' && repoUrl && (
+          <div>
+            <button
+              type="button"
+              disabled={busy || !isLast}
+              onClick={() => onRetry(repoUrl, excludeGenerated)}
+              className={`${actionButton} mb-1.5`}
+            >
+              다시 시도
             </button>
           </div>
         )}

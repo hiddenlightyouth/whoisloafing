@@ -68,7 +68,7 @@ function repoErrorEvent(err: unknown, loggedIn: boolean): ChatEvent {
   if (err instanceof GitHubError) {
     if (err.rateLimited) {
       return loggedIn
-        ? { type: 'error', text: rateLimitMessage(err) }
+        ? { type: 'error', text: rateLimitMessage(err), action: 'retry' }
         : { type: 'error', text: `${rateLimitMessage(err)} GitHub로 로그인하면 바로 이어서 분석할 수 있어요.`, action: 'login' }
     }
     if (err.status === 404) {
@@ -110,7 +110,7 @@ function repoErrorEvent(err: unknown, loggedIn: boolean): ChatEvent {
     }
   }
   console.error(err)
-  return { type: 'error', text: '분석 중에 문제가 생겼어요. 잠시 뒤에 다시 시도해 주세요.' }
+  return { type: 'error', text: '분석 중에 문제가 생겼어요. 잠시 뒤에 다시 시도해 주세요.', action: 'retry' }
 }
 
 /** README와 긴 트리를 그대로 보내지 않고, 얕은 경로 위주로 줄여서 보내요. */
