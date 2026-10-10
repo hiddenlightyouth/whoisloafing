@@ -7,9 +7,9 @@ export function Logo({ onClick }: { onClick?: () => void }) {
         event.preventDefault()
         onClick()
       }}
-      className="font-logo text-[17px] font-extrabold tracking-tight text-gray-900"
+      className="inline-flex items-center"
     >
-      WhoIsLoafing
+      <img src="/logo.svg" alt="WhoIsLoafing" width={3401} height={304} draggable={false} className="h-[15px] w-auto" />
     </a>
   )
 }

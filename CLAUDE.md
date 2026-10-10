@@ -14,13 +14,13 @@ GitHub 레포 링크를 입력하면 참여자별 기여도를 분석해서 채�
 ## 브랜딩 규칙
 
 - 서비스명: 표기는 WhoIsLoafing, 도메인이나 패키지명처럼 소문자가 필요한 곳은 whoisloafing
-- 로고: 텍스트 로고. Bricolage Grotesque(Google Fonts, OFL) 굵기 700에서 800. 이 폰트는 로고에만 써요.
+- 로고: 중절모 그림과 WhoIsLoafing 글자를 하나로 묶은 그림 파일(`public/logo.svg`)이에요. 색은 짙은 회색(#2C2C2C) 한 가지예요. 글자가 도형으로 들어 있어서 로고용 폰트는 따로 불러오지 않아요. 헤더는 이 파일을 그대로 보여주니, 파일을 바꾸면 헤더에 바로 반영돼요. 파비콘과 미리보기 이미지는 따로 만든 파일이라 같이 고쳐야 해요.
 - 본문 폰트: Pretendard. 전체 자간은 -0.02em
 - 메인 컬러: #2E90FA, hover는 #1570EF, 연한 배경은 #EFF8FF
   - 버튼, 링크, 입력창 포커스, 사용자 말풍선, 기여도 막대 그래프 같은 강조 요소에만 써요.
   - 나머지는 흰 배경과 회색 계열 텍스트로 절제해요.
-- 컬러와 폰트는 `src/index.css`의 `@theme`에 토큰으로 등록되어 있어요. (`brand`, `brand-hover`, `brand-soft`, `font-sans`, `font-logo`)
-- 탭 제목은 WhoIsLoafing, 파비콘은 메인 컬러 배경에 흰색 W
+- 컬러와 폰트는 `src/index.css`의 `@theme`에 토큰으로 등록되어 있어요. (`brand`, `brand-hover`, `brand-soft`, `font-sans`)
+- 탭 제목은 WhoIsLoafing, 파비콘은 메인 컬러 배경에 흰색 중절모
 - 링크를 카카오톡이나 디스코드에 붙이면 뜨는 미리보기 카드는 `index.html`의 og 태그와 `public/og.png`로 정해요. 주소는 실제 서비스 주소(https://whoisloafing.hidly.dev)로 적혀 있어서, 도메인이 바뀌면 같이 바꿔야 해요. 채팅 주소(`/c/아이디`)도 같은 카드가 떠요.
 - 디자인 원칙: 여백 위주의 미니멀. 장식, 그라데이션, 이모지, 아이콘 남발 금지. 타이틀 위에 태그, 뱃지, 라벨을 붙이지 않아요.
 - 그라데이션 금지의 예외는 질문 메뉴를 들고 있는 유리 방울 하나예요. 그림 파일이나 라이브러리 없이 CSS로만 그리고(`src/index.css`의 orb 규칙), 색은 메인 컬러 계열의 파란색만 써요. 움직임 줄이기 설정에서는 멈춰 있어요.
@@ -52,7 +52,8 @@ GitHub API, Claude API 호출은 모두 서버에서 해요. 키와 토큰은 �
 
 ```
 index.html            폰트 로드, 탭 제목, 파비콘, 링크 미리보기 태그
-public/favicon.svg
+public/logo.svg       로고 (중절모와 서비스명). 헤더에 그대로 쓰여요.
+public/favicon.svg    파비콘 (로고의 중절모만 따온 그림)
 public/og.png         링크 미리보기 카드에 뜨는 대표 이미지 (1200x630)
 public/robots.txt     검색 로봇 안내 (API와 채팅 주소는 막고, 사이트맵 위치를 알려줘요)
 scripts/prerender.mjs 빌드 마지막에 아티클 화면을 페이지별 HTML 파일로 만들고 사이트맵을 만들어요
