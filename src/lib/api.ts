@@ -1,5 +1,5 @@
 import type { AnalyzeRequest, ChatEvent, ChatSnapshot } from '../../shared/types'
-import { authHeaders } from './auth'
+import { authFetch, authHeaders } from './auth'
 import { apiUrl, ownerHeaders, readResult } from './http'
 
 /** 서버에 채팅 저장 기능이 켜져 있는지 물어봐요. */
@@ -19,13 +19,23 @@ export async function fetchChat(id: string): Promise<ChatSnapshot | null> {
   return result.ok ? result.data : null
 }
 
-export async function shareChat(id: string): Promise<boolean> {
-  const res = await fetch(apiUrl(`/chats/${id}/share`), {
-    method: 'POST',
-    headers: { ...ownerHeaders(), ...(await authHeaders()) },
-  })
-  return res.ok
+/** 채팅 관리 요청은 로그인해야 쓸 수 있어요. 연결이 끊기면 false를 돌려줘요. */
+async function manageChat(path: string, method: 'POST' | 'DELETE'): Promise<boolean> {
+  try {
+    return (await authFetch<null>(path, { method, headers: ownerHeaders() })).ok
+  } catch {
+    return false
+  }
 }
+
+/** 채팅을 내 계정에 저장하고 링크를 아는 누구나 볼 수 있게 해요. */
+export const shareChat = (id: string) => manageChat(`/chats/${id}/share`, 'POST')
+
+/** 공유를 취소해요. 다시 나만 열고 이어서 분석할 수 있어요. */
+export const unshareChat = (id: string) => manageChat(`/chats/${id}/share`, 'DELETE')
+
+/** 채팅을 지워요. 되돌릴 수 없어요. */
+export const deleteChat = (id: string) => manageChat(`/chats/${id}`, 'DELETE')
 
 /** 서버가 SSE로 흘려보내는 분석 메시지를 하나씩 받아서 넘겨줘요. */
 export async function streamAnalysis(

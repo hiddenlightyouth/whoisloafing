@@ -1,14 +1,16 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import type { AccountPage } from './components/Account'
 import { Chat } from './components/Chat'
 import { ChatSkeleton } from './components/Skeleton'
 import { Header } from './components/Header'
 import { Hero } from './components/Hero'
 import { LeaveDialog } from './components/LeaveDialog'
+import { Toast } from './components/Toast'
 import { useAnalysis } from './hooks/useAnalysis'
 import { initAnalytics, repoLabel, track, trackPageView } from './lib/analytics'
 import { fetchChat, fetchStorageEnabled, shareChat } from './lib/api'
 import { loadMe, useAuth } from './lib/auth'
+import { showToast } from './lib/toast'
 
 const CHAT_PATH = /^\/c\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i
 
@@ -54,6 +56,8 @@ export default function App() {
   const { tokens } = useAuth()
   /** 분석 중에 로고를 눌렀을 때 정말 떠날지 묻는 창 */
   const [confirmingLeave, setConfirmingLeave] = useState(false)
+  /** 공유하려고 로그인 화면으로 갔을 때, 로그인한 뒤에 돌아올 채팅 */
+  const loginReturn = useRef<string | null>(null)
 
   // 주소에 맞는 화면을 준비해요. 처음 들어왔을 때와 뒤로 가기, 앞으로 가기에서 불러요.
   const openFromLocation = useCallback(async () => {
@@ -131,6 +135,7 @@ export default function App() {
 
   const goHome = useCallback(() => {
     if (!reset()) return
+    loginReturn.current = null
     track('home_click', { from: account ?? (article ? 'articles' : chat?.shared ? 'shared_chat' : messages.length > 0 ? 'chat' : 'home') })
     setChat(null)
     setMissing(false)
@@ -144,6 +149,7 @@ export default function App() {
   const openArticle = useCallback(
     (slug: string | null) => {
       if (!reset()) return
+      loginReturn.current = null
       setChat(null)
       setMissing(false)
       setAccount(null)
@@ -157,6 +163,7 @@ export default function App() {
   const openAccount = useCallback(
     (page: AccountPage, replace = false) => {
       if (!reset()) return
+      if (page === 'me' || page === 'history') loginReturn.current = null
       setChat(null)
       setMissing(false)
       setArticle(null)
@@ -169,13 +176,27 @@ export default function App() {
   )
 
   const openChat = useCallback(
-    (id: string) => {
-      track('history_chat_open')
-      window.history.pushState(null, '', `/c/${id}`)
+    (id: string, replace = false) => {
+      loginReturn.current = null
+      if (replace) window.history.replaceState(null, '', `/c/${id}`)
+      else window.history.pushState(null, '', `/c/${id}`)
       void openFromLocation()
     },
     [openFromLocation],
   )
+
+  // 로그인 화면에서 로그인하면, 공유하려던 채팅이 있으면 그리로 돌아가고 아니면 내 작업으로 가요.
+  const handleSignedIn = useCallback(() => {
+    const id = loginReturn.current
+    if (id) openChat(id, true)
+    else openAccount('history', true)
+  }, [openAccount, openChat])
+
+  const handleLoginToShare = useCallback(() => {
+    const id = chatId.current
+    openAccount('login')
+    loginReturn.current = id
+  }, [chatId, openAccount])
 
   // 공유된 채팅과 다른 브라우저에서 만든 채팅은 읽기만 할 수 있어요.
   const readOnly = chat !== null && (chat.shared || !chat.mine)
@@ -223,7 +244,8 @@ export default function App() {
     track(ok ? 'share_confirm' : 'share_failed', { message_count: messages.length })
     if (!ok) return false
     setChat({ mine: true, shared: true })
-    await copyLink()
+    // 휴대폰 브라우저는 공유 요청을 기다리는 사이에 복사 권한이 사라지기도 해서, 그때는 링크 복사 버튼을 안내해요.
+    showToast((await copyLink()) ? '공유했어요. 링크를 복사했어요.' : '공유했어요. 링크 복사를 눌러 링크를 가져가세요.')
     return true
   }, [chatId, messages.length])
 
@@ -244,6 +266,7 @@ export default function App() {
         shared={chat?.shared === true}
         onShare={handleShare}
         onCopyLink={handleCopyLink}
+        onLoginToShare={handleLoginToShare}
         onArticles={
           working
             ? undefined
@@ -261,7 +284,17 @@ export default function App() {
         </Suspense>
       ) : account ? (
         <Suspense fallback={<main className="flex-1" />}>
-          <Account page={account} onNavigate={openAccount} onOpenChat={openChat} onHome={goHome} />
+          <Account
+            page={account}
+            onNavigate={openAccount}
+            onSignedIn={handleSignedIn}
+            notice={loginReturn.current ? '로그인하면 공유하려던 채팅으로 바로 돌아가요.' : undefined}
+            onOpenChat={(id) => {
+              track('history_chat_open')
+              openChat(id)
+            }}
+            onHome={goHome}
+          />
         </Suspense>
       ) : opening ? (
         <ChatSkeleton />
@@ -295,6 +328,7 @@ export default function App() {
         />
       )}
       {confirmingLeave && <LeaveDialog onStay={handleStay} onLeave={handleLeave} />}
+      <Toast />
     </div>
   )
 }

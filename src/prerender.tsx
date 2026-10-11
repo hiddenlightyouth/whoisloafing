@@ -31,6 +31,7 @@ function render(slug: string | null): string {
         shared={false}
         onShare={never}
         onCopyLink={never}
+        onLoginToShare={noop}
         onArticles={noop}
         onAccount={noop}
       />

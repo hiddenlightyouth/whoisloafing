@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
 import { track } from '../lib/analytics'
+import { showToast } from '../lib/toast'
 import type { AccountPage } from './Account'
 import { Logo } from './Logo'
 
@@ -15,6 +16,8 @@ interface Props {
   shared: boolean
   onShare: () => Promise<boolean>
   onCopyLink: () => Promise<boolean>
+  /** 로그인하지 않은 채로 공유하려고 할 때 로그인 화면으로 보내요. 로그인하면 이 채팅으로 돌아와요. */
+  onLoginToShare: () => void
   /** 아티클 화면으로 가요. 진행 중인 채팅이 있을 때는 넘기지 않아서 링크가 보이지 않아요. */
   onArticles?: () => void
   signedIn?: boolean
@@ -32,13 +35,13 @@ export function Header({
   onShare,
   onStop,
   onCopyLink,
+  onLoginToShare,
   onArticles,
   signedIn = false,
   onAccount,
 }: Props) {
   const [confirming, setConfirming] = useState(false)
   const [working, setWorking] = useState(false)
-  const [notice, setNotice] = useState('')
   const actionsRef = useRef<HTMLDivElement>(null)
 
   const [downloadOpen, setDownloadOpen] = useState(false)
@@ -56,23 +59,16 @@ export function Header({
     if (!menuOpen) setMobileDownloadOpen(false)
   }, [menuOpen])
 
-  // 안내 문구는 잠깐 보여줬다가 지워요.
-  useEffect(() => {
-    if (!notice) return
-    const timer = setTimeout(() => setNotice(''), 2200)
-    return () => clearTimeout(timer)
-  }, [notice])
-
   async function share() {
     setWorking(true)
     const ok = await onShare()
     setWorking(false)
     setConfirming(false)
-    setNotice(ok ? '공유했어요. 링크를 복사했어요.' : '공유하지 못했어요. 잠시 뒤에 다시 시도해 주세요.')
+    if (!ok) showToast('공유하지 못했어요. 잠시 뒤에 다시 시도해 주세요.')
   }
 
   async function copy() {
-    setNotice((await onCopyLink()) ? '링크를 복사했어요.' : '링크를 복사하지 못했어요.')
+    showToast((await onCopyLink()) ? '링크를 복사했어요.' : '링크를 복사하지 못했어요.')
   }
 
   const accountLinks = onAccount
@@ -116,12 +112,6 @@ export function Header({
         />
 
         <div ref={actionsRef} className="relative flex items-center gap-1 sm:gap-2">
-          {notice && (
-            <span role="status" className="animate-rise text-xs text-gray-500">
-              {notice}
-            </span>
-          )}
-
           <nav className="hidden items-center gap-1 sm:flex sm:gap-2">
             <button type="button" onClick={() => soon('intro')} className={`${quiet} text-gray-600 hover:text-gray-900`}>
               소개
@@ -192,10 +182,10 @@ export function Header({
                 aria-expanded={confirming}
                 onClick={() => {
                   if (!storage) {
-                    setNotice('저장 기능이 꺼져 있어서 공유할 수 없어요.')
+                    showToast('저장 기능이 꺼져 있어서 공유할 수 없어요.')
                     return
                   }
-                  if (!confirming) track('share_open')
+                  if (!confirming) track('share_open', { signed_in: signedIn })
                   setConfirming((open) => !open)
                 }}
                 className={`${quiet} bg-gray-100 text-gray-700 hover:text-brand`}
@@ -207,9 +197,11 @@ export function Header({
 
           {confirming && !shared && !busy && (
             <div className="absolute top-full right-0 mt-2 w-64 animate-rise rounded-2xl border border-gray-200 bg-white p-4">
-              <p className="text-[14px] font-semibold text-gray-900">이 채팅을 공유할까요?</p>
+              <p className="text-[14px] font-semibold text-gray-900">{signedIn ? '이 채팅을 저장하고 공유할까요?' : '로그인하고 공유해 주세요'}</p>
               <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">
-                링크를 아는 사람은 누구나 볼 수 있어요. 공유한 뒤에는 이 채팅에서 분석을 더 이어갈 수 없어요.
+                {signedIn
+                  ? '내 작업에 저장되고, 링크를 아는 사람은 누구나 볼 수 있어요. 공유하는 동안에는 분석을 더 이어갈 수 없고, 내 작업에서 언제든 공유를 취소할 수 있어요.'
+                  : '공유한 채팅은 내 작업에 저장돼서 나중에 공유를 취소하거나 지울 수 있어요. 로그인하면 이 채팅으로 바로 돌아와요.'}
               </p>
               <div className="mt-3.5 flex justify-end gap-2">
                 <button
@@ -222,14 +214,29 @@ export function Header({
                 >
                   취소
                 </button>
-                <button
-                  type="button"
-                  disabled={working}
-                  onClick={share}
-                  className={`${quiet} bg-brand text-white hover:bg-brand-hover disabled:bg-gray-200 disabled:text-gray-400`}
-                >
-                  공유하기
-                </button>
+                {signedIn ? (
+                  <button
+                    type="button"
+                    disabled={working}
+                    onClick={share}
+                    className={`${quiet} bg-brand text-white hover:bg-brand-hover disabled:bg-gray-200 disabled:text-gray-400`}
+                  >
+                    {working ? '처리 중' : '공유하기'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      track('share_login_click')
+                      setConfirming(false)
+                      setMenuOpen(false)
+                      onLoginToShare()
+                    }}
+                    className={`${quiet} bg-brand text-white hover:bg-brand-hover`}
+                  >
+                    로그인하기
+                  </button>
+                )}
               </div>
             </div>
           )}

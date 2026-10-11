@@ -191,7 +191,7 @@ export async function authHeaders(): Promise<Record<string, string>> {
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-async function authFetch<T>(path: string, init: RequestInit = {}): Promise<ApiResult<T>> {
+export async function authFetch<T>(path: string, init: RequestInit = {}): Promise<ApiResult<T>> {
   const send = async () =>
     fetch(apiUrl(path), { ...init, headers: { ...(init.headers as Record<string, string>), ...(await authHeaders()) } })
   let res = await send()
