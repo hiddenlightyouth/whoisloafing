@@ -32,6 +32,7 @@ function render(slug: string | null): string {
         onShare={never}
         onCopyLink={never}
         onArticles={noop}
+        onAccount={noop}
       />
       <Articles slug={slug} onOpen={noop} onHome={noop} />
     </div>,

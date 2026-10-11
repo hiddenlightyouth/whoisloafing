@@ -1,7 +1,0 @@
-# Cloudflare Workers를 내 컴퓨터에서 돌려 볼 때(npm run worker:dev) 쓰는 값이에요.
-# 이 파일을 .dev.vars로 복사해서 채워요. .dev.vars는 커밋하지 않아요.
-# 실제 배포에서는 Cloudflare 대시보드의 Worker 설정에서 같은 이름으로 넣어요.
-GITHUB_TOKEN=
-ANTHROPIC_API_KEY=
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=

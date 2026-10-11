@@ -43,15 +43,31 @@ const PAGE_TITLES = {
   shared_chat: 'WhoIsLoafing 공유된 분석',
   articles: 'WhoIsLoafing 아티클',
   article: 'WhoIsLoafing 아티클',
+  login: 'WhoIsLoafing 로그인',
+  signup: 'WhoIsLoafing 회원가입',
+  me: 'WhoIsLoafing 내 정보',
+  history: 'WhoIsLoafing 내 작업',
 }
+
+type Screen = keyof typeof PAGE_TITLES
+
+const ACCOUNT_SCREENS: Screen[] = ['login', 'signup', 'me', 'history']
 
 /** 화면이 바뀔 때마다 불러요. 채팅 ID는 경로에 넣지 않고 따로 보내서 보고서의 경로가 흩어지지 않게 해요. */
 export function trackPageView(
-  screen: 'home' | 'chat' | 'shared_chat' | 'articles' | 'article',
+  screen: Screen,
   params: Params = {},
 ): void {
   const path =
-    screen === 'home' ? '/' : screen === 'articles' ? '/articles' : screen === 'article' ? `/articles/${params.slug}` : '/c/[id]'
+    screen === 'home'
+      ? '/'
+      : screen === 'articles'
+        ? '/articles'
+        : screen === 'article'
+          ? `/articles/${params.slug}`
+          : ACCOUNT_SCREENS.includes(screen)
+            ? `/${screen}`
+            : '/c/[id]'
   track('page_view', {
     page_path: path,
     page_location: `${window.location.origin}${path}`,

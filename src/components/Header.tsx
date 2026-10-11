@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { track } from '../lib/analytics'
+import type { AccountPage } from './Account'
 import { Logo } from './Logo'
 
 interface Props {
@@ -16,11 +17,25 @@ interface Props {
   onCopyLink: () => Promise<boolean>
   /** 아티클 화면으로 가요. 진행 중인 채팅이 있을 때는 넘기지 않아서 링크가 보이지 않아요. */
   onArticles?: () => void
+  signedIn?: boolean
+  onAccount?: (page: AccountPage) => void
 }
 
 const quiet = 'h-8 rounded-full px-3 text-[13px] font-medium transition-colors'
 
-export function Header({ onHome, inChat, storage, busy, shared, onShare, onStop, onCopyLink, onArticles }: Props) {
+export function Header({
+  onHome,
+  inChat,
+  storage,
+  busy,
+  shared,
+  onShare,
+  onStop,
+  onCopyLink,
+  onArticles,
+  signedIn = false,
+  onAccount,
+}: Props) {
   const [confirming, setConfirming] = useState(false)
   const [working, setWorking] = useState(false)
   const [notice, setNotice] = useState('')
@@ -66,7 +81,7 @@ export function Header({ onHome, inChat, storage, busy, shared, onShare, onStop,
     <header className="absolute inset-x-0 top-0 z-10 flex h-14 items-center justify-between bg-white/70 px-4 backdrop-blur-md sm:px-6">
       <Logo onClick={onHome} />
 
-      <div ref={actionsRef} className="relative flex items-center gap-2">
+      <div ref={actionsRef} className="relative flex items-center gap-1 sm:gap-2">
         {notice && (
           <span role="status" className="animate-rise text-xs text-gray-500">
             {notice}
@@ -85,6 +100,29 @@ export function Header({ onHome, inChat, storage, busy, shared, onShare, onStop,
             아티클
           </a>
         )}
+
+        {onAccount &&
+          (signedIn
+            ? ([
+                ['history', '내 작업'],
+                ['me', '내 정보'],
+              ] as const)
+            : ([['login', '로그인']] as const)
+          ).map(([page, label]) => (
+            <a
+              key={page}
+              href={`/${page}`}
+              onClick={(event) => {
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
+                event.preventDefault()
+                track('account_nav_click', { page })
+                onAccount(page)
+              }}
+              className={`${quiet} inline-flex items-center text-gray-600 hover:text-gray-900`}
+            >
+              {label}
+            </a>
+          ))}
 
         {shared ? (
           <button type="button" onClick={copy} className={`${quiet} bg-brand-soft text-brand-hover hover:bg-brand hover:text-white`}>
