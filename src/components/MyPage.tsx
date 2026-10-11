@@ -68,7 +68,7 @@ function Sessions() {
                 {session.deviceName || describeDevice(session.userAgent)}
               </p>
               <p className="mt-1 text-[13px] text-gray-500">
-                {session.current ? '지금 쓰고 있는 기기예요' : `마지막으로 쓴 때 ${formatDateTime(session.lastUsedAt)}`}
+                {session.current ? '현재 사용 중' : `마지막으로 쓴 때 ${formatDateTime(session.lastUsedAt)}`}
               </p>
             </div>
             {!session.current && (
