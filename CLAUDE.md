@@ -72,6 +72,7 @@ src/
   lib/format.ts       서버 시각을 "오늘 오후 3:12", "어제", "10월 3일" 같은 말로 바꾸기
   lib/analytics.ts    Google Analytics 이벤트 전송
   lib/toast.ts        화면 아래에 잠깐 뜨는 안내(토스트) 저장소
+  lib/theme.ts        앱의 화면 설정(화면 모드, 새 분석 화면의 지렁이) 저장과 적용
   lib/app.ts          macOS 앱 안에서 열렸는지 판별, 앱에 메시지 보내기, 창을 옮기는 곳(data-app-drag) 처리
   components/AppGate.tsx     앱에서 로그인하지 않았을 때 보여주는 로그인 화면
   components/AppSidebar.tsx  앱 화면 왼쪽의 사이드바 (새 분석, 내 작업 목록, 아티클, 내 정보)
@@ -201,6 +202,18 @@ macOS 앱(hiddenlightyouth/whoisloafing-app)은 이 서비스를 창 안의 웹�
 - 앱에서 로그인하면 기기 이름을 "macOS 앱"으로 보내요.
 - 앱 화면 코드(`AppGate`, `AppSidebar`, `AppLogin`)는 필요할 때만 받아서, 메인 화면이 무거워지지 않아요.
 
+### 앱의 화면 설정
+
+앱에서만 쓰는 설정이고, 내 정보의 화면에서 바꿔요. 앱의 설정 창(Command ,)에도 같은 항목이 있고, 한쪽에서 바꾸면 다른 쪽도 같이 바뀌어요. 코드는 `src/lib/theme.ts`에 있어요.
+
+- 화면 모드: 시스템 설정, 라이트, 다크 중에 골라요. 처음에는 시스템 설정이에요. localStorage의 `whoisloafing:app-theme`에 둬요.
+- 다크 모드는 `html`에 `dark`를 붙이고, `src/index.css` 맨 아래에서 색 토큰(`--color-white`, `--color-gray-*`, `--color-brand-soft`, `--color-brand-hover`)을 어두운 값으로 바꾸는 방식이에요. 화면마다 `dark:` 클래스를 따로 달지 않아요. 그래서 새 화면을 만들 때 색을 직접 적지 말고 `bg-white`, `text-gray-900` 같은 토큰 클래스를 쓰면 다크 모드도 같이 돼요.
+- 토큰을 뒤집으면 안 되는 곳은 `src/index.css`에 따로 적어 뒀어요. 메인 컬러 위의 흰 글자, 확인 창 뒤를 가리는 막, 토스트, 로고 그림, 기여도 그래프 배경이에요. 다크 모드에서도 꼭 흰색이어야 하는 것(토글 손잡이 등)은 토큰 대신 색을 직접 적어요.
+- 브라우저로 들어온 화면에는 `dark`가 붙지 않아서 늘 밝은 화면이에요.
+- 새 분석 화면에서 지렁이 표시: 앱의 새 분석 화면은 기본으로 배경 없이 깨끗하게 두고, 이 설정을 켰을 때만 기여도 그래프 배경과 지렁이를 보여줘요. 계속 움직이는 그림이라 자원을 써서 기본은 꺼 둬요. localStorage의 `whoisloafing:app-backdrop`에 둬요. 로그인 화면(`AppGate`)의 배경은 이 설정과 상관없이 늘 보여요.
+- 앱의 새 분석 화면은 제목이 "새 분석 시작하기", 설명이 "GitHub Repository 링크를 입력하여 프로젝트에 대해 분석을 시작하세요"예요. 브라우저의 메인 화면 문구는 그대로예요.
+- 웹에서 바꾸면 앱에 `theme`, `backdrop` 메시지를 보내고, 앱에서 바꾸면 웹뷰에 `whoisloafing:app-settings` 이벤트가 와요. 앱은 화면을 다 불러올 때마다 자기 값을 한 번 보내 줘요.
+
 ### 브라우저로 앱 로그인
 
 브라우저의 토큰을 앱에 그대로 넘기지 않고, 일회용 코드로 앱의 세션을 따로 만들어요. Refresh Token이 한 번 쓰면 바뀌어서, 같은 토큰을 나눠 쓰면 서로 로그아웃시키기 때문이에요. API는 백엔드 레포 `docs/api.md`의 앱 로그인에 있어요.
@@ -281,6 +294,7 @@ Claude 호출 기록은 백엔드 서버가 남기고, 관리자 API(`/api/v1/ai
 | `history_chat_open` | 내 작업이나 앱의 사이드바에서 채팅을 눌렀을 때 | `from`(sidebar) |
 | `app_login_browser_click` | 앱의 로그인 화면에서 브라우저로 로그인을 눌렀을 때 | |
 | `app_login_approve`, `app_login_cancel` | 브라우저의 앱 로그인 화면에서 계속하기나 취소를 눌렀을 때 | `success` |
+| `app_theme_change`, `app_backdrop_change` | 앱의 내 정보에서 화면 모드나 지렁이 표시를 바꿨을 때 | `theme`, `on` |
 | `app_login` | 앱이 브라우저에서 받은 코드로 로그인을 시도했을 때 | `success` |
 
 ## 현재까지 구현된 기능

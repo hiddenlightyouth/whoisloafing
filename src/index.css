@@ -96,7 +96,7 @@
   }
 
   body {
-    background: #fff;
+    background: var(--color-white);
     color: var(--color-gray-900);
     word-break: keep-all;
     overflow-wrap: anywhere;
@@ -396,4 +396,57 @@
   .orb-blob {
     animation: none;
   }
+}
+
+/*
+ * 앱의 다크 모드예요. html에 dark가 붙으면(src/lib/theme.ts) 색 토큰을 어두운 값으로 바꿔서,
+ * 화면마다 따로 손대지 않아도 흰 배경은 어두운 배경으로, 짙은 글자는 밝은 글자로 바뀌어요.
+ * 브라우저로 들어온 화면에는 dark가 붙지 않아요.
+ */
+html.dark {
+  color-scheme: dark;
+
+  --color-white: #1c1c1e;
+  --color-gray-50: #232325;
+  --color-gray-100: #2c2c2e;
+  --color-gray-200: #3a3a3c;
+  --color-gray-300: #48484a;
+  --color-gray-400: #8e8e93;
+  --color-gray-500: #a1a1a6;
+  --color-gray-600: #b9b9be;
+  --color-gray-700: #d1d1d6;
+  --color-gray-800: #e5e5ea;
+  --color-gray-900: #f2f2f7;
+  --color-gray-950: #ffffff;
+
+  --color-brand-hover: #53a5fb;
+  --color-brand-soft: #172b45;
+}
+
+/* 메인 컬러나 빨간 배경 위의 글자는 다크 모드에서도 흰색이에요. */
+html.dark .text-white,
+html.dark .hover\:text-white:hover {
+  color: #fff;
+}
+
+html.dark .text-white\/70 {
+  color: rgb(255 255 255 / 0.7);
+}
+
+/* 확인 창 뒤를 가리는 막과 토스트는 다크 모드에서도 어두운 색이에요. */
+html.dark .bg-gray-900\/25 {
+  background-color: rgb(0 0 0 / 0.5);
+}
+
+html.dark .bg-gray-900\/90 {
+  background-color: rgb(72 72 74 / 0.95);
+}
+
+/* 로고는 짙은 회색 그림이라 밝게 뒤집고, 기여도 그래프 배경은 색상은 그대로 두고 밝기만 뒤집어요. */
+html.dark img[src='/logo.svg'] {
+  filter: invert(1);
+}
+
+html.dark canvas {
+  filter: invert(1) hue-rotate(180deg);
 }

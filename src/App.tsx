@@ -11,6 +11,7 @@ import { useAnalysis } from './hooks/useAnalysis'
 import { initAnalytics, repoLabel, track, trackPageView } from './lib/analytics'
 import { fetchChat, fetchStorageEnabled, shareChat } from './lib/api'
 import { isApp } from './lib/app'
+import './lib/theme'
 import { claimChats, loadMe, useAuth } from './lib/auth'
 import { showToast } from './lib/toast'
 

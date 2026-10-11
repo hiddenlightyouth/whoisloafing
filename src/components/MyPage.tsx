@@ -11,7 +11,9 @@ import {
   type DeviceSession,
   type LoginRecord,
 } from '../lib/auth'
+import { isApp, type AppTheme } from '../lib/app'
 import { formatDate, formatDateTime, parseServerTime } from '../lib/format'
+import { setAppBackdrop, setAppTheme, useAppSettings } from '../lib/theme'
 import { Bone } from './Skeleton'
 
 interface Props {
@@ -19,6 +21,12 @@ interface Props {
 }
 
 const quiet = 'h-8 shrink-0 rounded-full px-3 text-[13px] font-medium transition-colors'
+
+const THEME_OPTIONS: [AppTheme, string][] = [
+  ['system', '시스템 설정'],
+  ['light', '라이트'],
+  ['dark', '다크'],
+]
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -186,6 +194,7 @@ export function MyPage({ onSignedOut }: Props) {
   }
 
   const registered = parseServerTime(me?.registeredAt)
+  const { theme, backdrop } = useAppSettings()
 
   return (
     <main className="flex-1 overflow-y-auto">
@@ -218,6 +227,52 @@ export function MyPage({ onSignedOut }: Props) {
             </button>
           </div>
         </Section>
+
+        {isApp && (
+          <Section title="화면">
+            <dl className="divide-y divide-gray-100 border-y border-gray-100 text-[14px]">
+              <div className="flex items-center justify-between gap-4 py-3">
+                <dt className="text-gray-500">화면 모드</dt>
+                <dd role="radiogroup" aria-label="화면 모드" className="inline-flex rounded-full bg-gray-100 p-1">
+                  {THEME_OPTIONS.map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      role="radio"
+                      aria-checked={theme === value}
+                      onClick={() => {
+                        track('app_theme_change', { theme: value })
+                        setAppTheme(value)
+                      }}
+                      className={`h-8 rounded-full px-3.5 text-[13px] font-medium transition-colors ${theme === value ? 'bg-white text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-4 py-3">
+                <dt className="text-gray-500">새 분석 화면에서 지렁이 표시</dt>
+                <dd>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={backdrop}
+                    aria-label="새 분석 화면에서 지렁이 표시"
+                    onClick={() => {
+                      track('app_backdrop_change', { on: !backdrop })
+                      setAppBackdrop(!backdrop)
+                    }}
+                    className={`flex h-6 w-10 items-center rounded-full p-0.5 transition-colors ${backdrop ? 'bg-brand' : 'bg-gray-200'}`}
+                  >
+                    {/* 손잡이는 다크 모드에서도 흰색이라 색 토큰을 쓰지 않아요. */}
+                    <span style={{ background: '#fff' }} className={`size-5 rounded-full transition-transform ${backdrop ? 'translate-x-4' : ''}`} />
+                  </button>
+                </dd>
+              </div>
+            </dl>
+          </Section>
+        )}
 
         <Section title="로그인한 기기">
           <Sessions />
