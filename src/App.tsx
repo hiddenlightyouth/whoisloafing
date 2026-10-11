@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import type { AccountPage } from './components/Account'
 import { Chat } from './components/Chat'
 import { Header } from './components/Header'
 import { Hero } from './components/Hero'
@@ -6,6 +7,7 @@ import { LeaveDialog } from './components/LeaveDialog'
 import { useAnalysis } from './hooks/useAnalysis'
 import { initAnalytics, repoLabel, track, trackPageView } from './lib/analytics'
 import { fetchChat, fetchStorageEnabled, shareChat } from './lib/api'
+import { loadMe, useAuth } from './lib/auth'
 
 const CHAT_PATH = /^\/c\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i
 
@@ -18,6 +20,12 @@ function articleFromPath(): { slug: string | null } | null {
   const match = ARTICLE_PATH.exec(window.location.pathname)
   return match ? { slug: match[1] ?? null } : null
 }
+
+const ACCOUNT_PATH = /^\/(login|signup|me|history)\/?$/
+
+const accountFromPath = () => (ACCOUNT_PATH.exec(window.location.pathname)?.[1] as AccountPage | undefined) ?? null
+
+const Account = lazy(() => import('./components/Account').then((module) => ({ default: module.Account })))
 
 // 아티클 글과 마크다운 변환 코드는 아티클 화면을 열 때만 받아요.
 const Articles = lazy(() => import('./components/Articles').then((module) => ({ default: module.Articles })))
@@ -41,6 +49,8 @@ export default function App() {
   const [missing, setMissing] = useState(false)
   /** 아티클 화면을 보고 있는지. slug가 null이면 목록이에요. */
   const [article, setArticle] = useState(articleFromPath)
+  const [account, setAccount] = useState(accountFromPath)
+  const { tokens } = useAuth()
   /** 분석 중에 로고를 눌렀을 때 정말 떠날지 묻는 창 */
   const [confirmingLeave, setConfirmingLeave] = useState(false)
 
@@ -48,8 +58,17 @@ export default function App() {
   const openFromLocation = useCallback(async () => {
     const id = chatIdFromPath()
     const nextArticle = articleFromPath()
+    const nextAccount = accountFromPath()
     setMissing(false)
     setArticle(nextArticle)
+    setAccount(nextAccount)
+    if (nextAccount) {
+      reset()
+      setChat(null)
+      setOpening(false)
+      trackPageView(nextAccount)
+      return
+    }
     if (nextArticle) {
       reset()
       setChat(null)
@@ -86,6 +105,7 @@ export default function App() {
   useEffect(() => {
     initAnalytics()
     void fetchStorageEnabled().then(setStorage)
+    void loadMe()
     void openFromLocation()
     const onPopState = () => void openFromLocation()
     window.addEventListener('popstate', onPopState)
@@ -110,13 +130,14 @@ export default function App() {
 
   const goHome = useCallback(() => {
     if (!reset()) return
-    track('home_click', { from: article ? 'articles' : chat?.shared ? 'shared_chat' : messages.length > 0 ? 'chat' : 'home' })
+    track('home_click', { from: account ?? (article ? 'articles' : chat?.shared ? 'shared_chat' : messages.length > 0 ? 'chat' : 'home') })
     setChat(null)
     setMissing(false)
     setArticle(null)
+    setAccount(null)
     if (window.location.pathname !== '/') window.history.pushState(null, '', '/')
     trackPageView('home')
-  }, [article, chat, messages.length, reset])
+  }, [account, article, chat, messages.length, reset])
 
   /** 아티클 목록(slug가 null)이나 글 하나를 열어요. */
   const openArticle = useCallback(
@@ -124,11 +145,35 @@ export default function App() {
       if (!reset()) return
       setChat(null)
       setMissing(false)
+      setAccount(null)
       setArticle({ slug })
       window.history.pushState(null, '', slug ? `/articles/${slug}` : '/articles')
       trackPageView(slug ? 'article' : 'articles', { slug: slug ?? undefined })
     },
     [reset],
+  )
+
+  const openAccount = useCallback(
+    (page: AccountPage, replace = false) => {
+      if (!reset()) return
+      setChat(null)
+      setMissing(false)
+      setArticle(null)
+      setAccount(page)
+      if (replace) window.history.replaceState(null, '', `/${page}`)
+      else window.history.pushState(null, '', `/${page}`)
+      trackPageView(page)
+    },
+    [reset],
+  )
+
+  const openChat = useCallback(
+    (id: string) => {
+      track('history_chat_open')
+      window.history.pushState(null, '', `/c/${id}`)
+      void openFromLocation()
+    },
+    [openFromLocation],
   )
 
   // 공유된 채팅과 다른 브라우저에서 만든 채팅은 읽기만 할 수 있어요.
@@ -202,14 +247,20 @@ export default function App() {
           working
             ? undefined
             : () => {
-                track('article_nav_click', { from: article ? 'articles' : messages.length > 0 ? 'chat' : 'home' })
+                track('article_nav_click', { from: account ?? (article ? 'articles' : messages.length > 0 ? 'chat' : 'home') })
                 openArticle(null)
               }
         }
+        signedIn={tokens !== null}
+        onAccount={working ? undefined : openAccount}
       />
       {article ? (
         <Suspense fallback={<main className="flex-1" />}>
           <Articles slug={article.slug} onOpen={openArticle} onHome={goHome} />
+        </Suspense>
+      ) : account ? (
+        <Suspense fallback={<main className="flex-1" />}>
+          <Account page={account} onNavigate={openAccount} onOpenChat={openChat} onHome={goHome} />
         </Suspense>
       ) : opening ? (
         <main className="flex flex-1 items-center justify-center text-[15px] text-gray-400">채팅을 불러오고 있어요.</main>

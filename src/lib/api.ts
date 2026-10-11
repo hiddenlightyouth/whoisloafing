@@ -1,44 +1,6 @@
 import type { AnalyzeRequest, ChatEvent, ChatSnapshot } from '../../shared/types'
-
-const OWNER_KEY_STORAGE = 'whoisloafing:owner'
-
-/**
- * 이 브라우저에서 만든 채팅을 알아보기 위한 무작위 값이에요. 로그인 정보나 토큰이 아니에요.
- * 서버는 이 값의 해시만 저장하고, 공유하기 전의 채팅은 같은 값을 가진 브라우저만 열 수 있어요.
- */
-function ownerKey(): string {
-  try {
-    let key = localStorage.getItem(OWNER_KEY_STORAGE)
-    if (!key) {
-      key = `${crypto.randomUUID()}${crypto.randomUUID()}`
-      localStorage.setItem(OWNER_KEY_STORAGE, key)
-    }
-    return key
-  } catch {
-    return ''
-  }
-}
-
-const ownerHeaders = (): Record<string, string> => {
-  const key = ownerKey()
-  return key ? { 'X-Owner-Key': key } : {}
-}
-
-const API_BASE = `${((import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '').replace(/\/+$/, '')}/api/v1`
-
-export const apiUrl = (path: string) => `${API_BASE}${path}`
-
-export interface ApiResult<T> {
-  ok: boolean
-  status: number
-  data: T | null
-  code: string | null
-}
-
-export async function readResult<T>(res: Response): Promise<ApiResult<T>> {
-  const body = (await res.json().catch(() => null)) as { data?: T; error?: { code?: string | null } } | null
-  return { ok: res.ok, status: res.status, data: body?.data ?? null, code: body?.error?.code ?? null }
-}
+import { authHeaders } from './auth'
+import { apiUrl, ownerHeaders, readResult } from './http'
 
 /** 서버에 채팅 저장 기능이 켜져 있는지 물어봐요. */
 export async function fetchStorageEnabled(): Promise<boolean> {
@@ -52,12 +14,16 @@ export async function fetchStorageEnabled(): Promise<boolean> {
 
 /** 저장된 채팅을 불러와요. 없거나 볼 수 없는 채팅이면 null을 돌려줘요. */
 export async function fetchChat(id: string): Promise<ChatSnapshot | null> {
-  const result = await readResult<ChatSnapshot>(await fetch(apiUrl(`/chats/${id}`), { headers: ownerHeaders() }))
+  const res = await fetch(apiUrl(`/chats/${id}`), { headers: { ...ownerHeaders(), ...(await authHeaders()) } })
+  const result = await readResult<ChatSnapshot>(res)
   return result.ok ? result.data : null
 }
 
 export async function shareChat(id: string): Promise<boolean> {
-  const res = await fetch(apiUrl(`/chats/${id}/share`), { method: 'POST', headers: ownerHeaders() })
+  const res = await fetch(apiUrl(`/chats/${id}/share`), {
+    method: 'POST',
+    headers: { ...ownerHeaders(), ...(await authHeaders()) },
+  })
   return res.ok
 }
 
@@ -69,7 +35,7 @@ export async function streamAnalysis(
 ): Promise<void> {
   const res = await fetch(apiUrl('/analyze'), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...ownerHeaders() },
+    headers: { 'Content-Type': 'application/json', ...ownerHeaders(), ...(await authHeaders()) },
     // 시간대별 통계를 사용자의 시간대로 보여주려고 함께 보내요.
     body: JSON.stringify({ ...request, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
     signal,
