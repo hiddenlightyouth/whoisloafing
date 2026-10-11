@@ -434,7 +434,7 @@ export default function App() {
       />
       {appLogin ? (
         <Suspense fallback={<main className="flex-1" />}>
-          <AppLogin />
+          <AppLogin onCancel={goHome} />
         </Suspense>
       ) : article ? (
         <Suspense fallback={<main className="flex-1" />}>
