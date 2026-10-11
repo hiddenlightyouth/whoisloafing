@@ -15,16 +15,14 @@ import { formatDate, formatDateTime, parseServerTime } from '../lib/format'
 
 interface Props {
   onSignedOut: () => void
-  onHistory: () => void
 }
 
 const quiet = 'h-8 shrink-0 rounded-full px-3 text-[13px] font-medium transition-colors'
 
-function Section({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mt-12">
       <h2 className="text-[17px] font-semibold text-gray-900">{title}</h2>
-      {description && <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">{description}</p>}
       <div className="mt-4">{children}</div>
     </section>
   )
@@ -144,7 +142,7 @@ function LoginHistory() {
             onClick={() => void load(page + 1)}
             className={`${quiet} bg-gray-100 text-gray-700 hover:text-brand disabled:text-gray-400`}
           >
-            {loading ? '불러오고 있어요' : '더 보기'}
+            {loading ? '처리 중' : '더 보기'}
           </button>
         </div>
       )}
@@ -152,7 +150,7 @@ function LoginHistory() {
   )
 }
 
-export function MyPage({ onSignedOut, onHistory }: Props) {
+export function MyPage({ onSignedOut }: Props) {
   const { me } = useAuth()
   const [leaving, setLeaving] = useState(false)
 
@@ -173,9 +171,6 @@ export function MyPage({ onSignedOut, onHistory }: Props) {
     <main className="flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-2xl px-5 pt-24 pb-20 sm:pt-28">
         <h1 className="text-[24px] font-semibold leading-snug text-gray-900 sm:text-[30px]">내 정보</h1>
-        <p className="mt-3 text-[14px] leading-relaxed text-gray-500">
-          {me ? `${me.name}님의 계정과 로그인 기록을 확인할 수 있어요.` : '계정 정보를 불러오고 있어요.'}
-        </p>
 
         <Section title="계정">
           <dl className="divide-y divide-gray-100 border-y border-gray-100 text-[14px]">
@@ -190,10 +185,7 @@ export function MyPage({ onSignedOut, onHistory }: Props) {
               </div>
             ))}
           </dl>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button type="button" onClick={onHistory} className={`${quiet} bg-brand-soft text-brand-hover hover:bg-brand hover:text-white`}>
-              작업 진행 내역 보기
-            </button>
+          <div className="mt-4">
             <button
               type="button"
               disabled={leaving}
@@ -205,11 +197,11 @@ export function MyPage({ onSignedOut, onHistory }: Props) {
           </div>
         </Section>
 
-        <Section title="로그인한 기기" description="지금 로그인되어 있는 기기예요. 모르는 기기가 있으면 로그아웃시켜 주세요.">
+        <Section title="로그인한 기기">
           <Sessions />
         </Section>
 
-        <Section title="로그인 기록" description="최근에 로그인한 순서예요.">
+        <Section title="로그인 기록">
           <LoginHistory />
         </Section>
       </div>

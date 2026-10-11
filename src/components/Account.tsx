@@ -19,7 +19,7 @@ const TITLES: Record<AccountPage, string> = {
   login: '로그인',
   signup: '회원가입',
   me: '내 정보',
-  history: '작업 진행 내역',
+  history: '내 작업',
 }
 
 export function Account({ page, onNavigate, onOpenChat, onHome }: Props) {
@@ -44,13 +44,13 @@ export function Account({ page, onNavigate, onOpenChat, onHome }: Props) {
       <AuthForm
         key={mode}
         mode={mode}
-        notice={page === 'me' ? '내 정보는 로그인한 뒤에 볼 수 있어요.' : page === 'history' ? '작업 진행 내역은 로그인한 뒤에 볼 수 있어요.' : undefined}
+        notice={page === 'me' ? '내 정보는 로그인한 뒤에 볼 수 있어요.' : page === 'history' ? '내 작업은 로그인한 뒤에 볼 수 있어요.' : undefined}
         onSwitch={() => onNavigate(mode === 'signup' ? 'login' : 'signup')}
       />
     )
   }
 
-  if (page === 'me') return <MyPage onSignedOut={onHome} onHistory={() => onNavigate('history')} />
+  if (page === 'me') return <MyPage onSignedOut={onHome} />
   if (page === 'history') return <History onOpenChat={onOpenChat} onHome={onHome} />
   return <main className="flex-1" />
 }

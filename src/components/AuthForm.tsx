@@ -65,12 +65,7 @@ export function AuthForm({ mode, notice, onSwitch }: Props) {
     <main className="flex flex-1 overflow-y-auto">
       <div className="m-auto w-full max-w-sm px-5 pt-24 pb-16">
         <h1 className="text-[24px] font-semibold leading-snug text-gray-900 sm:text-[28px]">{signup ? '회원가입' : '로그인'}</h1>
-        <p className="mt-3 text-[14px] leading-relaxed text-gray-500">
-          {notice ??
-            (signup
-              ? '가입하면 분석한 레포를 작업 진행 내역에 모아 두고, 다른 기기에서도 이어서 볼 수 있어요.'
-              : '로그인하면 분석한 레포를 작업 진행 내역에서 다시 열 수 있어요.')}
-        </p>
+        {notice && <p className="mt-3 text-[14px] leading-relaxed text-gray-500">{notice}</p>}
 
         <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-4">
           <Field
@@ -92,7 +87,7 @@ export function AuthForm({ mode, notice, onSwitch }: Props) {
               maxLength={NAME_MAX}
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="화면에 보여줄 이름"
+              placeholder="홍길동"
             />
           )}
           <Field
@@ -102,7 +97,7 @@ export function AuthForm({ mode, notice, onSwitch }: Props) {
             maxLength={PASSWORD_MAX}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder={signup ? `${PASSWORD_MIN}자 이상` : ''}
+            placeholder="********"
           />
           {signup && (
             <Field
@@ -112,6 +107,7 @@ export function AuthForm({ mode, notice, onSwitch }: Props) {
               maxLength={PASSWORD_MAX}
               value={passwordCheck}
               onChange={(event) => setPasswordCheck(event.target.value)}
+              placeholder="********"
             />
           )}
 
@@ -126,7 +122,7 @@ export function AuthForm({ mode, notice, onSwitch }: Props) {
             disabled={working}
             className="mt-2 h-12 w-full rounded-full bg-brand text-[15px] font-semibold text-white transition-colors hover:bg-brand-hover disabled:bg-gray-200 disabled:text-gray-400"
           >
-            {working ? (signup ? '가입하고 있어요' : '로그인하고 있어요') : signup ? '가입하기' : '로그인'}
+            {working ? '처리 중' : signup ? '가입하기' : '로그인'}
           </button>
         </form>
 

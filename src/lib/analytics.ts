@@ -46,7 +46,7 @@ const PAGE_TITLES = {
   login: 'WhoIsLoafing 로그인',
   signup: 'WhoIsLoafing 회원가입',
   me: 'WhoIsLoafing 내 정보',
-  history: 'WhoIsLoafing 작업 진행 내역',
+  history: 'WhoIsLoafing 내 작업',
 }
 
 type Screen = keyof typeof PAGE_TITLES

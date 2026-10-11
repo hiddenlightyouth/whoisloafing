@@ -95,10 +95,7 @@ export function History({ onOpenChat, onHome }: Props) {
   return (
     <main className="flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-2xl px-5 pt-24 pb-20 sm:pt-28">
-        <h1 className="text-[24px] font-semibold leading-snug text-gray-900 sm:text-[30px]">작업 진행 내역</h1>
-        <p className="mt-3 text-[14px] leading-relaxed text-gray-500">
-          분석했던 레포를 최근에 이어서 본 순서로 모았어요. 누르면 그 채팅으로 돌아가서 이어서 물어볼 수 있어요.
-        </p>
+        <h1 className="text-[24px] font-semibold leading-snug text-gray-900 sm:text-[30px]">내 작업</h1>
 
         {chats.length > 0 ? (
           <ul className="mt-8">
@@ -122,13 +119,13 @@ export function History({ onOpenChat, onHome }: Props) {
         ) : (
           <div className="mt-16 text-center">
             <p className="text-[15px] text-gray-600">아직 분석한 레포가 없어요.</p>
-            <p className="mt-1.5 text-[13px] text-gray-400">로그인한 채로 분석하면 여기에 모여요.</p>
+            <p className="mt-1.5 text-[13px] text-gray-400">첫 분석을 시작해볼까요?</p>
             <button
               type="button"
               onClick={onHome}
               className="mt-5 h-10 rounded-full bg-brand px-5 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover"
             >
-              레포 분석하러 가기
+              분석하기
             </button>
           </div>
         )}
@@ -142,7 +139,7 @@ export function History({ onOpenChat, onHome }: Props) {
               onClick={() => void load(page + 1)}
               className="h-9 rounded-full bg-gray-100 px-4 text-[13px] font-medium text-gray-700 transition-colors hover:text-brand disabled:text-gray-400"
             >
-              {loading ? '불러오고 있어요' : '더 보기'}
+              {loading ? '처리 중' : '더 보기'}
             </button>
           </div>
         )}
