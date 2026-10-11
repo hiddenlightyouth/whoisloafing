@@ -5,11 +5,12 @@ import { ChatSkeleton } from './components/Skeleton'
 import { Header } from './components/Header'
 import { Hero } from './components/Hero'
 import { LeaveDialog } from './components/LeaveDialog'
+import { LoginNudge } from './components/LoginNudge'
 import { Toast } from './components/Toast'
 import { useAnalysis } from './hooks/useAnalysis'
 import { initAnalytics, repoLabel, track, trackPageView } from './lib/analytics'
 import { fetchChat, fetchStorageEnabled, shareChat } from './lib/api'
-import { loadMe, useAuth } from './lib/auth'
+import { claimChats, loadMe, useAuth } from './lib/auth'
 import { showToast } from './lib/toast'
 
 const CHAT_PATH = /^\/c\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i
@@ -33,6 +34,17 @@ const Account = lazy(() => import('./components/Account').then((module) => ({ de
 // 아티클 글과 마크다운 변환 코드는 아티클 화면을 열 때만 받아요.
 const Articles = lazy(() => import('./components/Articles').then((module) => ({ default: module.Articles })))
 
+const NUDGE_DISMISSED_KEY = 'whoisloafing:login-nudge-dismissed'
+
+/** 로그인 안내를 이 탭에서 이미 닫았는지. 한 번 닫으면 탭을 닫을 때까지 다시 띄우지 않아요. */
+function nudgeDismissed(): boolean {
+  try {
+    return sessionStorage.getItem(NUDGE_DISMISSED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 async function copyLink(): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(window.location.href)
@@ -43,7 +55,7 @@ async function copyLink(): Promise<boolean> {
 }
 
 export default function App() {
-  const { messages, busy, paused, send, resume, stop, abandon, reset, load, chatId } = useAnalysis()
+  const { messages, busy, paused, send, resume, stop, abandon, reset, load, settle, chatId } = useAnalysis()
   /** 서버에 채팅 저장 기능(Supabase)이 켜져 있는지 */
   const [storage, setStorage] = useState(false)
   /** 지금 보고 있는 채팅의 상태. mine은 이 브라우저에서 만든 채팅인지, shared는 공유됐는지예요. */
@@ -56,8 +68,11 @@ export default function App() {
   const { tokens } = useAuth()
   /** 분석 중에 로고를 눌렀을 때 정말 떠날지 묻는 창 */
   const [confirmingLeave, setConfirmingLeave] = useState(false)
-  /** 공유하려고 로그인 화면으로 갔을 때, 로그인한 뒤에 돌아올 채팅 */
-  const loginReturn = useRef<string | null>(null)
+  /** 채팅에서 로그인 화면으로 갔을 때, 로그인한 뒤에 돌아올 채팅과 로그인 화면에 보여줄 안내 */
+  const loginReturn = useRef<{ id: string; notice: string } | null>(null)
+  const [nudgeClosed, setNudgeClosed] = useState(nudgeDismissed)
+  /** 분석이 도는 중에 로그인해서, 그 요청이 끝나면 채팅을 계정에 한 번 더 연결해야 하는지 */
+  const claimWhenIdle = useRef(false)
 
   // 주소에 맞는 화면을 준비해요. 처음 들어왔을 때와 뒤로 가기, 앞으로 가기에서 불러요.
   const openFromLocation = useCallback(async () => {
@@ -68,8 +83,12 @@ export default function App() {
     setArticle(nextArticle)
     setAccount(nextAccount)
     if (nextAccount) {
-      reset()
-      setChat(null)
+      // 채팅을 들고 로그인 화면에 와 있는 중이면 채팅을 그대로 둬요.
+      const holding = nextAccount !== 'me' && nextAccount !== 'history' && loginReturn.current?.id === chatId.current
+      if (!holding) {
+        reset()
+        setChat(null)
+      }
       setOpening(false)
       trackPageView(nextAccount)
       return
@@ -86,6 +105,11 @@ export default function App() {
       setChat(null)
       setOpening(false)
       trackPageView('home')
+      return
+    }
+    // 화면에 이미 올라와 있는 채팅이면 다시 받지 않아요. 분석이 돌고 있어도 끊기지 않아요.
+    if (id === chatId.current) {
+      setOpening(false)
       return
     }
     setOpening(true)
@@ -105,7 +129,7 @@ export default function App() {
       is_owner: snapshot.owner,
       message_count: snapshot.messages.length,
     })
-  }, [load, reset])
+  }, [chatId, load, reset])
 
   useEffect(() => {
     initAnalytics()
@@ -162,9 +186,13 @@ export default function App() {
 
   const openAccount = useCallback(
     (page: AccountPage, replace = false) => {
-      if (!reset()) return
       if (page === 'me' || page === 'history') loginReturn.current = null
-      setChat(null)
+      // 채팅을 들고 로그인 화면으로 갈 때는 채팅을 비우지 않아서, 돌던 분석이 뒤에서 그대로 이어져요.
+      const holding = loginReturn.current !== null && loginReturn.current.id === chatId.current
+      if (!holding) {
+        if (!reset()) return
+        setChat(null)
+      }
       setMissing(false)
       setArticle(null)
       setAccount(page)
@@ -172,7 +200,7 @@ export default function App() {
       else window.history.pushState(null, '', `/${page}`)
       trackPageView(page)
     },
-    [reset],
+    [chatId, reset],
   )
 
   const openChat = useCallback(
@@ -185,23 +213,65 @@ export default function App() {
     [openFromLocation],
   )
 
-  // 로그인 화면에서 로그인하면, 공유하려던 채팅이 있으면 그리로 돌아가고 아니면 내 작업으로 가요.
+  // 로그인 화면에서 로그인하면, 보던 채팅이 있으면 그리로 돌아가고 아니면 내 작업으로 가요.
   const handleSignedIn = useCallback(() => {
-    const id = loginReturn.current
-    if (id) openChat(id, true)
-    else openAccount('history', true)
-  }, [openAccount, openChat])
+    const id = loginReturn.current?.id
+    if (!id) {
+      openAccount('history', true)
+      return
+    }
+    if (id === chatId.current) {
+      // 로그인하는 사이에도 돌고 있던 요청은 로그인 전에 보낸 것이라, 끝난 뒤에 계정에 한 번 더 연결해요.
+      claimWhenIdle.current = true
+      trackPageView('chat', { is_owner: true })
+    }
+    openChat(id, true)
+  }, [chatId, openAccount, openChat])
 
-  const handleLoginToShare = useCallback(() => {
-    const id = chatId.current
-    openAccount('login')
-    loginReturn.current = id
-  }, [chatId, openAccount])
+  const loginFromChat = useCallback(
+    (notice: string) => {
+      const id = chatId.current
+      if (!id) return
+      loginReturn.current = { id, notice }
+      settle()
+      openAccount('login')
+    },
+    [chatId, openAccount, settle],
+  )
+
+  const handleLoginToShare = useCallback(() => loginFromChat('로그인하면 공유하려던 채팅으로 바로 돌아가요.'), [loginFromChat])
+
+  const closeNudge = useCallback(() => {
+    track('login_nudge_close')
+    setNudgeClosed(true)
+    try {
+      sessionStorage.setItem(NUDGE_DISMISSED_KEY, '1')
+    } catch {
+      // 저장하지 못해도 이번 화면에서는 닫혀 있어요.
+    }
+  }, [])
+
+  const handleNudgeLogin = useCallback(() => {
+    track('login_nudge_click', { busy })
+    loginFromChat('로그인하면 분석하던 채팅으로 바로 돌아가요.')
+  }, [busy, loginFromChat])
+
+  useEffect(() => {
+    if (busy || !claimWhenIdle.current) return
+    claimWhenIdle.current = false
+    void claimChats()
+  }, [busy, account])
 
   // 공유된 채팅과 다른 브라우저에서 만든 채팅은 읽기만 할 수 있어요.
   const readOnly = chat !== null && (chat.shared || !chat.mine)
   // 내가 진행 중인 채팅이 화면에 있으면, 떠나기 전에 항상 물어봐요. 분석이 잠깐 멈춰 있을 때(질문을 기다리는 중)도 마찬가지예요.
   const working = busy || (messages.length > 0 && !readOnly)
+  // 로그인하지 않고 분석하는 동안, 첫 말풍선이 나온 뒤에 로그인을 권해요.
+  const nudging =
+    storage && tokens === null && !nudgeClosed && !account && !article && !readOnly && messages.some((message) => message.from === 'bot')
+  useEffect(() => {
+    if (nudging) track('login_nudge_view')
+  }, [nudging])
 
   const handleHome = useCallback(() => {
     if (!working) {
@@ -259,7 +329,7 @@ export default function App() {
     <div className="relative flex h-dvh flex-col bg-white">
       <Header
         onHome={handleHome}
-        inChat={messages.length > 0 && !readOnly}
+        inChat={messages.length > 0 && !readOnly && !account}
         storage={storage}
         busy={busy}
         onStop={stop}
@@ -288,7 +358,7 @@ export default function App() {
             page={account}
             onNavigate={openAccount}
             onSignedIn={handleSignedIn}
-            notice={loginReturn.current ? '로그인하면 공유하려던 채팅으로 바로 돌아가요.' : undefined}
+            notice={loginReturn.current?.notice}
             onOpenChat={(id) => {
               track('history_chat_open')
               openChat(id)
@@ -327,6 +397,7 @@ export default function App() {
           onNewRepo={goHome}
         />
       )}
+      {nudging && !confirmingLeave && <LoginNudge onLogin={handleNudgeLogin} onClose={closeNudge} />}
       {confirmingLeave && <LeaveDialog onStay={handleStay} onLeave={handleLeave} />}
       <Toast />
     </div>

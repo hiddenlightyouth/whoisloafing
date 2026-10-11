@@ -184,5 +184,10 @@ export function useAnalysis() {
     setMessages(chat.messages.map((message) => ({ ...message, id: nextId.current++ }) as ChatMessage))
   }, [])
 
-  return { messages, busy, paused, send, resume, stop, abandon, reset, load, chatId: chatIdRef }
+  /** 지금까지 올라온 말풍선을 다 나온 것으로 표시해요. 화면을 잠깐 떠났다 돌아와도 타자 효과가 다시 돌지 않아요. */
+  const settle = useCallback(() => {
+    setMessages((prev) => prev.map((message) => (message.from === 'bot' && message.live ? { ...message, live: false } : message)))
+  }, [])
+
+  return { messages, busy, paused, send, resume, stop, abandon, reset, load, settle, chatId: chatIdRef }
 }

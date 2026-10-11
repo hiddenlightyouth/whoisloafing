@@ -271,6 +271,12 @@ export async function signOut(): Promise<void> {
   clearAuth()
 }
 
+/** 이 브라우저에서 로그인하지 않고 만든 채팅을 내 계정에 연결해요. */
+export async function claimChats(): Promise<void> {
+  if (!state.tokens) return
+  await authFetch('/users/me/chats/claim', { method: 'POST', headers: ownerHeaders() }).catch(() => null)
+}
+
 export async function loadMe(): Promise<Me | null> {
   if (!state.tokens) return null
   try {

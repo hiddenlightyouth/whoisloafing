@@ -74,7 +74,7 @@ src/
   lib/toast.ts        화면 아래에 잠깐 뜨는 안내(토스트) 저장소
   lib/articles.ts     아티클 마크다운 읽기와 변환
   hooks/useAnalysis.ts  채팅 메시지 큐, 입력 중 표시 타이밍
-  components/         Header, Logo, Hero, ContributionBackdrop, RepoInput, Chat, Bubble, TypingDots, RichText, Articles, PeoplePicker, AssistantOrb, LeaveDialog, RankingCarousel, StatsCard, SummaryChart, Charts, Followup, Account, AuthForm, MyPage, History, Skeleton, Toast
+  components/         Header, Logo, Hero, ContributionBackdrop, RepoInput, Chat, Bubble, TypingDots, RichText, Articles, PeoplePicker, AssistantOrb, LeaveDialog, RankingCarousel, StatsCard, SummaryChart, Charts, Followup, Account, AuthForm, MyPage, History, LoginNudge, Skeleton, Toast
 ```
 
 ## 실행 방법
@@ -149,6 +149,8 @@ npm run dev            # http://localhost:5173
 - 분석은 로그인하지 않아도 되지만, 공유는 로그인해야 해요. 공유는 채팅을 내 계정에 저장하고 링크로 보여주는 것이라, 나중에 내 작업에서 공유를 취소하거나 지울 수 있게 하려는 거예요. 서버도 로그인하지 않은 공유, 공유 취소, 삭제 요청을 401로 거절해요.
 - 로그인하지 않은 채로 공유하기를 누르면 확인 창에서 로그인하기를 안내해요. 누르면 로그인 화면으로 가고("로그인하면 공유하려던 채팅으로 바로 돌아가요."), 로그인하거나 가입하면 이 브라우저의 채팅이 계정에 연결된 뒤 그 채팅(`/c/아이디`)으로 돌아와요. 돌아온 뒤에 공유하기를 한 번 더 누르면 공유돼요.
 - 로그인한 채로 공유하기를 누르면 확인 창으로 한 번 더 물어봐요. 공유하면 서버에 공유한 시각이 기록되고, 그 뒤로는 링크를 아는 누구나 열람할 수 있지만 공유하는 동안에는 아무도 이어서 작업할 수 없어요. 서버도 공유된 채팅의 분석 요청을 거절해요.
+- 로그인하지 않고 분석하는 동안에는 첫 말풍선이 나온 뒤에 로그인 안내(`LoginNudge`)를 띄워요. 제목은 "분석을 잃어버리지 마세요", 버튼은 "로그인하고 분석 계속하기"예요. 넓은 화면에서는 왼쪽 아래에 X 버튼이 달린 작은 카드로 떠 있고, 좁은 화면(768px 미만)에서는 아래에서 올라오는 시트로 보여줘요. 시트는 "나중에 하기"나 바깥의 어두운 부분, Esc로 닫아요. 한 번 닫으면 그 탭을 닫을 때까지 다시 띄우지 않아요(sessionStorage의 `whoisloafing:login-nudge-dismissed`). 저장 기능이 꺼져 있으면 띄우지 않아요.
+- 채팅에서 로그인 화면으로 갈 때(로그인 안내, 공유하려다 로그인)는 채팅을 비우지 않아요. 돌던 분석은 뒤에서 그대로 이어지고, 로그인하면 서버에서 다시 받지 않고 보던 채팅으로 돌아와요. 로그인하는 사이에 돌던 요청은 로그인 전에 보낸 것이라, 그 요청이 끝나면 채팅을 계정에 한 번 더 연결해요(`claimChats`).
 - 공유하면 링크를 바로 복사하고, 결과는 화면 아래 가운데에 잠깐 뜨는 토스트로 알려줘요. 휴대폰 브라우저는 공유 요청을 기다리는 사이에 복사 권한이 사라지기도 해서, 그때는 링크 복사 버튼을 누르라고 안내해요. 링크 복사, 공유 취소, 삭제 결과도 모두 토스트로 보여줘요. (`showToast`)
 - 공유를 취소하면 다시 만든 사람만 열 수 있고, 이어서 분석할 수도 있어요. 이미 받은 링크로는 열 수 없다고 안내해요.
 
@@ -158,7 +160,7 @@ npm run dev            # http://localhost:5173
 
 | 주소 | 화면 | 로그인하지 않았을 때 |
 | --- | --- | --- |
-| `/login` | 로그인 | 그대로 보여줘요. 로그인하면 내 작업으로 가요. 공유하려다 들어왔으면 그 채팅으로 돌아가요. |
+| `/login` | 로그인 | 그대로 보여줘요. 로그인하면 내 작업으로 가요. 채팅에서 들어왔으면(로그인 안내, 공유하려다 로그인) 그 채팅으로 돌아가요. |
 | `/signup` | 회원가입 (이메일, 이름, 비밀번호 8자 이상 64자 이하, 비밀번호 확인) | 그대로 보여줘요. 가입하면 바로 로그인되고 내 작업으로 가요. |
 | `/history` | 내 작업 | 로그인 화면을 보여주고, 로그인하면 이 화면을 이어서 보여줘요. |
 | `/me` | 내 정보 (계정, 로그인한 기기, 로그인 기록, 로그아웃) | 위와 같아요. |
@@ -224,6 +226,7 @@ Claude 호출 기록은 백엔드 서버가 남기고, 관리자 API(`/api/v1/ai
 | `scroll_to_bottom_click` | 맨 아래로 이동을 눌렀을 때 | |
 | `share_open`, `share_cancel`, `share_confirm`, `share_failed` | 공유 확인 창을 열고, 취소하고, 공유했을 때 | `signed_in`, `message_count` |
 | `share_login_click` | 로그인하지 않은 채로 공유하려다 로그인하기를 눌렀을 때 | |
+| `login_nudge_view`, `login_nudge_click`, `login_nudge_close` | 분석 중 로그인 안내가 뜨고, 로그인하고 분석 계속하기를 누르거나 닫았을 때 | `busy` |
 | `chat_unshare`, `chat_delete` | 내 작업에서 공유를 취소하거나 채팅을 지웠을 때 | `success`, `shared` |
 | `share_link_copy` | 공유 링크를 복사했을 때 | `success`, `is_owner`, `from` |
 | `chat_open_failed` | 열 수 없는 채팅 주소로 들어왔을 때 | |
