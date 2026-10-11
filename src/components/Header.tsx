@@ -108,7 +108,13 @@ export function Header({
   return (
     <>
       <header className="absolute inset-x-0 top-0 z-20 flex h-14 items-center justify-between bg-white/70 px-4 backdrop-blur-md sm:px-6">
-        <Logo onClick={onHome} />
+        <Logo
+          onClick={() => {
+            setMenuOpen(false)
+            setDownloadOpen(false)
+            onHome()
+          }}
+        />
 
         <div ref={actionsRef} className="relative flex items-center gap-1 sm:gap-2">
           {notice && (
