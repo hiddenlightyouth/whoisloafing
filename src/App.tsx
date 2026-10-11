@@ -44,6 +44,16 @@ const Account = lazy(() => import('./components/Account').then((module) => ({ de
 // 아티클 글과 마크다운 변환 코드는 아티클 화면을 열 때만 받아요.
 const Articles = lazy(() => import('./components/Articles').then((module) => ({ default: module.Articles })))
 
+const SIDEBAR_CLOSED_KEY = 'whoisloafing:app-sidebar-closed'
+
+function sidebarClosed(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_CLOSED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 const NUDGE_DISMISSED_KEY = 'whoisloafing:login-nudge-dismissed'
 /** 좁은 화면에서 로그인 안내를 닫은 뒤, 채팅을 이만큼 새로 시작하면 다시 띄워요. */
 const NUDGE_REOPEN_CHATS = 3
@@ -92,6 +102,8 @@ export default function App() {
   const [account, setAccount] = useState(accountFromPath)
   /** 앱이 브라우저로 열어 준 앱 로그인 화면(/app-login)을 보고 있는지 */
   const [appLogin, setAppLogin] = useState(appLoginFromPath)
+  /** 앱의 사이드바를 펴 뒀는지. 다음에 켰을 때도 그대로 둬요. */
+  const [sidebarOpen, setSidebarOpen] = useState(() => !sidebarClosed())
   const { tokens } = useAuth()
   /** 진행 중인 채팅을 두고 다른 화면으로 가려고 할 때, 정말 떠날지 묻는 창과 가려던 곳 */
   const [leaveTo, setLeaveTo] = useState<LeaveTarget | null>(null)
@@ -340,6 +352,12 @@ export default function App() {
   // 헤더의 링크는 어느 화면에서나 똑같이 보여주고, 잃어버릴 작업이 있을 때만 떠나기 전에 물어봐요.
   const leaveFor = useCallback(
     (target: LeaveTarget) => {
+      // 앱에서는 늘 로그인한 상태라 채팅이 내 작업에 남아요. 묻지 않고 바로 옮기고, 돌던 분석은 서버가 끝까지 마쳐서 저장해요.
+      if (isApp) {
+        abandon()
+        go(target)
+        return
+      }
       if (!working) {
         go(target)
         return
@@ -347,8 +365,18 @@ export default function App() {
       track('leave_confirm_open', { busy, to: target })
       setLeaveTo(target)
     },
-    [busy, go, working],
+    [abandon, busy, go, working],
   )
+
+  const toggleSidebar = useCallback((open: boolean) => {
+    setSidebarOpen(open)
+    try {
+      if (open) localStorage.removeItem(SIDEBAR_CLOSED_KEY)
+      else localStorage.setItem(SIDEBAR_CLOSED_KEY, '1')
+    } catch {
+      // 저장하지 못해도 이번 화면에서는 그대로 동작해요.
+    }
+  }, [])
 
   const handleHome = useCallback(() => leaveFor('home'), [leaveFor])
 
@@ -411,6 +439,7 @@ export default function App() {
     <div className={isApp ? 'relative flex min-w-0 flex-1 flex-col bg-white' : 'relative flex h-dvh flex-col bg-white'}>
       <Header
         app={isApp}
+        onOpenSidebar={isApp && !sidebarOpen ? () => toggleSidebar(true) : undefined}
         onHome={handleHome}
         inChat={messages.length > 0 && !readOnly && !account}
         storage={storage}
@@ -498,28 +527,36 @@ export default function App() {
   // 앱에서는 왼쪽에 사이드바를 두고, 오른쪽에 웹과 같은 화면을 보여줘요.
   return (
     <div className="flex h-dvh bg-white">
-      <Suspense fallback={<aside data-app-drag className="w-64 shrink-0 border-r border-gray-200 bg-gray-50" />}>
-        <AppSidebar
-          activeChatId={account || article ? null : chatIdFromPath()}
-          page={account ?? (article ? 'articles' : null)}
-          refreshKey={`${busy}:${account ?? ''}:${chatIdFromPath() ?? ''}`}
-          onNew={handleHome}
-          onOpenChat={(id) => {
-            if (id === chatId.current) return
-            // 분석이 도는 동안에는 다른 채팅을 올릴 수 없어서, 끝나거나 멈춘 뒤에 열게 해요.
-            if (busy) {
-              showToast('분석이 끝난 뒤에 다른 채팅을 열 수 있어요.')
-              return
-            }
-            track('history_chat_open', { from: 'sidebar' })
-            openChat(id)
-          }}
-          onArticles={() => leaveFor('articles')}
-          onAccount={(page) => {
-            if (page !== account) leaveFor(page)
-          }}
-        />
-      </Suspense>
+      {sidebarOpen && (
+        <Suspense fallback={<aside data-app-drag className="w-64 shrink-0 border-r border-gray-200 bg-gray-50" />}>
+          <AppSidebar
+            activeChatId={account || article ? null : chatIdFromPath()}
+            page={account === 'me' ? 'me' : article ? 'articles' : null}
+            refreshKey={`${busy}:${account ?? ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`}
+            onClose={() => toggleSidebar(false)}
+            onNew={handleHome}
+            onOpenChat={(id) => {
+              if (id === chatId.current && !account && !article) return
+              track('history_chat_open', { from: 'sidebar' })
+              // 돌던 분석은 서버가 끝까지 마쳐서 저장하니, 기다리지 않고 바로 다른 채팅을 열어요.
+              abandon()
+              openChat(id)
+            }}
+            onChatChanged={(id, change) => {
+              if (id !== chatId.current) return
+              if (change === 'unshared') setChat({ mine: true, shared: false })
+              else {
+                abandon()
+                goHome()
+              }
+            }}
+            onArticles={() => leaveFor('articles')}
+            onMe={() => {
+              if (account !== 'me') leaveFor('me')
+            }}
+          />
+        </Suspense>
+      )}
       {screen}
     </div>
   )

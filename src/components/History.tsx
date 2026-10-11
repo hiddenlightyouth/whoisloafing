@@ -37,7 +37,7 @@ function Avatar({ owner }: { owner: string }) {
   )
 }
 
-async function copyChatLink(id: string): Promise<boolean> {
+export async function copyChatLink(id: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(`${window.location.origin}/c/${id}`)
     return true
@@ -47,7 +47,7 @@ async function copyChatLink(id: string): Promise<boolean> {
 }
 
 /** 채팅을 지우기 전에 한 번 더 묻는 창이에요. */
-function DeleteDialog({ chat, working, onCancel, onConfirm }: { chat: ChatSummary; working: boolean; onCancel: () => void; onConfirm: () => void }) {
+export function DeleteDialog({ chat, working, onCancel, onConfirm }: { chat: ChatSummary; working: boolean; onCancel: () => void; onConfirm: () => void }) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onCancel()

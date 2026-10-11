@@ -3,6 +3,23 @@ import { createRoot } from 'react-dom/client'
 import App from './App'
 import './index.css'
 
+const RELOADED_KEY = 'whoisloafing:chunk-reloaded'
+const RELOAD_GAP_MS = 10_000
+
+// 새로 배포하면 예전 코드 조각의 주소가 사라져요. 열어 둔 화면이 그 조각을 받으려다 실패하면 화면이 하얗게 비니,
+// 새 코드로 한 번 새로 고쳐요. 새로 고쳐도 또 실패하면 되풀이하지 않아요.
+window.addEventListener('vite:preloadError', (event) => {
+  try {
+    const last = Number(sessionStorage.getItem(RELOADED_KEY)) || 0
+    if (Date.now() - last < RELOAD_GAP_MS) return
+    sessionStorage.setItem(RELOADED_KEY, String(Date.now()))
+  } catch {
+    return
+  }
+  event.preventDefault()
+  window.location.reload()
+})
+
 const start = () =>
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
