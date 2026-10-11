@@ -100,7 +100,6 @@ export function Header({
 
   function soon(item: string) {
     setDownloadOpen(false)
-    setMenuOpen(false)
     track('nav_soon_click', { item })
     window.alert('곧 찾아옵니다.')
   }
