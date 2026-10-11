@@ -22,6 +22,8 @@ interface Props {
   onArticles?: () => void
   signedIn?: boolean
   onAccount?: (page: AccountPage) => void
+  /** 앱 안에서는 로고와 링크를 사이드바가 대신해서, 공유와 중단하기 버튼만 남겨요. 빈 곳을 잡으면 창이 움직여요. */
+  app?: boolean
 }
 
 const quiet = 'h-8 rounded-full px-3 text-[13px] font-medium transition-colors'
@@ -39,6 +41,7 @@ export function Header({
   onArticles,
   signedIn = false,
   onAccount,
+  app = false,
 }: Props) {
   const [confirming, setConfirming] = useState(false)
   const [working, setWorking] = useState(false)
@@ -102,17 +105,24 @@ export function Header({
 
   return (
     <>
-      <header className="absolute inset-x-0 top-0 z-20 flex h-14 items-center justify-between bg-white/70 px-4 backdrop-blur-md sm:px-6">
-        <Logo
-          onClick={() => {
-            setMenuOpen(false)
-            setDownloadOpen(false)
-            onHome()
-          }}
-        />
+      <header
+        data-app-drag={app || undefined}
+        className="absolute inset-x-0 top-0 z-20 flex h-14 items-center justify-between bg-white/70 px-4 backdrop-blur-md sm:px-6"
+      >
+        {app ? (
+          <span />
+        ) : (
+          <Logo
+            onClick={() => {
+              setMenuOpen(false)
+              setDownloadOpen(false)
+              onHome()
+            }}
+          />
+        )}
 
         <div ref={actionsRef} className="relative flex items-center gap-1 sm:gap-2">
-          <nav className="hidden items-center gap-1 sm:flex sm:gap-2">
+          <nav className={app ? 'hidden' : 'hidden items-center gap-1 sm:flex sm:gap-2'}>
             <button type="button" onClick={() => soon('intro')} className={`${quiet} text-gray-600 hover:text-gray-900`}>
               소개
             </button>
@@ -246,7 +256,7 @@ export function Header({
             aria-label={menuOpen ? '메뉴 닫기' : '메뉴 열기'}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
-            className="relative ml-1 flex size-8 items-center justify-center rounded-full text-gray-700 transition-colors hover:bg-gray-100 sm:hidden"
+            className={`relative ml-1 size-8 items-center justify-center rounded-full text-gray-700 transition-colors hover:bg-gray-100 sm:hidden ${app ? 'hidden' : 'flex'}`}
           >
             <span
               className={`absolute h-[1.5px] w-4 rounded-full bg-current transition-transform duration-200 ${menuOpen ? 'rotate-45' : '-translate-y-[5px]'}`}

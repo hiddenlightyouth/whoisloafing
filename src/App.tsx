@@ -10,6 +10,7 @@ import { Toast } from './components/Toast'
 import { useAnalysis } from './hooks/useAnalysis'
 import { initAnalytics, repoLabel, track, trackPageView } from './lib/analytics'
 import { fetchChat, fetchStorageEnabled, shareChat } from './lib/api'
+import { isApp } from './lib/app'
 import { claimChats, loadMe, useAuth } from './lib/auth'
 import { showToast } from './lib/toast'
 
@@ -28,6 +29,15 @@ function articleFromPath(): { slug: string | null } | null {
 const ACCOUNT_PATH = /^\/(login|signup|me|history)\/?$/
 
 const accountFromPath = () => (ACCOUNT_PATH.exec(window.location.pathname)?.[1] as AccountPage | undefined) ?? null
+
+const APP_LOGIN_PATH = /^\/app-login\/?$/
+
+const appLoginFromPath = () => APP_LOGIN_PATH.test(window.location.pathname)
+
+// 앱에서만 쓰는 화면과, 앱이 브라우저로 열어 주는 로그인 화면은 필요할 때만 받아요.
+const AppGate = lazy(() => import('./components/AppGate').then((module) => ({ default: module.AppGate })))
+const AppSidebar = lazy(() => import('./components/AppSidebar').then((module) => ({ default: module.AppSidebar })))
+const AppLogin = lazy(() => import('./components/AppLogin').then((module) => ({ default: module.AppLogin })))
 
 const Account = lazy(() => import('./components/Account').then((module) => ({ default: module.Account })))
 
@@ -80,6 +90,8 @@ export default function App() {
   /** 아티클 화면을 보고 있는지. slug가 null이면 목록이에요. */
   const [article, setArticle] = useState(articleFromPath)
   const [account, setAccount] = useState(accountFromPath)
+  /** 앱이 브라우저로 열어 준 앱 로그인 화면(/app-login)을 보고 있는지 */
+  const [appLogin, setAppLogin] = useState(appLoginFromPath)
   const { tokens } = useAuth()
   /** 진행 중인 채팅을 두고 다른 화면으로 가려고 할 때, 정말 떠날지 묻는 창과 가려던 곳 */
   const [leaveTo, setLeaveTo] = useState<LeaveTarget | null>(null)
@@ -98,6 +110,15 @@ export default function App() {
     setMissing(false)
     setArticle(nextArticle)
     setAccount(nextAccount)
+    const nextAppLogin = appLoginFromPath()
+    setAppLogin(nextAppLogin)
+    if (nextAppLogin) {
+      reset()
+      setChat(null)
+      setOpening(false)
+      trackPageView('app-login')
+      return
+    }
     if (nextAccount) {
       // 채팅을 들고 로그인 화면에 와 있는 중이면 채팅을 그대로 둬요.
       const holding = nextAccount !== 'me' && nextAccount !== 'history' && loginReturn.current?.id === chatId.current
@@ -188,6 +209,7 @@ export default function App() {
     setMissing(false)
     setArticle(null)
     setAccount(null)
+    setAppLogin(false)
     if (window.location.pathname !== '/') window.history.pushState(null, '', '/')
     trackPageView('home')
   }, [account, article, chat, messages.length, reset])
@@ -200,6 +222,7 @@ export default function App() {
       setChat(null)
       setMissing(false)
       setAccount(null)
+      setAppLogin(false)
       setArticle({ slug })
       window.history.pushState(null, '', slug ? `/articles/${slug}` : '/articles')
       trackPageView(slug ? 'article' : 'articles', { slug: slug ?? undefined })
@@ -218,6 +241,7 @@ export default function App() {
       }
       setMissing(false)
       setArticle(null)
+      setAppLogin(false)
       setAccount(page)
       if (replace) window.history.replaceState(null, '', `/${page}`)
       else window.history.pushState(null, '', `/${page}`)
@@ -374,9 +398,19 @@ export default function App() {
     return ok
   }, [chat])
 
-  return (
-    <div className="relative flex h-dvh flex-col bg-white">
+  // 앱에서는 로그인부터 해요. 로그인하지 않았으면 다른 화면 대신 로그인 화면만 보여줘요.
+  if (isApp && tokens === null) {
+    return (
+      <Suspense fallback={<div data-app-drag className="h-dvh bg-white" />}>
+        <AppGate />
+      </Suspense>
+    )
+  }
+
+  const screen = (
+    <div className={isApp ? 'relative flex min-w-0 flex-1 flex-col bg-white' : 'relative flex h-dvh flex-col bg-white'}>
       <Header
+        app={isApp}
         onHome={handleHome}
         inChat={messages.length > 0 && !readOnly && !account}
         storage={storage}
@@ -398,7 +432,11 @@ export default function App() {
           else leaveFor(page)
         }}
       />
-      {article ? (
+      {appLogin ? (
+        <Suspense fallback={<main className="flex-1" />}>
+          <AppLogin />
+        </Suspense>
+      ) : article ? (
         <Suspense fallback={<main className="flex-1" />}>
           <Articles slug={article.slug} onOpen={openArticle} onHome={goHome} />
         </Suspense>
@@ -452,6 +490,37 @@ export default function App() {
         <LeaveDialog home={leaveTo === 'home'} onStay={handleStay} onLeave={handleLeave} onLogin={storage && tokens === null && !account ? handleLeaveLogin : undefined} />
       )}
       <Toast />
+    </div>
+  )
+
+  if (!isApp) return screen
+
+  // 앱에서는 왼쪽에 사이드바를 두고, 오른쪽에 웹과 같은 화면을 보여줘요.
+  return (
+    <div className="flex h-dvh bg-white">
+      <Suspense fallback={<aside data-app-drag className="w-64 shrink-0 border-r border-gray-200 bg-gray-50" />}>
+        <AppSidebar
+          activeChatId={account || article ? null : chatIdFromPath()}
+          page={account ?? (article ? 'articles' : null)}
+          refreshKey={`${busy}:${account ?? ''}:${chatIdFromPath() ?? ''}`}
+          onNew={handleHome}
+          onOpenChat={(id) => {
+            if (id === chatId.current) return
+            // 분석이 도는 동안에는 다른 채팅을 올릴 수 없어서, 끝나거나 멈춘 뒤에 열게 해요.
+            if (busy) {
+              showToast('분석이 끝난 뒤에 다른 채팅을 열 수 있어요.')
+              return
+            }
+            track('history_chat_open', { from: 'sidebar' })
+            openChat(id)
+          }}
+          onArticles={() => leaveFor('articles')}
+          onAccount={(page) => {
+            if (page !== account) leaveFor(page)
+          }}
+        />
+      </Suspense>
+      {screen}
     </div>
   )
 }

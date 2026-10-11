@@ -47,11 +47,12 @@ const PAGE_TITLES = {
   signup: 'WhoIsLoafing 회원가입',
   me: 'WhoIsLoafing 내 정보',
   history: 'WhoIsLoafing 내 작업',
+  'app-login': 'WhoIsLoafing 앱 로그인',
 }
 
 type Screen = keyof typeof PAGE_TITLES
 
-const ACCOUNT_SCREENS: Screen[] = ['login', 'signup', 'me', 'history']
+const ACCOUNT_SCREENS: Screen[] = ['login', 'signup', 'me', 'history', 'app-login']
 
 /** 화면이 바뀔 때마다 불러요. 채팅 ID는 경로에 넣지 않고 따로 보내서 보고서의 경로가 흩어지지 않게 해요. */
 export function trackPageView(

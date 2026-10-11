@@ -55,7 +55,7 @@ index.html            폰트 로드, 탭 제목, 파비콘, 링크 미리보기 
 public/logo.svg       로고 (중절모와 서비스명). 헤더에 그대로 쓰여요.
 public/favicon.svg    파비콘 (로고의 중절모만 따온 그림)
 public/og.png         링크 미리보기 카드에 뜨는 대표 이미지 (1200x630)
-public/robots.txt     검색 로봇 안내 (API, 채팅 주소, 내 정보와 내 작업은 막고, 사이트맵 위치를 알려줘요)
+public/robots.txt     검색 로봇 안내 (API, 채팅 주소, 내 정보와 내 작업, 앱 로그인 화면은 막고, 사이트맵 위치를 알려줘요)
 scripts/prerender.mjs 빌드 마지막에 아티클 화면을 페이지별 HTML 파일로 만들고 사이트맵을 만들어요
 .env.production       배포용 빌드에 들어가는 공개 값 (백엔드 서버 주소, GA 측정 ID)
 shared/types.ts       서버가 보내는 값의 타입 (채팅 이벤트, 참여자 수치). 백엔드의 이벤트 모양과 맞춰요.
@@ -72,6 +72,10 @@ src/
   lib/format.ts       서버 시각을 "오늘 오후 3:12", "어제", "10월 3일" 같은 말로 바꾸기
   lib/analytics.ts    Google Analytics 이벤트 전송
   lib/toast.ts        화면 아래에 잠깐 뜨는 안내(토스트) 저장소
+  lib/app.ts          macOS 앱 안에서 열렸는지 판별, 앱에 메시지 보내기, 창을 옮기는 곳(data-app-drag) 처리
+  components/AppGate.tsx     앱에서 로그인하지 않았을 때 보여주는 로그인 화면
+  components/AppSidebar.tsx  앱 화면 왼쪽의 사이드바 (새 분석, 내 작업 목록, 아티클, 내 정보)
+  components/AppLogin.tsx    앱이 브라우저로 열어 주는 앱 로그인 화면 (/app-login)
   lib/articles.ts     아티클 마크다운 읽기와 변환
   hooks/useAnalysis.ts  채팅 메시지 큐, 입력 중 표시 타이밍
   components/         Header, Logo, Hero, ContributionBackdrop, RepoInput, Chat, Bubble, TypingDots, RichText, Articles, PeoplePicker, AssistantOrb, LeaveDialog, RankingCarousel, StatsCard, SummaryChart, Charts, Followup, Account, AuthForm, MyPage, History, LoginNudge, Skeleton, Toast
@@ -180,6 +184,29 @@ npm run dev            # http://localhost:5173
 - 입력창은 포커스되면 테두리만 메인 컬러로 바뀌어요. 그림자나 바깥 링은 쓰지 않아요.
 - 불러오는 동안에는 글자 대신 스켈레톤을 보여줘요. 내 작업 목록, 내 정보의 계정 값과 로그인한 기기와 로그인 기록, 저장된 채팅을 여는 화면이 그래요. 실제 내용과 같은 자리에 옅은 회색 칸을 두고 천천히 깜빡이게 하고(`Skeleton`의 `Bone`, `ChatSkeleton`), 움직임 줄이기 설정에서는 멈춰 있어요. 더 보기처럼 버튼을 눌러서 기다릴 때는 버튼 글자만 "처리 중"으로 바꿔요.
 
+## macOS 앱
+
+macOS 앱(hiddenlightyouth/whoisloafing-app)은 이 서비스를 창 안의 웹뷰로 그대로 띄워요. 앱의 웹뷰는 User-Agent 끝에 `WhoIsLoafingApp/버전`을 붙이고, 이 값이 있을 때만(`src/lib/app.ts`의 `isApp`) 아래의 앱 화면으로 바뀌어요. 브라우저로 들어온 사람의 화면은 달라지지 않아요.
+
+- 앱에서는 로그인부터 해요. 로그인하지 않았으면 어느 주소든 로그인 화면(`AppGate`)만 보여줘요. 버튼은 "브라우저로 로그인"과 "이메일로 로그인"이에요. 이메일로 로그인은 웹과 같은 로그인, 회원가입 양식을 앱 안에서 보여줘요.
+- 로그인하면 왼쪽에 사이드바(`AppSidebar`)를 두고 오른쪽에 웹과 같은 화면을 보여줘요. 사이드바에는 위에서부터 새 분석 버튼, 내 작업 목록(최근 20개, 더 있으면 모두 보기), 아티클, 내 이름(내 정보)이 있어요. 내 작업 옆의 관리를 누르면 공유 취소와 지우기를 할 수 있는 내 작업 화면으로 가요.
+- 사이드바의 목록은 분석이 시작되거나 끝날 때, 채팅이나 계정 화면을 옮겨 다닐 때 다시 받아요. 분석이 도는 동안에는 다른 채팅을 열 수 없어서, 누르면 토스트로 안내해요.
+- 앱에서는 헤더의 로고와 링크를 사이드바가 대신해서, 헤더에 공유하기, 중단하기, 링크 복사 버튼만 남겨요. (`Header`의 `app`)
+- 앱의 웹뷰는 창의 제목 표시줄까지 덮어요. `data-app-drag`를 붙인 곳(사이드바 위쪽, 헤더, 로그인 화면)을 누르면 앱에 메시지를 보내서 창을 옮기고, 두 번 누르면 창을 키워요. 사이드바 맨 위 44px는 창 버튼이 얹히는 자리라 비워 둬요.
+- 앱에서 로그인하면 기기 이름을 "macOS 앱"으로 보내요.
+- 앱 화면 코드(`AppGate`, `AppSidebar`, `AppLogin`)는 필요할 때만 받아서, 메인 화면이 무거워지지 않아요.
+
+### 브라우저로 앱 로그인
+
+브라우저의 토큰을 앱에 그대로 넘기지 않고, 일회용 코드로 앱의 세션을 따로 만들어요. Refresh Token이 한 번 쓰면 바뀌어서, 같은 토큰을 나눠 쓰면 서로 로그아웃시키기 때문이에요. API는 백엔드 레포 `docs/api.md`의 앱 로그인에 있어요.
+
+1. 앱의 로그인 화면에서 "브라우저로 로그인"을 누르면 앱에 `login` 메시지를 보내요. 앱이 기본 브라우저로 `/app-login?challenge=...&state=...`를 열어요.
+2. `/app-login`(`AppLogin`)은 로그인하지 않았으면 로그인 양식을 보여주고, 로그인했으면 "앱에 로그인할까요?"라고 계정 이메일과 함께 물어봐요. 묻지 않고 넘기면 다른 사람이 보낸 링크만 눌러도 그 사람의 앱이 내 계정으로 로그인될 수 있어서, 꼭 버튼을 눌러야 넘어가요.
+3. "앱에서 계속하기"를 누르면 `/auth/app/code`로 일회용 코드를 받아 `whoisloafing://auth?code=...&state=...`로 앱을 다시 열어요.
+4. 앱이 웹뷰에 `whoisloafing:app-login` 이벤트로 `code`와 `verifier`를 넘기면, 로그인 화면이 `/auth/app/token`으로 토큰을 받아 로그인해요. 코드가 만료되었거나 맞지 않으면(`C4014`) 처음부터 다시 하라고 안내해요.
+
+`/app-login`은 검색 로봇이 들어오지 않게 `robots.txt`에서 막아요.
+
 ## 아티클
 
 헤더의 아티클 링크로 들어가는 읽을거리예요. 주소는 목록이 `/articles`, 글 하나가 `/articles/{이름}`이에요.
@@ -208,7 +235,7 @@ Claude 호출 기록은 백엔드 서버가 남기고, 관리자 API(`/api/v1/ai
 
 | 이벤트 | 언제 | 주요 값 |
 | --- | --- | --- |
-| `page_view` | 화면이 바뀔 때 | `screen`(home, chat, shared_chat, articles, article, login, signup, me, history), `repo`, `is_owner`, `slug` |
+| `page_view` | 화면이 바뀔 때 | `screen`(home, chat, shared_chat, articles, article, login, signup, me, history, app-login), `repo`, `is_owner`, `slug` |
 | `repo_submit` | 메인 화면에서 링크를 냈을 때 | `repo` |
 | `repo_invalid_input` | 링크가 아닌 값을 냈을 때 | `length`, `looks_like_url` |
 | `menu_analysis_select` | 메뉴에서 기여도 분석을 골랐을 때 | `repo` |
@@ -242,7 +269,10 @@ Claude 호출 기록은 백엔드 서버가 남기고, 관리자 API(`/api/v1/ai
 | `auth_login`, `auth_signup` | 로그인이나 회원가입을 시도했을 때 | `success` |
 | `auth_logout` | 내 정보에서 로그아웃했을 때 | |
 | `session_revoke` | 내 정보에서 다른 기기를 로그아웃시켰을 때 | `success` |
-| `history_chat_open` | 내 작업에서 채팅을 눌렀을 때 | |
+| `history_chat_open` | 내 작업이나 앱의 사이드바에서 채팅을 눌렀을 때 | `from`(sidebar) |
+| `app_login_browser_click` | 앱의 로그인 화면에서 브라우저로 로그인을 눌렀을 때 | |
+| `app_login_approve` | 브라우저의 앱 로그인 화면에서 앱에서 계속하기를 눌렀을 때 | `success` |
+| `app_login` | 앱이 브라우저에서 받은 코드로 로그인을 시도했을 때 | `success` |
 
 ## 현재까지 구현된 기능
 

@@ -64,6 +64,7 @@ export type AuthOutcome = { ok: true } | { ok: false; message: string }
 
 const ERROR_MESSAGES: Record<string, string> = {
   C4012: '비밀번호가 맞지 않아요.',
+  C4014: '로그인 시간이 지났어요. 처음부터 다시 시도해 주세요.',
   C4041: '가입하지 않은 이메일이에요.',
   C4091: '이미 가입한 이메일이에요.',
   C002: '입력한 내용을 다시 확인해 주세요.',
@@ -227,6 +228,7 @@ export function describeDevice(userAgent: string | null | undefined): string {
           : /Linux/.test(ua)
             ? 'Linux'
             : ''
+  if (/WhoIsLoafingApp\//.test(ua)) return os ? `${os} 앱` : '앱'
   return os ? `${os}의 ${browser}` : browser
 }
 
@@ -262,6 +264,23 @@ export const signIn = (email: string, password: string) => submitCredentials('/a
 
 export const signUp = (email: string, name: string, password: string) =>
   submitCredentials('/auth/signup', { email, name, password })
+
+/** 브라우저에서 로그인한 채로, 앱에 로그인을 넘겨줄 일회용 코드를 받아요. */
+export async function createAppLoginCode(challenge: string): Promise<string | null> {
+  try {
+    const result = await authFetch<{ code: string }>('/auth/app/code', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ challenge }),
+    })
+    return result.ok ? (result.data?.code ?? null) : null
+  } catch {
+    return null
+  }
+}
+
+/** 앱에서, 브라우저가 넘겨준 일회용 코드로 로그인해요. 앱의 세션은 브라우저와 따로 만들어져요. */
+export const signInWithAppCode = (code: string, verifier: string) => submitCredentials('/auth/app/token', { code, verifier })
 
 export async function signOut(): Promise<void> {
   if (state.tokens) {
