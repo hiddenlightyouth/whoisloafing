@@ -37,8 +37,8 @@ export function LoginNudge({ collapsed, onLogin, onClose, onOpen }: Props) {
         className="nudge-float absolute bottom-6 left-6 z-10 hidden size-11 items-center justify-center rounded-full border border-gray-200 bg-white text-brand transition-colors hover:border-brand hover:bg-brand-soft md:flex"
       >
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="size-5" aria-hidden="true">
-          <circle cx="10" cy="7" r="3.25" />
-          <path d="M3.75 16.5c.9-2.7 3.3-4.25 6.25-4.25s5.35 1.55 6.25 4.25" strokeLinecap="round" />
+          <path d="M11.5 3.5h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-3" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M3.5 10h8.5M9 6.75 12.25 10 9 13.25" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
     )
