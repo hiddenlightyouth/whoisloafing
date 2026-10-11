@@ -86,7 +86,7 @@ function Sessions() {
                 {session.deviceName || describeDevice(session.userAgent)}
               </p>
               <p className="mt-1 text-[13px] text-gray-500">
-                {session.current ? '현재 사용 중' : `마지막으로 쓴 때 ${formatDateTime(session.lastUsedAt)}`}
+                {session.current ? '현재 사용 중' : `마지막 접속: ${formatDateTime(session.lastUsedAt)}`}
               </p>
             </div>
             {!session.current && (
@@ -146,7 +146,7 @@ function LoginHistory() {
                 {record.deviceName || describeDevice(record.userAgent)}
               </p>
               <p className="mt-1 text-[13px] text-gray-500">
-                {[record.ipAddress, record.current ? '지금 로그인' : null].filter(Boolean).join(', ') || '주소를 알 수 없어요'}
+                {[record.ipAddress, record.current ? '현재 사용 중' : null].filter(Boolean).join(', ') || '주소를 알 수 없어요'}
               </p>
             </div>
             <span className="shrink-0 pt-0.5 text-[13px] text-gray-400">{formatDateTime(record.loggedInAt)}</span>
