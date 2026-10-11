@@ -1,8 +1,11 @@
 import { useEffect } from 'react'
 
 interface Props {
+  /** 닫아 둔 상태. 넓은 화면에서는 작은 아이콘만 떠 있고, 좁은 화면에서는 아무것도 보여주지 않아요. */
+  collapsed: boolean
   onLogin: () => void
   onClose: () => void
+  onOpen: () => void
 }
 
 const TITLE = '분석을 잃어버리지 마세요'
@@ -12,16 +15,34 @@ const ACTION = '로그인하고 분석 계속하기'
 /**
  * 로그인하지 않고 분석하는 동안 로그인을 권하는 안내예요.
  * 넓은 화면에서는 왼쪽 아래에 작은 카드로 떠 있고, 좁은 화면(768px 미만)에서는 아래에서 올라오는 시트로 보여줘요.
+ * 넓은 화면에서 카드를 닫으면 같은 자리에 로그인 아이콘이 둥둥 떠 있고, 누르면 카드가 다시 열려요.
  */
-export function LoginNudge({ onLogin, onClose }: Props) {
+export function LoginNudge({ collapsed, onLogin, onClose, onOpen }: Props) {
   useEffect(() => {
+    if (collapsed) return
     const onKeyDown = (event: KeyboardEvent) => {
       // 시트로 화면을 덮는 좁은 화면에서만 Esc로 닫아요.
       if (event.key === 'Escape' && !window.matchMedia('(min-width: 768px)').matches) onClose()
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
+  }, [collapsed, onClose])
+
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        aria-label="로그인 안내 열기"
+        onClick={onOpen}
+        className="nudge-float absolute bottom-6 left-6 z-10 hidden size-11 items-center justify-center rounded-full border border-gray-200 bg-white text-brand transition-colors hover:border-brand hover:bg-brand-soft md:flex"
+      >
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="size-5" aria-hidden="true">
+          <circle cx="10" cy="7" r="3.25" />
+          <path d="M3.75 16.5c.9-2.7 3.3-4.25 6.25-4.25s5.35 1.55 6.25 4.25" strokeLinecap="round" />
+        </svg>
+      </button>
+    )
+  }
 
   return (
     <>

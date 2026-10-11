@@ -352,6 +352,21 @@
   animation: sheet-fade 0.2s ease-out both;
 }
 
+/* 닫아 둔 로그인 안내 아이콘이 둥둥 떠 있어요. */
+.nudge-float {
+  animation: nudge-float 2.4s ease-in-out infinite;
+}
+
+@keyframes nudge-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
 @keyframes sheet-up {
   from {
     transform: translateY(100%);
@@ -376,6 +391,7 @@
   }
 
   /* 끝없이 도는 방울 애니메이션은 아예 멈춰요. */
+  .nudge-float,
   .orb,
   .orb-blob {
     animation: none;

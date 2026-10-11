@@ -35,13 +35,25 @@ const Account = lazy(() => import('./components/Account').then((module) => ({ de
 const Articles = lazy(() => import('./components/Articles').then((module) => ({ default: module.Articles })))
 
 const NUDGE_DISMISSED_KEY = 'whoisloafing:login-nudge-dismissed'
+/** 좁은 화면에서 로그인 안내를 닫은 뒤, 채팅을 이만큼 새로 시작하면 다시 띄워요. */
+const NUDGE_REOPEN_CHATS = 3
 
-/** 로그인 안내를 이 탭에서 이미 닫았는지. 한 번 닫으면 탭을 닫을 때까지 다시 띄우지 않아요. */
-function nudgeDismissed(): boolean {
+/** 로그인 안내를 닫은 뒤에 새로 시작한 채팅 수. 닫은 적이 없으면 null이에요. */
+function nudgeChatsSinceClose(): number | null {
   try {
-    return sessionStorage.getItem(NUDGE_DISMISSED_KEY) === '1'
+    const value = localStorage.getItem(NUDGE_DISMISSED_KEY)
+    return value === null ? null : Number(value) || 0
   } catch {
-    return false
+    return null
+  }
+}
+
+function storeNudge(chats: number | null) {
+  try {
+    if (chats === null) localStorage.removeItem(NUDGE_DISMISSED_KEY)
+    else localStorage.setItem(NUDGE_DISMISSED_KEY, String(chats))
+  } catch {
+    // 저장하지 못해도 이번 화면에서는 그대로 동작해요.
   }
 }
 
@@ -70,7 +82,7 @@ export default function App() {
   const [confirmingLeave, setConfirmingLeave] = useState(false)
   /** 채팅에서 로그인 화면으로 갔을 때, 로그인한 뒤에 돌아올 채팅과 로그인 화면에 보여줄 안내 */
   const loginReturn = useRef<{ id: string; notice: string } | null>(null)
-  const [nudgeClosed, setNudgeClosed] = useState(nudgeDismissed)
+  const [nudgeClosed, setNudgeClosed] = useState(() => nudgeChatsSinceClose() !== null)
   /** 분석이 도는 중에 로그인해서, 그 요청이 끝나면 채팅을 계정에 한 번 더 연결해야 하는지 */
   const claimWhenIdle = useRef(false)
 
@@ -149,6 +161,13 @@ export default function App() {
       if (id) {
         window.history.pushState(null, '', `/c/${id}`)
         setChat({ mine: true, shared: false })
+      }
+      // 좁은 화면에서는 닫아 둔 로그인 안내를 채팅 몇 번마다 다시 띄워요. 넓은 화면에서는 떠 있는 아이콘이 대신해요.
+      const closedFor = nudgeChatsSinceClose()
+      if (closedFor !== null && !window.matchMedia('(min-width: 768px)').matches) {
+        const reopen = closedFor + 1 >= NUDGE_REOPEN_CHATS
+        storeNudge(reopen ? null : closedFor + 1)
+        if (reopen) setNudgeClosed(false)
       }
       track('repo_submit', { repo: repoLabel(url), storage })
       trackPageView('chat', { repo: repoLabel(url), is_owner: true })
@@ -244,15 +263,23 @@ export default function App() {
   const closeNudge = useCallback(() => {
     track('login_nudge_close')
     setNudgeClosed(true)
-    try {
-      sessionStorage.setItem(NUDGE_DISMISSED_KEY, '1')
-    } catch {
-      // 저장하지 못해도 이번 화면에서는 닫혀 있어요.
-    }
+    storeNudge(0)
+  }, [])
+
+  const openNudge = useCallback(() => {
+    track('login_nudge_open')
+    setNudgeClosed(false)
+    storeNudge(null)
   }, [])
 
   const handleNudgeLogin = useCallback(() => {
     track('login_nudge_click', { busy })
+    loginFromChat('로그인하면 분석하던 채팅으로 바로 돌아가요.')
+  }, [busy, loginFromChat])
+
+  const handleLeaveLogin = useCallback(() => {
+    track('leave_login_click', { busy })
+    setConfirmingLeave(false)
     loginFromChat('로그인하면 분석하던 채팅으로 바로 돌아가요.')
   }, [busy, loginFromChat])
 
@@ -268,10 +295,10 @@ export default function App() {
   const working = busy || (messages.length > 0 && !readOnly)
   // 로그인하지 않고 분석하는 동안, 첫 말풍선이 나온 뒤에 로그인을 권해요.
   const nudging =
-    storage && tokens === null && !nudgeClosed && !account && !article && !readOnly && messages.some((message) => message.from === 'bot')
+    storage && tokens === null && !account && !article && !readOnly && messages.some((message) => message.from === 'bot')
   useEffect(() => {
-    if (nudging) track('login_nudge_view')
-  }, [nudging])
+    if (nudging && !nudgeClosed) track('login_nudge_view')
+  }, [nudging, nudgeClosed])
 
   const handleHome = useCallback(() => {
     if (!working) {
@@ -397,8 +424,10 @@ export default function App() {
           onNewRepo={goHome}
         />
       )}
-      {nudging && !confirmingLeave && <LoginNudge onLogin={handleNudgeLogin} onClose={closeNudge} />}
-      {confirmingLeave && <LeaveDialog onStay={handleStay} onLeave={handleLeave} />}
+      {nudging && !confirmingLeave && <LoginNudge collapsed={nudgeClosed} onLogin={handleNudgeLogin} onClose={closeNudge} onOpen={openNudge} />}
+      {confirmingLeave && (
+        <LeaveDialog onStay={handleStay} onLeave={handleLeave} onLogin={storage && tokens === null && !account ? handleLeaveLogin : undefined} />
+      )}
       <Toast />
     </div>
   )
