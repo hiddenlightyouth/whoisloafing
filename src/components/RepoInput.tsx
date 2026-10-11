@@ -39,7 +39,6 @@ export function RepoInput({ onSubmit }: { onSubmit: (url: string) => void }) {
           autoComplete="off"
           autoCapitalize="none"
           spellCheck={false}
-          autoFocus
           value={value}
           onChange={(event) => {
             setValue(event.target.value)
