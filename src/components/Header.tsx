@@ -197,11 +197,11 @@ export function Header({
 
           {confirming && !shared && !busy && (
             <div className="absolute top-full right-0 mt-2 w-64 animate-rise rounded-2xl border border-gray-200 bg-white p-4">
-              <p className="text-[14px] font-semibold text-gray-900">{signedIn ? '이 채팅을 저장하고 공유할까요?' : '분석을 공유해 보세요'}</p>
+              <p className="text-[14px] font-semibold text-gray-900">{signedIn ? '이 채팅을 저장하고 공유할까요?' : '공유하기'}</p>
               <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">
                 {signedIn
                   ? '내 작업에 저장되고, 링크를 아는 사람은 누구나 볼 수 있어요. 공유하는 동안에는 분석을 더 이어갈 수 없고, 내 작업에서 언제든 공유를 취소할 수 있어요.'
-                  : '로그인하면 이 채팅을 저장하고, 링크로 공유할 수 있는 기회가 주어져요.'}
+                  : '로그인하여 이 분석을 저장하고, 링크로 다른 사람에게 공유할 수 있어요.'}
               </p>
               <div className="mt-3.5 flex justify-end gap-2">
                 <button
@@ -234,7 +234,7 @@ export function Header({
                     }}
                     className={`${quiet} bg-brand text-white hover:bg-brand-hover`}
                   >
-                    로그인하고 공유하기
+                    공유하기
                   </button>
                 )}
               </div>
