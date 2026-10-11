@@ -439,7 +439,6 @@ export default function App() {
     <div className={isApp ? 'relative flex min-w-0 flex-1 flex-col bg-white' : 'relative flex h-dvh flex-col bg-white'}>
       <Header
         app={isApp}
-        onOpenSidebar={isApp && !sidebarOpen ? () => toggleSidebar(true) : undefined}
         onHome={handleHome}
         inChat={messages.length > 0 && !readOnly && !account}
         storage={storage}
@@ -526,14 +525,26 @@ export default function App() {
 
   // 앱에서는 왼쪽에 사이드바를 두고, 오른쪽에 웹과 같은 화면을 보여줘요.
   return (
-    <div className="flex h-dvh bg-white">
+    <div className="relative flex h-dvh bg-white">
+      {/* 창 버튼 바로 옆, 늘 같은 자리에 있는 사이드바 접기 버튼이에요. 접어도 펴도 움직이지 않아요. */}
+      <button
+        type="button"
+        aria-label={sidebarOpen ? '사이드바 닫기' : '사이드바 열기'}
+        aria-expanded={sidebarOpen}
+        onClick={() => toggleSidebar(!sidebarOpen)}
+        className="absolute top-0.5 left-[78px] z-30 flex size-7 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-200/70 hover:text-gray-900"
+      >
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" className="size-4" aria-hidden="true">
+          <rect x="2" y="3" width="12" height="10" rx="2.5" />
+          <path d="M6.5 3v10" />
+        </svg>
+      </button>
       {sidebarOpen && (
         <Suspense fallback={<aside data-app-drag className="w-64 shrink-0 border-r border-gray-200 bg-gray-50" />}>
           <AppSidebar
             activeChatId={account || article ? null : chatIdFromPath()}
             page={account === 'me' ? 'me' : article ? 'articles' : null}
             refreshKey={`${busy}:${account ?? ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`}
-            onClose={() => toggleSidebar(false)}
             onNew={handleHome}
             onOpenChat={(id) => {
               if (id === chatId.current && !account && !article) return

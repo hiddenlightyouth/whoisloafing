@@ -4,16 +4,6 @@ import { showToast } from '../lib/toast'
 import type { AccountPage } from './Account'
 import { Logo } from './Logo'
 
-/** 사이드바를 접고 펴는 버튼의 그림이에요. */
-function SidebarIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" className="size-4" aria-hidden="true">
-      <rect x="2" y="3" width="12" height="10" rx="2.5" />
-      <path d="M6.5 3v10" />
-    </svg>
-  )
-}
-
 interface Props {
   onHome: () => void
   /** 내가 이어서 쓸 수 있는 채팅 화면인지. 이때만 공유와 중단하기 버튼을 보여줘요. */
@@ -34,8 +24,6 @@ interface Props {
   onAccount?: (page: AccountPage) => void
   /** 앱 안에서는 로고와 링크를 사이드바가 대신해서, 공유와 중단하기 버튼만 남겨요. 빈 곳을 잡으면 창이 움직여요. */
   app?: boolean
-  /** 앱에서 사이드바를 접어 뒀을 때, 다시 펴는 버튼을 창 버튼 옆에 보여줘요. */
-  onOpenSidebar?: () => void
 }
 
 const quiet = 'h-8 rounded-full px-3 text-[13px] font-medium transition-colors'
@@ -54,7 +42,6 @@ export function Header({
   signedIn = false,
   onAccount,
   app = false,
-  onOpenSidebar,
 }: Props) {
   const [confirming, setConfirming] = useState(false)
   const [working, setWorking] = useState(false)
@@ -123,18 +110,7 @@ export function Header({
         className="absolute inset-x-0 top-0 z-20 flex h-14 items-center justify-between bg-white/70 px-4 backdrop-blur-md sm:px-6"
       >
         {app ? (
-          onOpenSidebar ? (
-            <button
-              type="button"
-              aria-label="사이드바 열기"
-              onClick={onOpenSidebar}
-              className="ml-[60px] flex size-7 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-            >
-              <SidebarIcon />
-            </button>
-          ) : (
-            <span />
-          )
+          <span />
         ) : (
           <Logo
             onClick={() => {

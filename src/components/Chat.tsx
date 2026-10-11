@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AnalyzeRequest } from '../../shared/types'
 import type { ChatMessage } from '../hooks/useAnalysis'
 import { track } from '../lib/analytics'
+import { isApp } from '../lib/app'
 import { AssistantOrb } from './AssistantOrb'
 import { Bubble } from './Bubble'
 import { TypingDots } from './TypingDots'
@@ -125,10 +126,15 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
   return (
     <main className="flex min-h-0 flex-1 flex-col">
       <div className="relative min-h-0 flex-1">
-        <div ref={scrollRef} onScroll={handleScroll} className="h-full overflow-y-auto px-4 pt-14 sm:px-6">
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          // 앱에서는 채팅을 왼쪽에 붙이고, 넓은 창에서는 오른쪽 아래 질문 메뉴가 펼쳐질 자리를 비워서 서로 겹치지 않게 해요.
+          className={`h-full overflow-y-auto pt-14 ${isApp ? 'px-6 md:pl-10 xl:pr-[348px]' : 'px-4 sm:px-6'}`}
+        >
           <div
             ref={contentRef}
-            className="mx-auto flex max-w-2xl flex-col gap-2.5 pt-6 pb-[max(2.5rem,env(safe-area-inset-bottom))]"
+            className={`flex max-w-2xl flex-col gap-2.5 ${isApp ? 'mr-auto' : 'mx-auto'} pt-6 pb-[max(2.5rem,env(safe-area-inset-bottom))]`}
             aria-live="polite"
           >
             {messages.map((message, index) => (
