@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
 import { track } from '../lib/analytics'
 import type { AccountPage } from './Account'
 import { Logo } from './Logo'
@@ -41,22 +41,20 @@ export function Header({
   const [notice, setNotice] = useState('')
   const actionsRef = useRef<HTMLDivElement>(null)
 
-  // 확인 창이 열려 있을 때 바깥을 누르거나 Esc를 누르면 닫아요.
+  const [downloadOpen, setDownloadOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [mobileDownloadOpen, setMobileDownloadOpen] = useState(false)
+  const downloadRef = useRef<HTMLDivElement>(null)
+
+  // 확인 창이나 드롭다운이 열려 있을 때 바깥을 누르거나 Esc를 누르면 닫아요.
+  useDismiss(confirming, actionsRef, () => setConfirming(false))
+  useDismiss(downloadOpen, downloadRef, () => setDownloadOpen(false))
+  useDismiss(menuOpen, null, () => setMenuOpen(false))
+
+  // 메뉴를 닫으면 펼쳐 둔 앱 다운로드도 접어요.
   useEffect(() => {
-    if (!confirming) return
-    const onPointerDown = (event: PointerEvent) => {
-      if (!actionsRef.current?.contains(event.target as Node)) setConfirming(false)
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setConfirming(false)
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [confirming])
+    if (!menuOpen) setMobileDownloadOpen(false)
+  }, [menuOpen])
 
   // 안내 문구는 잠깐 보여줬다가 지워요.
   useEffect(() => {
@@ -77,111 +75,272 @@ export function Header({
     setNotice((await onCopyLink()) ? '링크를 복사했어요.' : '링크를 복사하지 못했어요.')
   }
 
+  const accountLinks = onAccount
+    ? signedIn
+      ? ([
+          ['history', '내 작업'],
+          ['me', '내 정보'],
+        ] as const)
+      : ([['login', '로그인']] as const)
+    : []
+
+  function goArticles(event: MouseEvent<HTMLAnchorElement>) {
+    event.preventDefault()
+    setMenuOpen(false)
+    onArticles?.()
+  }
+
+  function goAccount(event: MouseEvent<HTMLAnchorElement>, page: AccountPage) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
+    event.preventDefault()
+    setMenuOpen(false)
+    track('account_nav_click', { page })
+    onAccount?.(page)
+  }
+
+  function soon(item: string) {
+    setDownloadOpen(false)
+    setMenuOpen(false)
+    track('nav_soon_click', { item })
+    window.alert('곧 찾아옵니다.')
+  }
+
   return (
-    <header className="absolute inset-x-0 top-0 z-10 flex h-14 items-center justify-between bg-white/70 px-4 backdrop-blur-md sm:px-6">
-      <Logo onClick={onHome} />
+    <>
+      <header className="absolute inset-x-0 top-0 z-20 flex h-14 items-center justify-between bg-white/70 px-4 backdrop-blur-md sm:px-6">
+        <Logo onClick={onHome} />
 
-      <div ref={actionsRef} className="relative flex items-center gap-1 sm:gap-2">
-        {notice && (
-          <span role="status" className="animate-rise text-xs text-gray-500">
-            {notice}
-          </span>
-        )}
+        <div ref={actionsRef} className="relative flex items-center gap-1 sm:gap-2">
+          {notice && (
+            <span role="status" className="animate-rise text-xs text-gray-500">
+              {notice}
+            </span>
+          )}
 
-        {onArticles && (
-          <a
-            href="/articles"
-            onClick={(event) => {
-              event.preventDefault()
-              onArticles()
-            }}
-            className={`${quiet} inline-flex items-center text-gray-600 hover:text-gray-900`}
-          >
-            아티클
-          </a>
-        )}
+          <nav className="hidden items-center gap-1 sm:flex sm:gap-2">
+            <button type="button" onClick={() => soon('intro')} className={`${quiet} text-gray-600 hover:text-gray-900`}>
+              소개
+            </button>
 
-        {onAccount &&
-          (signedIn
-            ? ([
-                ['history', '내 작업'],
-                ['me', '내 정보'],
-              ] as const)
-            : ([['login', '로그인']] as const)
-          ).map(([page, label]) => (
-            <a
-              key={page}
-              href={`/${page}`}
-              onClick={(event) => {
-                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
-                event.preventDefault()
-                track('account_nav_click', { page })
-                onAccount(page)
-              }}
-              className={`${quiet} inline-flex items-center text-gray-600 hover:text-gray-900`}
-            >
-              {label}
-            </a>
-          ))}
+            <div ref={downloadRef} className="relative">
+              <button
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={downloadOpen}
+                onClick={() => setDownloadOpen((open) => !open)}
+                className={`${quiet} inline-flex items-center gap-1 text-gray-600 hover:text-gray-900`}
+              >
+                앱 다운로드
+                <Caret open={downloadOpen} />
+              </button>
+              {downloadOpen && (
+                <div
+                  role="menu"
+                  className="absolute top-full left-1/2 mt-2 w-36 -translate-x-1/2 animate-rise rounded-2xl border border-gray-200 bg-white/80 p-1.5 backdrop-blur-xl"
+                >
+                  {DOWNLOADS.map(([os, label]) => (
+                    <button
+                      key={os}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => soon(os)}
+                      className="block w-full rounded-xl px-3 py-2 text-left text-[13px] font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
-        {shared ? (
-          <button type="button" onClick={copy} className={`${quiet} bg-brand-soft text-brand-hover hover:bg-brand hover:text-white`}>
-            링크 복사
-          </button>
-        ) : (
-          inChat &&
-          (busy ? (
-            <button type="button" onClick={onStop} className={`${quiet} bg-gray-100 text-gray-700 hover:text-red-500`}>
-              중단하기
+            {onArticles && (
+              <a href="/articles" onClick={goArticles} className={`${quiet} inline-flex items-center text-gray-600 hover:text-gray-900`}>
+                아티클
+              </a>
+            )}
+
+            {accountLinks.map(([page, label]) => (
+              <a
+                key={page}
+                href={`/${page}`}
+                onClick={(event) => goAccount(event, page)}
+                className={`${quiet} inline-flex items-center text-gray-600 hover:text-gray-900`}
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
+
+          {shared ? (
+            <button type="button" onClick={copy} className={`${quiet} bg-brand-soft text-brand-hover hover:bg-brand hover:text-white`}>
+              링크 복사
             </button>
           ) : (
-            <button
-              type="button"
-              aria-expanded={confirming}
-              onClick={() => {
-                if (!storage) {
-                  setNotice('저장 기능이 꺼져 있어서 공유할 수 없어요.')
-                  return
-                }
-                if (!confirming) track('share_open')
-                setConfirming((open) => !open)
-              }}
-              className={`${quiet} bg-gray-100 text-gray-700 hover:text-brand`}
-            >
-              공유하기
-            </button>
-          ))
-        )}
-
-        {confirming && !shared && !busy && (
-          <div className="absolute top-full right-0 mt-2 w-64 animate-rise rounded-2xl border border-gray-200 bg-white p-4">
-            <p className="text-[14px] font-semibold text-gray-900">이 채팅을 공유할까요?</p>
-            <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">
-              링크를 아는 사람은 누구나 볼 수 있어요. 공유한 뒤에는 이 채팅에서 분석을 더 이어갈 수 없어요.
-            </p>
-            <div className="mt-3.5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  track('share_cancel')
-                  setConfirming(false)
-                }}
-                className={`${quiet} text-gray-600 hover:text-gray-900`}
-              >
-                취소
+            inChat &&
+            (busy ? (
+              <button type="button" onClick={onStop} className={`${quiet} bg-gray-100 text-gray-700 hover:text-red-500`}>
+                중단하기
               </button>
+            ) : (
               <button
                 type="button"
-                disabled={working}
-                onClick={share}
-                className={`${quiet} bg-brand text-white hover:bg-brand-hover disabled:bg-gray-200 disabled:text-gray-400`}
+                aria-expanded={confirming}
+                onClick={() => {
+                  if (!storage) {
+                    setNotice('저장 기능이 꺼져 있어서 공유할 수 없어요.')
+                    return
+                  }
+                  if (!confirming) track('share_open')
+                  setConfirming((open) => !open)
+                }}
+                className={`${quiet} bg-gray-100 text-gray-700 hover:text-brand`}
               >
                 공유하기
               </button>
+            ))
+          )}
+
+          {confirming && !shared && !busy && (
+            <div className="absolute top-full right-0 mt-2 w-64 animate-rise rounded-2xl border border-gray-200 bg-white p-4">
+              <p className="text-[14px] font-semibold text-gray-900">이 채팅을 공유할까요?</p>
+              <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">
+                링크를 아는 사람은 누구나 볼 수 있어요. 공유한 뒤에는 이 채팅에서 분석을 더 이어갈 수 없어요.
+              </p>
+              <div className="mt-3.5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    track('share_cancel')
+                    setConfirming(false)
+                  }}
+                  className={`${quiet} text-gray-600 hover:text-gray-900`}
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  disabled={working}
+                  onClick={share}
+                  className={`${quiet} bg-brand text-white hover:bg-brand-hover disabled:bg-gray-200 disabled:text-gray-400`}
+                >
+                  공유하기
+                </button>
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-    </header>
+          )}
+
+          <button
+            type="button"
+            aria-label={menuOpen ? '메뉴 닫기' : '메뉴 열기'}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((open) => !open)}
+            className="relative ml-1 flex size-8 items-center justify-center rounded-full text-gray-700 transition-colors hover:bg-gray-100 sm:hidden"
+          >
+            <span
+              className={`absolute h-[1.5px] w-4 rounded-full bg-current transition-transform duration-200 ${menuOpen ? 'rotate-45' : '-translate-y-[5px]'}`}
+            />
+            <span className={`absolute h-[1.5px] w-4 rounded-full bg-current transition-opacity duration-200 ${menuOpen ? 'opacity-0' : ''}`} />
+            <span
+              className={`absolute h-[1.5px] w-4 rounded-full bg-current transition-transform duration-200 ${menuOpen ? '-rotate-45' : 'translate-y-[5px]'}`}
+            />
+          </button>
+        </div>
+      </header>
+
+      {menuOpen && (
+        <div
+          className="absolute inset-x-0 top-14 bottom-0 z-20 animate-rise bg-white/70 backdrop-blur-xl sm:hidden"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setMenuOpen(false)
+          }}
+        >
+          <nav className="flex flex-col px-4 pt-2 pb-6">
+            <button type="button" onClick={() => soon('intro')} className={mobileItem}>
+              소개
+            </button>
+
+            <button
+              type="button"
+              aria-expanded={mobileDownloadOpen}
+              onClick={() => setMobileDownloadOpen((open) => !open)}
+              className={`${mobileItem} flex items-center justify-between`}
+            >
+              앱 다운로드
+              <Caret open={mobileDownloadOpen} />
+            </button>
+            {mobileDownloadOpen && (
+              <div className="animate-rise pb-2 pl-3">
+                {DOWNLOADS.map(([os, label]) => (
+                  <button
+                    key={os}
+                    type="button"
+                    onClick={() => soon(os)}
+                    className="block w-full py-2.5 text-left text-[15px] text-gray-600 transition-colors hover:text-gray-900"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {onArticles && (
+              <a href="/articles" onClick={goArticles} className={mobileItem}>
+                아티클
+              </a>
+            )}
+
+            {accountLinks.map(([page, label]) => (
+              <a key={page} href={`/${page}`} onClick={(event) => goAccount(event, page)} className={mobileItem}>
+                {label}
+              </a>
+            ))}
+          </nav>
+        </div>
+      )}
+    </>
   )
+}
+
+const DOWNLOADS = [
+  ['macos', 'macOS'],
+  ['windows', 'Windows'],
+] as const
+
+const mobileItem = 'block w-full border-b border-gray-200/70 py-3.5 text-left text-[16px] font-medium text-gray-800 transition-colors hover:text-gray-950'
+
+function Caret({ open }: { open: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 10 6"
+      className={`h-1.5 w-2.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M1 1l4 4 4-4" />
+    </svg>
+  )
+}
+
+/** 열려 있는 동안 바깥을 누르거나 Esc를 누르면 닫아요. ref가 없으면 Esc만 받아요. */
+function useDismiss(open: boolean, ref: RefObject<HTMLElement | null> | null, close: () => void) {
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (event: PointerEvent) => {
+      if (ref && !ref.current?.contains(event.target as Node)) close()
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close()
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+    // close는 매번 새로 만들어지지만 하는 일은 같아서 다시 등록하지 않아요.
+  }, [open, ref])
 }
