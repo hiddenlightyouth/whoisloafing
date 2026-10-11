@@ -64,7 +64,6 @@ export function AppLogin({ onCancel }: { onCancel: () => void }) {
       <AuthForm
         key={mode}
         mode={mode}
-        notice="로그인하면 WhoIsLoafing 앱으로 돌아가요."
         onSwitch={() => setMode(mode === 'signup' ? 'login' : 'signup')}
       />
     )
@@ -79,12 +78,12 @@ export function AppLogin({ onCancel }: { onCancel: () => void }) {
           <img src="/logo.svg" alt="WhoIsLoafing" width={3403} height={367} draggable={false} className="h-[14px] w-auto" />
 
           <h1 className="mt-6 break-keep text-[20px] font-semibold leading-snug text-gray-900">
-            {sent ? '앱으로 돌아가 주세요' : 'WhoIsLoafing 앱이 내 계정에 접근하려고 해요'}
+            {sent ? '연결되었습니다' : `${name ? `${name}으로 ` : ''}WhoIsLoafing 앱에서 계속합니다`}
           </h1>
 
           {sent ? (
             <p className="mt-3 break-keep text-[14px] leading-relaxed text-gray-500">
-              앱이 열리면 이 창은 닫아도 돼요. 앱이 열리지 않으면 아래 버튼을 다시 눌러 주세요.
+              앱이 실행되면 이 브라우저는 닫아도 괜찮아요.
             </p>
           ) : (
             <>
@@ -98,8 +97,7 @@ export function AppLogin({ onCancel }: { onCancel: () => void }) {
                 </div>
               </div>
 
-              <p className="mt-6 text-xs font-medium text-gray-400">계속하면 앱에서 할 수 있는 일</p>
-              <ul className="mt-2.5 space-y-2.5">
+              <ul className="mt-5 space-y-2.5">
                 {PERMISSIONS.map((permission) => (
                   <li key={permission} className="flex items-start gap-2.5 text-[14px] leading-snug text-gray-700">
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden="true">
@@ -122,9 +120,13 @@ export function AppLogin({ onCancel }: { onCancel: () => void }) {
             type="button"
             disabled={working}
             onClick={() => void handOver()}
-            className="mt-7 h-12 w-full rounded-full bg-brand text-[15px] font-semibold text-white transition-colors hover:bg-brand-hover disabled:bg-gray-200 disabled:text-gray-400"
+            className={
+              sent
+                ? 'mt-5 h-10 w-full rounded-full text-[13px] font-medium text-gray-600 transition-colors hover:text-gray-900 disabled:text-gray-400'
+                : 'mt-7 h-12 w-full rounded-full bg-brand text-[15px] font-semibold text-white transition-colors hover:bg-brand-hover disabled:bg-gray-200 disabled:text-gray-400'
+            }
           >
-            {working ? '처리 중' : sent ? '앱 다시 열기' : '계속하기'}
+            {working ? '처리 중' : sent ? '앱이 열리지 않았나요?' : '계속하기'}
           </button>
           {!sent && (
             <button
@@ -140,11 +142,6 @@ export function AppLogin({ onCancel }: { onCancel: () => void }) {
           )}
         </div>
 
-        {!sent && (
-          <p className="mt-4 break-keep px-2 text-center text-xs leading-relaxed text-gray-400">
-            앱에서 직접 로그인을 누른 게 아니라면 취소해 주세요. 앱은 내 정보의 로그인한 기기에서 언제든 로그아웃시킬 수 있어요.
-          </p>
-        )}
       </div>
     </main>
   )
