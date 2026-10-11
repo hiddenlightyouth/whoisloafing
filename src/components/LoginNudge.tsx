@@ -10,7 +10,7 @@ interface Props {
 
 const TITLE = '분석을 잃어버리지 마세요'
 const DESCRIPTION = '로그인하면 분석 중인 내용을 저장하고, 더 많은 기능을 사용할 수 있는 기회가 주어져요.'
-const ACTION = '로그인하고 분석 계속하기'
+const ACTION = '로그인하여 분석 저장하기'
 
 /**
  * 로그인하지 않고 분석하는 동안 로그인을 권하는 안내예요.
