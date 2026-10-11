@@ -39,14 +39,12 @@ GitHub 레포 링크를 입력하면 참여자별 기여도를 분석해서 채�
 
 - 프론트엔드: React + TypeScript (Vite)
 - 스타일: Tailwind CSS v4 (`@tailwindcss/vite`)
-- 서버: Express 5 + TypeScript (tsx로 실행). 같은 로직이 Cloudflare Workers로도 돌아가요.
-- 배포: Cloudflare Workers (정적 파일 assets와 Worker 코드)
-- 저장소: Supabase (Postgres). 서버에서 service role 키로만 접근하고, 브라우저는 직접 붙지 않아요.
+- 서버: 별도 백엔드 레포(hiddenlightyouth/whoisloafing-server, Kotlin, Spring Boot)를 써요. 이 레포에는 화면만 있어요.
+- 배포: Cloudflare Workers (정적 파일 assets만)
 - 분석 도구: Google Analytics 4 (`VITE_GA_MEASUREMENT_ID`가 있을 때만 켜짐)
 - 아티클: 마크다운 파일을 `marked`로 변환해서 보여줘요.
-- AI: Claude API (`@anthropic-ai/sdk`, 기본 모델 `claude-haiku-5-5`, 구조화된 출력으로 JSON을 받고 zod로 검증)
 
-GitHub API, Claude API 호출은 모두 서버에서 해요. 키와 토큰은 클라이언트에 절대 노출하지 않아요.
+GitHub API, Claude API 호출, 채팅 저장, 회원 정보는 모두 백엔드 서버가 맡아요. 키와 토큰은 클라이언트에 절대 노출하지 않아요. API 명세는 백엔드 레포의 `docs/api.md`에 있고, 분석 규칙과 Claude 프롬프트는 백엔드 레포의 `docs/analysis.md`에 있어요.
 
 ## 프로젝트 구조
 
@@ -58,30 +56,15 @@ public/og.png         링크 미리보기 카드에 뜨는 대표 이미지 (120
 public/robots.txt     검색 로봇 안내 (API와 채팅 주소는 막고, 사이트맵 위치를 알려줘요)
 scripts/prerender.mjs 빌드 마지막에 아티클 화면을 페이지별 HTML 파일로 만들고 사이트맵을 만들어요
 .env.production       배포용 빌드에 들어가는 공개 값 (GA 측정 ID)
-shared/types.ts       서버와 클라이언트가 함께 쓰는 타입 (채팅 이벤트, 참여자 수치)
+shared/types.ts       서버가 보내는 값의 타입 (채팅 이벤트, 참여자 수치). 백엔드의 이벤트 모양과 맞춰요.
 shared/repo.ts        GitHub 레포 링크 판별
 articles/             아티클 원문 (마크다운 파일, 글 하나에 파일 하나)
-supabase/schema.sql   Supabase 테이블 정의 (chats, ai_usage, ai_usage_daily 뷰)
-server/
-  index.ts            Node에서 돌릴 때의 진입점. Express로 요청을 받아서 handlers에 넘겨요.
-  handlers.ts         API의 실제 동작 (설정, 채팅 조회와 공유, 분석 SSE, 요청 횟수 제한). Express와 Worker가 같이 써요.
-  store.ts            Supabase 연결, 채팅 저장과 공유, AI 사용량 기록
-  context.ts          요청마다 채팅 ID를 들고 다니는 컨텍스트
-  env.ts              환경 변수를 필요한 순간에 읽기, Cloudflare가 주는 값을 옮기기
-  github.ts           GitHub REST API 클라이언트 (오류와 호출 제한 처리, 통계 202 재시도)
-  stats.ts            사람별 수치 계산, 제외 파일 규칙, 계정 기준 합치기, 기여도 순위
-  claude.ts           Claude 프롬프트와 호출 (레포 요약, 역할, 코드 스타일, 해설)
-  analyze.ts          분석 파이프라인, 채팅 메시지 생성, 예외 안내, 캐싱
-  insights.ts         분석 뒤 추가 질문 답변 (활동 시간, 진행 흐름, 막판 작업, 커밋 규칙, PR, 참여자 상세)
-  cache.ts            만료 시간이 있는 메모리 캐시
-  text.ts             금지 문자 후처리, 길이 제한
-worker/index.ts       Cloudflare Workers에서 /api 아래 요청을 받는 진입점. handlers를 그대로 불러 써요.
-wrangler.toml         Cloudflare Workers 설정 (진입점, 정적 파일 폴더, nodejs_compat)
+wrangler.toml         Cloudflare Workers 설정 (정적 파일 폴더, 없는 주소는 index.html로)
 src/
   App.tsx             화면 전환(메인 화면과 채팅), 채팅 주소(/c/아이디) 처리, 공유
   prerender.tsx       아티클 화면을 빌드할 때 미리 HTML로 그리는 코드 (브라우저에서는 쓰지 않아요)
   index.css           Tailwind 테마 토큰, 자간, 애니메이션
-  lib/api.ts          서버 호출, SSE 스트림 읽기, 브라우저 소유자 키
+  lib/api.ts          백엔드 호출, 응답의 data 꺼내기, SSE 스트림 읽기, 브라우저 소유자 키
   lib/analytics.ts    Google Analytics 이벤트 전송
   lib/articles.ts     아티클 마크다운 읽기와 변환
   hooks/useAnalysis.ts  채팅 메시지 큐, 입력 중 표시 타이밍
@@ -93,42 +76,36 @@ src/
 ```bash
 npm install
 cp .env.example .env   # 값을 채워요
-npm run dev            # 프론트 http://localhost:5173, 서버 http://localhost:3001
+npm run dev            # http://localhost:5173
 ```
 
-- `npm run typecheck`: 클라이언트와 서버 타입 검사
+- 백엔드 서버(http://localhost:8080)를 먼저 띄워요. 방법은 백엔드 레포의 `docs/configuration.md`에 있어요.
+- `npm run typecheck`: 타입 검사
 - `npm run build`: 타입 검사 후 프론트엔드 빌드 (`dist`). 이어서 아티클 화면을 페이지별 HTML 파일로 만들고 사이트맵을 만들어요.
+- `npm run preview`: 빌드한 결과를 내 컴퓨터에서 열어 보기
 - `npm run worker:dev`: 빌드한 뒤 Cloudflare Workers 환경으로 내 컴퓨터에서 실행
-- `npm start`: 프로덕션 모드. Express가 API와 빌드된 프론트엔드를 함께 서빙해요.
 
-개발 중에는 Vite가 `/api` 요청을 Express(3001)로 프록시해요.
+개발 중에는 Vite가 `/api` 요청을 백엔드(8080)로 프록시해요. `VITE_API_BASE_URL`을 넣으면 그 주소로 바로 보내요.
 
 ## Cloudflare Workers 배포
 
-Workers는 Express를 그대로 돌릴 수 없어서, `/api` 요청은 `worker/index.ts`가 받아요. 실제 동작은 `server/handlers.ts` 하나를 Express와 같이 쓰기 때문에, API를 고칠 때는 handlers만 고치면 두 곳에 모두 반영돼요. 빌드한 프론트엔드(`dist`)는 Workers 정적 파일(assets)로 서빙하고, 없는 주소는 `index.html`로 돌려줘서 `/c/아이디` 주소도 열려요.
+빌드한 프론트엔드(`dist`)를 Workers 정적 파일(assets)로 서빙해요. Worker 코드는 없고, 없는 주소는 `index.html`로 돌려줘서 `/c/아이디`, `/login` 같은 화면 주소도 열려요. API는 백엔드 서버로 바로 보내요.
 
 대시보드에서 Git 저장소를 연결하고 아래처럼 설정해요.
 
 - 빌드 명령: `npm run build`
 - 배포 명령: `npx wrangler deploy`
-- 진입점, 정적 파일 폴더, `nodejs_compat` 플래그는 모두 `wrangler.toml`에 적혀 있어요. Pages 전용 설정(`pages_build_output_dir`)을 넣으면 `wrangler deploy`가 실패하니 쓰지 않아요.
+- 정적 파일 폴더와 없는 주소 처리는 `wrangler.toml`에 적혀 있어요. Pages 전용 설정(`pages_build_output_dir`)을 넣으면 `wrangler deploy`가 실패하니 쓰지 않아요.
 
-실행할 때 쓰는 값은 Worker의 설정, 변수 및 비밀에서 넣고, 빌드할 때 쓰는 값은 빌드 설정의 빌드 변수에 넣어요.
+값은 모두 빌드할 때 들어가요. 빌드 설정의 빌드 변수에 넣고, 바꾸면 다시 배포해야 반영돼요.
 
-| 이름 | 종류 | 쓰이는 시점 |
-| --- | --- | --- |
-| `GITHUB_TOKEN` | 비밀 | 실행할 때 (Worker) |
-| `ANTHROPIC_API_KEY` | 비밀 | 실행할 때 (Worker) |
-| `SUPABASE_URL` | 일반 값 | 실행할 때 (Worker) |
-| `SUPABASE_SERVICE_ROLE_KEY` | 비밀 | 실행할 때 (Worker) |
-| `CLAUDE_MODEL` (선택) | 일반 값 | 실행할 때 (Worker) |
-| `VITE_GA_MEASUREMENT_ID` (선택) | 빌드 변수 | 빌드할 때. 저장소의 `.env.production`에 이미 적혀 있어서 넣지 않아도 돼요. 넣으면 그 값이 우선하고, 바꾸면 다시 배포해야 반영돼요. |
+| 이름 | 쓰이는 시점 |
+| --- | --- |
+| `VITE_API_BASE_URL` | 빌드할 때. 백엔드 서버 주소(예: `https://api.whoisloafing.hidly.dev`). 비우면 프론트엔드와 같은 주소의 `/api`로 보내요. |
+| `VITE_GA_MEASUREMENT_ID` (선택) | 빌드할 때. 저장소의 `.env.production`에 이미 적혀 있어서 넣지 않아도 돼요. 넣으면 그 값이 우선해요. |
 
-- `wrangler deploy`는 기본으로 대시보드의 일반 변수를 `wrangler.toml` 내용으로 덮어써요. 그래서 `keep_vars = true`로 대시보드 값을 남겨 두고, 실행 값은 `[vars]`에 적지 않고 대시보드에서만 관리해요.
-- 서버 코드는 값을 파일을 불러올 때 고정하지 않고 필요한 순간에 읽어요(`server/env.ts`). Worker에서는 요청마다 `applyBindings`로 Cloudflare가 준 값을 옮겨요.
-- 내 컴퓨터에서 Workers 환경 그대로 돌려 보려면 `.dev.vars.example`을 `.dev.vars`로 복사해서 채우고 `npm run worker:dev`를 실행해요. (http://localhost:8787)
-- 분석 한 번에 GitHub와 Claude로 나가는 요청이 수십 개예요. Cloudflare 무료 요금제는 요청 하나에서 밖으로 나가는 요청 수와 CPU 시간이 작게 제한되어 있어서, 참여자가 많은 레포나 "빼고 계산하기"에서는 한도를 넘을 수 있어요. 그럴 때는 Workers 유료 요금제가 필요해요.
-- 결과 캐시와 요청 횟수 제한은 메모리에 있어서, Worker에서는 인스턴스가 바뀌면 사라져요. 캐시가 없으면 다시 계산할 뿐이라 동작에는 문제가 없어요.
+- 백엔드의 `CORS_ALLOWED_ORIGINS`에 프론트엔드 주소를 넣어야 브라우저가 API를 부를 수 있어요.
+- 예전에 Worker에 넣어 둔 `GITHUB_TOKEN`, `ANTHROPIC_API_KEY`, `SUPABASE_*` 값은 이제 쓰지 않으니 지워요.
 
 ## 환경 변수
 
@@ -136,35 +113,33 @@ Workers는 Express를 그대로 돌릴 수 없어서, `/api` 요청은 `worker/i
 
 | 이름 | 용도 |
 | --- | --- |
-| `GITHUB_TOKEN` | 공개 레포 분석에 쓰는 서버 토큰. 만료 기간은 366일 이하로 발급해요. |
-| `ANTHROPIC_API_KEY` | Claude API 키. 없으면 수치만 보여줘요. |
-| `PORT` (선택) | 프로덕션 서버 포트. 기본값 3001 |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Supabase 연결. 없으면 채팅 저장과 공유, AI 사용량 기록이 꺼져요. service role 키는 서버 전용 비밀 값이에요. |
+| `VITE_API_BASE_URL` | 백엔드 서버 주소. 브라우저에 공개되는 값이에요. 비우면 같은 주소의 `/api`로 보내고, 개발 서버에서는 Vite가 8080으로 넘겨줘요. |
 | `VITE_GA_MEASUREMENT_ID` | Google Analytics 4 측정 ID. 브라우저에 공개되는 값이고, 없으면 추적하지 않아요. 실제 서비스의 값은 `.env.production`에 적혀 있어서 배포용 빌드에만 들어가고, 개발 서버(`npm run dev`)에서는 `.env`에 따로 넣지 않는 한 추적하지 않아요. |
-| `CLAUDE_MODEL` (선택) | Claude 모델 변경용. 기본값 `claude-haiku-5-5`. 품질을 더 올리려면 `claude-sonnet-5-5`나 `claude-opus-5-5`를 넣어요. effort 설정을 쓰기 때문에 5.5 세대 모델만 지원해요. |
 
 ## 데이터 수집과 계산 규칙
 
+아래 규칙은 모두 백엔드 서버가 지켜요. 화면에서 알아 둘 동작만 적었고, 자세한 규칙은 백엔드 레포의 `docs/analysis.md`에 있어요.
+
 - 기본 모드("전부 포함하기"): `/repos/{owner}/{repo}/stats/contributors` 를 써요. 202가 오면 3초 간격으로 최대 8번 재시도해요. 끝내 준비되지 않거나 라인 수가 비어 있으면 커밋 단위 분석으로 넘어가요.
 - 링크를 받으면 서버가 레포를 먼저 확인하고, 어떤 레포인지 한 문장으로 소개한 다음, "무엇부터 살펴볼까요?" 메뉴로 무엇을 볼지 물어봐요. 메뉴에서 기여도 분석을 고르면 lock 파일과 빌드 결과물을 뺄지 말풍선의 버튼으로 물어보고, 답을 받은 뒤에 분석을 시작해요.
-- 커밋 단위 모드: 사용자가 "빼고 계산하기"를 고르면 실행해요. 최근 300개 커밋을 하나씩 읽고 lock 파일, 빌드 결과물, 자동 생성 파일, 바이너리 파일을 라인 수에서 빼요. 규칙은 `server/stats.ts`의 `isExcludedFile`에 있어요.
+- 커밋 단위 모드: 사용자가 "빼고 계산하기"를 고르면 실행해요. 최근 300개 커밋을 하나씩 읽고 lock 파일, 빌드 결과물, 자동 생성 파일, 바이너리 파일을 라인 수에서 빼요. 규칙은 백엔드의 `FileRules`에 있어요.
 - 병합 커밋과 봇 계정은 집계에서 빼요.
 - 여러 이메일로 커밋한 사람은 GitHub 계정 기준으로 합쳐요. 계정이 연결되지 않은 커밋은 같은 이메일, noreply 주소, 같은 이름, 계정 아이디와 같은 이름 순서로 계정을 찾아요. 끝내 계정을 찾지 못한 작성자는 이름이 같으면 한 사람으로 합쳐요.
 - 통계 API가 계정이 연결되지 않은 커밋을 엉뚱한 계정 몫으로 돌려주는 경우가 있어요. 커밋이 300개 미만인 레포는 커밋 목록과 대조해서 원래 참여자에게 합쳐요. (`mergeMisattributed`)
 - 기여도는 커밋 수 기준과 라인 수(추가 + 삭제) 기준을 각각 계산하고, 소개 순서는 두 값의 평균이 큰 순서예요.
-- 참여자가 5명을 넘으면 순위와 기여도 해설까지 보여준 뒤, 누가 맡은 기능과 코드 스타일을 살펴볼지 물어봐요. "상위 5명만 분석하기"를 누르거나 "직접 고르기"로 최대 10명까지 골라요. 고른 사람들은 다음 요청의 `people`로 오고, 앞에서 모아 둔 수치(`collectedCache`)를 그대로 써요. 5명 이하면 묻지 않고 모두 분석해요.
-- 개발한 기능 목록과 코드 스타일은 한 번에 최대 10명까지만 Claude로 분석해요. 기능은 한 문장으로 뭉뚱그리지 않고 3개에서 8개 항목으로 나눠서 보여줘요. 모델이 혼잡하거나 호출 제한에 걸리면 SDK가 두 번까지 다시 시도하고, 그래도 실패하면 잠깐 쉬었다가 한 번 더 해 봐요. 다른 모델로 넘어가지는 않아요. 참여자별로 대표 커밋 5개를 고르고 diff 길이를 제한해서 보내요. 길이 제한 상수는 `server/analyze.ts` 위쪽에 모여 있어요.
-- 캐싱: 결과는 레포와 마지막 푸시 시각을 키로 24시간 메모리에 캐싱해요.
+- 참여자가 5명을 넘으면 순위와 기여도 해설까지 보여준 뒤, 누가 맡은 기능과 코드 스타일을 살펴볼지 물어봐요. "상위 5명만 분석하기"를 누르거나 "직접 고르기"로 최대 10명까지 골라요. 고른 사람들은 다음 요청의 `people`로 보내고, 서버는 앞에서 모아 둔 수치를 그대로 써요. 5명 이하면 묻지 않고 모두 분석해요.
+- 개발한 기능 목록과 코드 스타일은 한 번에 최대 10명까지만 Claude로 분석해요. 기능은 한 문장으로 뭉뚱그리지 않고 3개에서 8개 항목으로 나눠서 보여줘요. 모델이 혼잡하거나 호출 제한에 걸리면 SDK가 두 번까지 다시 시도하고, 그래도 실패하면 잠깐 쉬었다가 한 번 더 해 봐요. 다른 모델로 넘어가지는 않아요. 참여자별로 대표 커밋 5개를 고르고 diff 길이를 제한해서 보내요. 길이 제한은 백엔드에서 정해요.
+- 캐싱: 결과는 레포와 마지막 푸시 시각을 키로 서버의 Redis에 캐싱해요.
 - 비공개 레포는 분석하지 않아요. 서버 토큰으로 볼 수 있는 비공개 레포여도 결과를 내보내지 않고, 분석할 수 없다고 안내해요.
 
 ## 채팅 저장과 공유
 
-Supabase 프로젝트의 SQL Editor에서 `supabase/schema.sql`을 한 번 실행해야 해요. 시각은 모두 `timestamptz`로 저장하고, 대시보드에서 한국 시간으로 보이게 데이터베이스의 시간대를 `Asia/Seoul`로 맞춰요. `ai_usage_daily` 뷰의 하루 경계도 한국 시간 자정이에요.
+채팅은 백엔드 서버의 데이터베이스(MariaDB)에 저장돼요. 서버는 저장 기능을 항상 켜 두고, `/api/v1/config`가 `storage: true`를 돌려줘요.
 
-- 채팅은 UUID로 구분하고 주소는 `/c/{uuid}`예요. 링크를 내는 순간 브라우저가 UUID를 만들고, 요청이 끝날 때마다 서버가 그 요청에서 올라간 말풍선을 `chats.messages`에 이어 붙여요.
+- 채팅은 UUID로 구분하고 주소는 `/c/{uuid}`예요. 링크를 내는 순간 브라우저가 UUID를 만들고, 요청이 끝날 때마다 서버가 그 요청에서 올라간 말풍선을 이어서 저장해요.
 - 브라우저마다 무작위 소유자 키를 localStorage에 하나 두고 `X-Owner-Key` 헤더로 보내요. 로그인 정보나 토큰이 아니고, 서버에는 해시만 저장해요.
 - 공유하기 전의 채팅은 만든 브라우저에서만 열고 이어서 쓸 수 있어요. 다른 브라우저에서는 열 수 없다고 안내해요.
-- 헤더 오른쪽에는 분석 중일 때 중단하기 버튼이, 그 밖에는 공유하기 버튼이 보여요. 저장 기능(Supabase)이 꺼져 있으면 공유하기를 눌렀을 때 공유할 수 없다고 안내해요. 공유하면 `shared_at`이 기록되고, 그 뒤로는 링크를 아는 누구나 열람할 수 있지만 아무도 이어서 작업할 수 없어요. 서버도 공유된 채팅의 분석 요청을 거절해요.
+- 헤더 오른쪽에는 분석 중일 때 중단하기 버튼이, 그 밖에는 공유하기 버튼이 보여요. 저장 기능이 꺼져 있으면 공유하기를 눌렀을 때 공유할 수 없다고 안내해요. 공유하면 서버에 공유한 시각이 기록되고, 그 뒤로는 링크를 아는 누구나 열람할 수 있지만 아무도 이어서 작업할 수 없어요. 서버도 공유된 채팅의 분석 요청을 거절해요.
 - 공유는 되돌릴 수 없어서, 누르기 전에 확인 창으로 한 번 더 물어봐요.
 
 ## 아티클
@@ -187,7 +162,7 @@ Supabase 프로젝트의 SQL Editor에서 `supabase/schema.sql`을 한 번 실�
 
 ## AI 사용량 기록
 
-Claude를 한 번 부를 때마다(실패와 재시도 포함) `ai_usage`에 한 줄을 남겨요. 채팅 ID, 목적(`repo_summary`, `contributor_profile`, `narration`), 대상, 모델, 성공 여부와 오류, 시스템 프롬프트와 사용자 프롬프트 전문, 응답 전문, 입력과 출력 토큰 수(생각에 쓴 토큰은 출력에 포함), 걸린 시간이 들어가요. 프롬프트에는 분석 대상 레포의 README와 diff가 그대로 들어 있어요. 날짜별 합계는 `ai_usage_daily` 뷰로 봐요. 기록은 분석을 기다리게 하지 않고, 실패해도 분석은 계속돼요.
+Claude 호출 기록은 백엔드 서버가 남기고, 관리자 API(`/api/v1/ai-usage/daily`)로 날짜별 합계를 봐요. 화면에는 보여주지 않아요.
 
 ## Google Analytics 이벤트
 
@@ -257,12 +232,10 @@ Claude를 한 번 부를 때마다(실패와 재시도 포함) `ai_usage`에 한
 
 ## 남은 작업
 
-- 실제 Supabase 프로젝트를 넣고 저장, 공유, 사용량 기록을 실사용으로 검증하고, GA 실시간 보고서에서 이벤트가 들어오는지 확인
+- 백엔드를 실제로 배포한 뒤 저장, 공유, 로그인을 실사용으로 검증하고, GA 실시간 보고서에서 이벤트가 들어오는지 확인
 - 내가 만든 채팅 목록 보기
-- 캐시를 메모리 대신 외부 저장소로 옮기기. 지금은 서버를 다시 시작하면 사라지고, 서버를 여러 대로 늘릴 수 없어요.
 - 커밋이 300개를 넘는 레포의 커밋 단위 분석 범위 넓히기
 - 테스트 코드
-- Cloudflare에 실제로 배포해서 요금제 한도 안에서 도는지 확인
 
 ## 텍스트 작성 규칙
 
@@ -270,19 +243,8 @@ Claude를 한 번 부를 때마다(실패와 재시도 포함) `ai_usage`에 한
 - 말투는 친근한 존댓말(~해요, ~네요)로 통일해요.
 - 중앙값 같은 통계 용어는 쓰지 않고 "보통", "대체로"처럼 일상적인 말로 풀어 써요.
 - 이모지는 쓰지 않아요. 참여 인원을 알리는 말풍선(레포 소개 직후의 기본 정보와 기여도 분석의 참여 인원)의 폭죽 이모지만 예외예요.
-- Claude 프롬프트(`server/claude.ts`의 `WRITING_RULES`)에 이 규칙과 말투 규칙을 명시하고, 응답은 `server/text.ts`의 `sanitize`로 후처리해서 금지 문자를 제거해요.
+- AI가 만드는 글은 백엔드가 프롬프트에 이 규칙을 적고 금지 문자를 후처리해서 보내요.
 - 안내와 오류는 모두 채팅 말풍선으로 보여줘요.
-
-## Claude 프롬프트 작성 방식
-
-`server/claude.ts`의 프롬프트는 아래 방식으로 써요. 프롬프트를 고칠 때도 맞춰요.
-
-- 맡은 일과 결과가 화면 어디에 어떻게 보이는지를 먼저 설명하고, 규칙에는 이유를 같이 적어요. 이유가 있어야 규칙에 없는 경우에도 같은 방향으로 판단해요.
-- 출력 항목마다 XML 태그(`<sentence>`, `<stack>`, `<features>`, `<style>`)로 지시를 나누고, 예시는 `<example>` 태그에 넣어요.
-- 분석 자료는 `<repo_data>` 안에 종류별 태그로 나눠서 사용자 메시지 앞쪽에 두고, 요청 문장은 맨 끝에 둬요.
-- 시스템 프롬프트는 호출마다 글자 하나 다르지 않게 두고(질문이나 이름 같은 바뀌는 값은 사용자 메시지에), 캐시 표시를 붙여요.
-- 출력 형식은 프롬프트로 설명하지 않고 구조화된 출력(zod 스키마)으로 받아요.
-- 얼마나 깊이 생각할지는 프롬프트가 아니라 effort로 정해요. 레포 요약과 해설은 low, diff를 읽는 참여자 분석은 medium이에요.
 
 ## Git 작업 규칙
 
