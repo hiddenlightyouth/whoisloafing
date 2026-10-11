@@ -9,7 +9,7 @@ import { LoginNudge } from './components/LoginNudge'
 import { Toast } from './components/Toast'
 import { useAnalysis } from './hooks/useAnalysis'
 import { initAnalytics, repoLabel, track, trackPageView } from './lib/analytics'
-import { fetchChat, fetchStorageEnabled, shareChat } from './lib/api'
+import { fetchChat, fetchConfig, shareChat } from './lib/api'
 import { isApp } from './lib/app'
 import './lib/theme'
 import { claimChats, loadMe, useAuth } from './lib/auth'
@@ -94,6 +94,8 @@ export default function App() {
   const { messages, busy, paused, send, resume, stop, abandon, reset, load, settle, chatId } = useAnalysis()
   /** 서버에 채팅 저장 기능(Supabase)이 켜져 있는지 */
   const [storage, setStorage] = useState(false)
+  /** 서버가 심층 분석 질문을 받을 수 있는지 */
+  const [deep, setDeep] = useState(false)
   /** 지금 보고 있는 채팅의 상태. mine은 이 브라우저에서 만든 채팅인지, shared는 공유됐는지예요. */
   const [chat, setChat] = useState<{ mine: boolean; shared: boolean } | null>(null)
   const [opening, setOpening] = useState(() => chatIdFromPath() !== null)
@@ -183,7 +185,10 @@ export default function App() {
 
   useEffect(() => {
     initAnalytics()
-    void fetchStorageEnabled().then(setStorage)
+    void fetchConfig().then((config) => {
+      setStorage(config.storage)
+      setDeep(config.deep)
+    })
     void loadMe()
     void openFromLocation()
     const onPopState = () => void openFromLocation()
@@ -508,6 +513,7 @@ export default function App() {
           busy={busy}
           paused={paused}
           readOnly={readOnly}
+          deep={deep}
           onResume={resume}
           onSend={send}
           onHome={handleHome}

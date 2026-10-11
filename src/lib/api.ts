@@ -2,13 +2,20 @@ import type { AnalyzeRequest, ChatEvent, ChatSnapshot } from '../../shared/types
 import { authFetch, authHeaders } from './auth'
 import { apiUrl, ownerHeaders, readResult } from './http'
 
-/** 서버에 채팅 저장 기능이 켜져 있는지 물어봐요. */
-export async function fetchStorageEnabled(): Promise<boolean> {
+export interface ServerConfig {
+  /** 채팅 저장과 공유 기능이 켜져 있는지 */
+  storage: boolean
+  /** 서버가 심층 분석 질문을 받을 수 있는지. 예전 서버에는 없어서, 그때는 메뉴에서 심층 분석을 숨겨요. */
+  deep: boolean
+}
+
+/** 서버가 어떤 기능을 지원하는지 물어봐요. */
+export async function fetchConfig(): Promise<ServerConfig> {
   try {
-    const result = await readResult<{ storage?: boolean }>(await fetch(apiUrl('/config')))
-    return result.ok && result.data?.storage === true
+    const result = await readResult<Partial<ServerConfig>>(await fetch(apiUrl('/config')))
+    return { storage: result.ok && result.data?.storage === true, deep: result.ok && result.data?.deep === true }
   } catch {
-    return false
+    return { storage: false, deep: false }
   }
 }
 

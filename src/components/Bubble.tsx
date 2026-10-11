@@ -3,10 +3,14 @@ import { ANALYSIS_LABEL, type AnalyzeRequest, type FollowupQuestion } from '../.
 import type { ChatMessage } from '../hooks/useAnalysis'
 import { repoLabel, track } from '../lib/analytics'
 import { Charts, Facts } from './Charts'
+import { Expandable } from './Expand'
 import { Followup } from './Followup'
+import { Forms } from './Forms'
 import { PeoplePicker } from './PeoplePicker'
+import { Pipeline } from './Pipeline'
 import { RankingCarousel } from './RankingCarousel'
 import { RichText } from './RichText'
+import { Structure } from './Structure'
 import { SummaryChart } from './SummaryChart'
 
 interface Props {
@@ -20,6 +24,8 @@ interface Props {
   docked?: boolean
   /** 다른 레포 분석하기를 눌렀을 때 메인 화면으로 돌아가요. */
   onNewRepo?: () => void
+  /** 서버가 심층 분석 질문을 받을 수 있는지 */
+  deep?: boolean
 }
 
 const actionButton =
@@ -57,9 +63,9 @@ function CopyButton({ label, text, repo, quiet = false }: { label: string; text:
   )
 }
 
-const WIDE_TYPES = new Set(['ranking', 'summary', 'list', 'templates', 'chart', 'facts', 'stack', 'pick'])
+const WIDE_TYPES = new Set(['ranking', 'summary', 'list', 'templates', 'chart', 'facts', 'stack', 'pick', 'structure', 'pipeline', 'forms'])
 
-export function Bubble({ message, busy, isLast, onSend, docked = false, onNewRepo }: Props) {
+export function Bubble({ message, busy, isLast, onSend, docked = false, onNewRepo, deep = false }: Props) {
   // 글이 타자를 치듯 다 나타난 뒤에 카드, 그래프, 버튼 같은 나머지 내용을 보여줘요.
   const [typed, setTyped] = useState(docked || !(message.from === 'bot' && message.live))
   if (message.from === 'user') {
@@ -198,8 +204,26 @@ export function Bubble({ message, busy, isLast, onSend, docked = false, onNewRep
 
         {event.type === 'facts' && <Facts items={event.items} />}
 
+        {event.type === 'structure' && (
+          <Expandable title="프로젝트 구조" kind="structure">
+            {(large) => <Structure root={event.root} large={large} />}
+          </Expandable>
+        )}
+
+        {event.type === 'pipeline' && (
+          <Expandable title="CI/CD 파이프라인" kind="pipeline">
+            {(large) => <Pipeline workflows={event.workflows} large={large} />}
+          </Expandable>
+        )}
+
+        {event.type === 'forms' && (
+          <Expandable title={event.kind === 'issue' ? '이슈 템플릿과 라벨' : 'PR 템플릿'} kind={event.kind}>
+            {(large) => <Forms kind={event.kind} templates={event.templates} labels={event.labels} large={large} />}
+          </Expandable>
+        )}
+
         {event.type === 'followup' && request && (
-          <Followup people={event.people} disabled={locked} onAsk={ask} onStart={event.analysis ? start : undefined} />
+          <Followup people={event.people} disabled={locked} onAsk={ask} onStart={event.analysis ? start : undefined} deep={deep} />
         )}
 
         {event.type === 'pick' && request && (

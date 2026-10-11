@@ -14,7 +14,11 @@ export interface ContributorStats {
 }
 
 /** 레포 소개 직후의 메뉴와 분석이 끝난 뒤에 고를 수 있는 질문 */
-export type FollowupQuestion = 'hours' | 'timeline' | 'spurt' | 'convention' | 'pulls' | 'teamwork' | 'person'
+/** 심층 분석 질문. 커밋 통계가 아니라 레포에 들어 있는 파일을 읽어서 답하고, 메뉴에서 따로 묶어서 보여줘요. */
+export const DEEP_QUESTIONS = ['structure', 'pipeline', 'issueform', 'pullform'] as const
+export type DeepQuestion = (typeof DEEP_QUESTIONS)[number]
+
+export type FollowupQuestion = 'hours' | 'timeline' | 'spurt' | 'convention' | 'pulls' | 'teamwork' | 'person' | DeepQuestion
 
 export const FOLLOWUP_LABELS: Record<FollowupQuestion, string> = {
   hours: '이 팀은 보통 몇 시에 활동했나요?',
@@ -24,6 +28,10 @@ export const FOLLOWUP_LABELS: Record<FollowupQuestion, string> = {
   pulls: 'PR은 누가 얼마나 올렸나요?',
   teamwork: '이 팀의 협업 방식을 훔치고 싶어요',
   person: '특정 참여자만 자세히 보고 싶어요',
+  structure: '프로젝트 구조를 한눈에 보여 주세요',
+  pipeline: 'CI/CD 파이프라인을 분석해 주세요',
+  issueform: '이슈 템플릿과 라벨을 분석해 주세요',
+  pullform: 'PR 템플릿을 분석해 주세요',
 }
 
 /** 메뉴에서 기여도 분석을 고르는 버튼의 글 */
@@ -48,6 +56,65 @@ export type ChartSpec =
       columns: string[]
       rows: { label: string; values: number[] }[]
     }
+
+/** 프로젝트 구조의 폴더 하나. 하위 폴더가 하나뿐인 폴더는 서버가 `src/main/kotlin`처럼 이름을 이어 붙여서 보내요. */
+export interface StructureNode {
+  name: string
+  path: string
+  /** 이 폴더 아래에 있는 파일 수 (하위 폴더 포함) */
+  files: number
+  /** 이 폴더가 맡은 역할 한 줄 */
+  role?: string
+  /** 이 폴더에 바로 들어 있는 파일 몇 개 */
+  samples?: string[]
+  /** 보내지 않고 생략한 하위 폴더 수 */
+  more?: number
+  children: StructureNode[]
+}
+
+export interface WorkflowJob {
+  name: string
+  runsOn?: string
+  steps: { name: string; detail?: string }[]
+}
+
+/** GitHub Actions 워크플로 하나. stages는 먼저 도는 순서대로 묶은 작업들이에요. */
+export interface Workflow {
+  name: string
+  path: string
+  triggers: string[]
+  stages: WorkflowJob[][]
+  content: string
+}
+
+export interface FormField {
+  kind: 'input' | 'textarea' | 'dropdown' | 'checkboxes' | 'note'
+  label: string
+  hint?: string
+  required?: boolean
+  options?: string[]
+}
+
+/** 이슈나 PR 템플릿 하나. fields는 템플릿을 읽어서 뽑은 적을 항목이고, content는 원문이에요. */
+export interface FormTemplate {
+  name: string
+  path: string
+  about?: string
+  title?: string
+  labels: string[]
+  assignees: string[]
+  fields: FormField[]
+  content: string
+}
+
+export interface RepoLabel {
+  name: string
+  /** GitHub에 등록된 색 (# 없는 6자리) */
+  color: string
+  description?: string
+  /** 최근 이슈에서 쓰인 횟수 */
+  count: number
+}
 
 /** 기술 스택을 종류별로 묶은 것 */
 export interface StackGroup {
@@ -74,6 +141,12 @@ export type ChatEvent =
   | { type: 'chart'; text: string; charts: ChartSpec[] }
   /** 이름과 값이 짝을 이루는 표 */
   | { type: 'facts'; text: string; items: { label: string; value: string }[] }
+  /** 프로젝트 구조를 그림으로 보여줘요. */
+  | { type: 'structure'; text: string; root: StructureNode }
+  /** CI/CD 파이프라인을 흐름으로 보여줘요. */
+  | { type: 'pipeline'; text: string; workflows: Workflow[] }
+  /** 이슈 템플릿이나 PR 템플릿을 실제 양식처럼 보여줘요. 이슈일 때는 라벨도 함께 와요. */
+  | { type: 'forms'; text: string; kind: 'issue' | 'pull'; templates: FormTemplate[]; labels?: RepoLabel[] }
   /** 질문을 고르는 말풍선. analysis가 true면 아직 기여도 분석 전이라, 기여도 분석을 시작하는 버튼도 함께 보여줘요. */
   | { type: 'followup'; text: string; people: FollowupPerson[]; analysis?: boolean }
   /** 참여자가 많을 때, 맡은 기능과 코드 스타일을 살펴볼 사람을 고르게 해요. top은 "상위 N명"의 N, max는 고를 수 있는 최대 인원이에요. */
