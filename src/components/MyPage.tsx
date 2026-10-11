@@ -12,6 +12,7 @@ import {
   type LoginRecord,
 } from '../lib/auth'
 import { formatDate, formatDateTime, parseServerTime } from '../lib/format'
+import { Bone } from './Skeleton'
 
 interface Props {
   onSignedOut: () => void
@@ -30,6 +31,23 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Message({ children }: { children: React.ReactNode }) {
   return <p className="border-y border-gray-100 py-6 text-center text-[14px] text-gray-400">{children}</p>
+}
+
+function SkeletonRows({ count, action }: { count: number; action?: boolean }) {
+  return (
+    <ul className="divide-y divide-gray-100 border-y border-gray-100" aria-busy="true">
+      <li className="sr-only">불러오고 있어요.</li>
+      {Array.from({ length: count }, (_, index) => (
+        <li key={index} aria-hidden className="flex items-center justify-between gap-4 py-4">
+          <div className="min-w-0 flex-1">
+            <Bone className="h-4 w-36" />
+            <Bone className="mt-2.5 h-3.5 w-48 max-w-full" />
+          </div>
+          <Bone className={action ? 'h-8 w-[72px] shrink-0' : 'h-3.5 w-24 shrink-0'} />
+        </li>
+      ))}
+    </ul>
+  )
 }
 
 function Sessions() {
@@ -56,7 +74,7 @@ function Sessions() {
     else setError('기기를 로그아웃시키지 못했어요. 잠시 뒤에 다시 시도해 주세요.')
   }
 
-  if (!sessions) return <Message>{error || '불러오고 있어요.'}</Message>
+  if (!sessions) return error ? <Message>{error}</Message> : <SkeletonRows count={2} action />
 
   return (
     <>
@@ -114,7 +132,9 @@ function LoginHistory() {
     void load(0)
   }, [load])
 
-  if (records.length === 0) return <Message>{loading ? '불러오고 있어요.' : error || '아직 로그인 기록이 없어요.'}</Message>
+  if (records.length === 0) {
+    return loading ? <SkeletonRows count={4} /> : <Message>{error || '아직 로그인 기록이 없어요.'}</Message>
+  }
 
   return (
     <>
@@ -181,7 +201,9 @@ export function MyPage({ onSignedOut }: Props) {
             ].map((row) => (
               <div key={row.label} className="flex items-center justify-between gap-4 py-3.5">
                 <dt className="shrink-0 text-gray-500">{row.label}</dt>
-                <dd className="min-w-0 truncate text-right font-medium text-gray-900">{row.value ?? ''}</dd>
+                <dd className="min-w-0 truncate text-right font-medium text-gray-900">
+                  {me ? (row.value ?? '') : <Bone className="h-4 w-28" />}
+                </dd>
               </div>
             ))}
           </dl>

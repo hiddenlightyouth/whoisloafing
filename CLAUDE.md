@@ -72,7 +72,7 @@ src/
   lib/analytics.ts    Google Analytics 이벤트 전송
   lib/articles.ts     아티클 마크다운 읽기와 변환
   hooks/useAnalysis.ts  채팅 메시지 큐, 입력 중 표시 타이밍
-  components/         Header, Logo, Hero, ContributionBackdrop, RepoInput, Chat, Bubble, TypingDots, RichText, Articles, PeoplePicker, AssistantOrb, LeaveDialog, RankingCarousel, StatsCard, SummaryChart, Charts, Followup, Account, AuthForm, MyPage, History
+  components/         Header, Logo, Hero, ContributionBackdrop, RepoInput, Chat, Bubble, TypingDots, RichText, Articles, PeoplePicker, AssistantOrb, LeaveDialog, RankingCarousel, StatsCard, SummaryChart, Charts, Followup, Account, AuthForm, MyPage, History, Skeleton
 ```
 
 ## 실행 방법
@@ -164,11 +164,12 @@ npm run dev            # http://localhost:5173
 - 분석, 채팅 조회, 공유 요청에도 로그인했으면 Access Token을 함께 보내요. 서버는 로그인한 요청의 채팅을 내 계정에 연결하고, 같은 계정이면 다른 브라우저에서도 채팅을 열고 이어서 작업하게 해 줘요.
 - 로그인하거나 가입하는 순간, 이 브라우저에서 로그인하지 않고 만든 채팅을 내 계정에 연결해요(`/users/me/chats/claim`). 그래서 로그인 전에 분석한 레포도 내 작업에 나와요.
 - 로그인할 때 기기 이름을 "macOS의 Chrome"처럼 브라우저 정보로 만들어서 보내요. 내 정보의 로그인한 기기와 로그인 기록에 이 이름이 보여요.
-- 내 작업은 메신저의 채팅방 목록처럼 보여줘요. 줄마다 레포 소유자의 GitHub 프로필 사진, `소유자/레포`, 마지막 말풍선 한 줄, 마지막으로 이어서 작업한 때가 나오고, 공유한 채팅에는 "공유함"이 붙어요. 누르면 그 채팅(`/c/아이디`)으로 가요. 프로필 사진을 못 받으면 소유자 이름의 첫 글자를 보여줘요. 20개씩 더 보기로 불러와요.
+- 내 작업은 메신저의 채팅방 목록처럼 보여줘요. 줄마다 레포 소유자의 GitHub 프로필 사진, `소유자/레포`, 마지막 말풍선 한 줄(질문을 고르는 메뉴 말풍선은 건너뛰고 그 앞의 말풍선), 마지막으로 이어서 작업한 때가 나오고, 공유한 채팅에는 "공유함"이 붙어요. 누르면 그 채팅(`/c/아이디`)으로 가요. 프로필 사진을 못 받으면 소유자 이름의 첫 글자를 보여줘요. 20개씩 더 보기로 불러와요.
 - 내 정보의 로그인한 기기에서는 지금 쓰는 기기를 뺀 다른 기기를 로그아웃시킬 수 있어요. 로그인 기록은 기기 이름, IP 주소, 로그인한 때를 최근 순서로 20개씩 보여줘요.
 - 서버는 시각을 시간대 없이 보내고, 화면은 그 값을 기기의 시간대로 읽어요. 서버를 한국 시간으로 띄우는 것을 전제로 해요.
 - 오류 문구는 서버의 오류 코드로 정해요. (`C4012` 비밀번호가 맞지 않아요, `C4041` 가입하지 않은 이메일이에요, `C4091` 이미 가입한 이메일이에요, `C002` 입력한 내용을 다시 확인해 주세요) 연결이 끊기면 서버와 연결하지 못했다고 안내해요.
 - 입력창은 포커스되면 테두리만 메인 컬러로 바뀌어요. 그림자나 바깥 링은 쓰지 않아요.
+- 불러오는 동안에는 글자 대신 스켈레톤을 보여줘요. 내 작업 목록, 내 정보의 계정 값과 로그인한 기기와 로그인 기록, 저장된 채팅을 여는 화면이 그래요. 실제 내용과 같은 자리에 옅은 회색 칸을 두고 천천히 깜빡이게 하고(`Skeleton`의 `Bone`, `ChatSkeleton`), 움직임 줄이기 설정에서는 멈춰 있어요. 더 보기처럼 버튼을 눌러서 기다릴 때는 버튼 글자만 "처리 중"으로 바꿔요.
 
 ## 아티클
 

@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchMyChats, type ChatSummary } from '../lib/auth'
 import { formatWhen } from '../lib/format'
+import { Bone } from './Skeleton'
 
 interface Props {
   onOpenChat: (id: string) => void
   onHome: () => void
 }
+
+const SKELETON_ROWS = ['w-4/5', 'w-3/5', 'w-2/3', 'w-1/2', 'w-3/4', 'w-3/5']
 
 function Avatar({ owner }: { owner: string }) {
   const [failed, setFailed] = useState(false)
@@ -104,7 +107,21 @@ export function History({ onOpenChat, onHome }: Props) {
             ))}
           </ul>
         ) : loading ? (
-          <p className="mt-16 text-center text-[14px] text-gray-400">불러오고 있어요.</p>
+          <ul className="mt-8" aria-busy="true">
+            <li className="sr-only">불러오고 있어요.</li>
+            {SKELETON_ROWS.map((width, index) => (
+              <li key={index} aria-hidden className="flex items-center gap-3.5 py-3.5">
+                <Bone className="size-12 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <Bone className="h-4 w-2/5" />
+                    <Bone className="h-3 w-10" />
+                  </div>
+                  <Bone className={`mt-2.5 h-3.5 ${width}`} />
+                </div>
+              </li>
+            ))}
+          </ul>
         ) : error ? (
           <div className="mt-16 text-center">
             <p className="text-[14px] text-gray-500">{error}</p>

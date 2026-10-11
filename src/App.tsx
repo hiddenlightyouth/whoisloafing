@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import type { AccountPage } from './components/Account'
 import { Chat } from './components/Chat'
+import { ChatSkeleton } from './components/Skeleton'
 import { Header } from './components/Header'
 import { Hero } from './components/Hero'
 import { LeaveDialog } from './components/LeaveDialog'
@@ -263,7 +264,7 @@ export default function App() {
           <Account page={account} onNavigate={openAccount} onOpenChat={openChat} onHome={goHome} />
         </Suspense>
       ) : opening ? (
-        <main className="flex flex-1 items-center justify-center text-[15px] text-gray-400">채팅을 불러오고 있어요.</main>
+        <ChatSkeleton />
       ) : missing ? (
         <main className="flex flex-1 flex-col items-center justify-center gap-4 px-5 text-center">
           <p className="text-[15px] leading-relaxed text-gray-600">
