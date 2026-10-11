@@ -56,7 +56,7 @@ public/favicon.svg    파비콘 (로고의 중절모만 따온 그림)
 public/og.png         링크 미리보기 카드에 뜨는 대표 이미지 (1200x630)
 public/robots.txt     검색 로봇 안내 (API, 채팅 주소, 내 정보와 내 작업은 막고, 사이트맵 위치를 알려줘요)
 scripts/prerender.mjs 빌드 마지막에 아티클 화면을 페이지별 HTML 파일로 만들고 사이트맵을 만들어요
-.env.production       배포용 빌드에 들어가는 공개 값 (GA 측정 ID)
+.env.production       배포용 빌드에 들어가는 공개 값 (백엔드 서버 주소, GA 측정 ID)
 shared/types.ts       서버가 보내는 값의 타입 (채팅 이벤트, 참여자 수치). 백엔드의 이벤트 모양과 맞춰요.
 shared/repo.ts        GitHub 레포 링크 판별
 articles/             아티클 원문 (마크다운 파일, 글 하나에 파일 하나)
@@ -101,11 +101,11 @@ npm run dev            # http://localhost:5173
 - 배포 명령: `npx wrangler deploy`
 - 정적 파일 폴더와 없는 주소 처리는 `wrangler.toml`에 적혀 있어요. Pages 전용 설정(`pages_build_output_dir`)을 넣으면 `wrangler deploy`가 실패하니 쓰지 않아요.
 
-값은 모두 빌드할 때 들어가요. 빌드 설정의 빌드 변수에 넣고, 바꾸면 다시 배포해야 반영돼요.
+값은 모두 빌드할 때 들어가요. 실제 서비스의 값은 `.env.production`에 적혀 있어서, `main`에 푸시하면 따로 설정하지 않아도 백엔드 서버에 연결된 채로 배포돼요. 다른 값을 쓰려면 빌드 설정의 빌드 변수에 넣고, 바꾸면 다시 배포해야 반영돼요.
 
 | 이름 | 쓰이는 시점 |
 | --- | --- |
-| `VITE_API_BASE_URL` | 빌드할 때. 백엔드 서버 주소(예: `https://api.whoisloafing.hidly.dev`). 비우면 프론트엔드와 같은 주소의 `/api`로 보내요. |
+| `VITE_API_BASE_URL` (선택) | 빌드할 때. 백엔드 서버 주소. 저장소의 `.env.production`에 실제 서버 주소(https://api.whoisloafing.hidly.dev)가 적혀 있어서 넣지 않아도 돼요. 넣으면 그 값이 우선해요. |
 | `VITE_GA_MEASUREMENT_ID` (선택) | 빌드할 때. 저장소의 `.env.production`에 이미 적혀 있어서 넣지 않아도 돼요. 넣으면 그 값이 우선해요. |
 
 - 백엔드의 `CORS_ALLOWED_ORIGINS`에 프론트엔드 주소를 넣어야 브라우저가 API를 부를 수 있어요.
@@ -117,7 +117,7 @@ npm run dev            # http://localhost:5173
 
 | 이름 | 용도 |
 | --- | --- |
-| `VITE_API_BASE_URL` | 백엔드 서버 주소. 브라우저에 공개되는 값이에요. 비우면 같은 주소의 `/api`로 보내고, 개발 서버에서는 Vite가 8080으로 넘겨줘요. |
+| `VITE_API_BASE_URL` | 백엔드 서버 주소. 브라우저에 공개되는 값이에요. 비우면 같은 주소의 `/api`로 보내고, 개발 서버에서는 Vite가 8080으로 넘겨줘요. 실제 서버 주소는 `.env.production`에 적혀 있어서 배포용 빌드에만 들어가요. |
 | `VITE_GA_MEASUREMENT_ID` | Google Analytics 4 측정 ID. 브라우저에 공개되는 값이고, 없으면 추적하지 않아요. 실제 서비스의 값은 `.env.production`에 적혀 있어서 배포용 빌드에만 들어가고, 개발 서버(`npm run dev`)에서는 `.env`에 따로 넣지 않는 한 추적하지 않아요. |
 
 ## 데이터 수집과 계산 규칙
