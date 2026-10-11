@@ -1,14 +1,17 @@
 import { useEffect } from 'react'
 
 interface Props {
+  /** 메인 화면으로 가려던 것인지. 아니면 다른 화면으로 간다고 안내해요. */
+  home: boolean
   onStay: () => void
   onLeave: () => void
   /** 로그인하지 않았을 때만 넘겨요. 있으면 떠나는 대신 로그인하고 이어가도록 권해요. */
   onLogin?: () => void
 }
 
-/** 분석 중에 로고를 눌렀을 때, 분석을 그만두고 메인 화면으로 갈지 묻는 창이에요. */
-export function LeaveDialog({ onStay, onLeave, onLogin }: Props) {
+/** 진행 중인 채팅을 두고 헤더의 로고나 링크를 눌렀을 때, 그만두고 이동할지 묻는 창이에요. */
+export function LeaveDialog({ home, onStay, onLeave, onLogin }: Props) {
+  const place = home ? '메인 화면' : '다른 화면'
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onStay()
@@ -36,8 +39,8 @@ export function LeaveDialog({ onStay, onLeave, onLogin }: Props) {
         </h2>
         <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">
           {onLogin
-            ? '지금 메인 화면으로 이동하면 진행 중인 작업을 되돌릴 수 없어요. 로그인하면 분석 중인 내용을 저장하고, 내 작업에서 언제든 이어갈 수 있어요.'
-            : '진행 중인 작업을 그만두고 메인 화면으로 이동할까요? 이 작업은 되돌릴 수 없어요.'}
+            ? `지금 ${place}으로 이동하면 진행 중인 작업을 되돌릴 수 없어요. 로그인하면 분석 중인 내용을 저장하고, 내 작업에서 언제든 이어갈 수 있어요.`
+            : `진행 중인 작업을 그만두고 ${place}으로 이동할까요? 이 작업은 되돌릴 수 없어요.`}
         </p>
         {onLogin && (
           <button

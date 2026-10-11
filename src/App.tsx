@@ -66,6 +66,9 @@ async function copyLink(): Promise<boolean> {
   }
 }
 
+/** 헤더에서 갈 수 있는 곳. 아티클은 목록으로 가요. */
+type LeaveTarget = 'home' | 'articles' | AccountPage
+
 export default function App() {
   const { messages, busy, paused, send, resume, stop, abandon, reset, load, settle, chatId } = useAnalysis()
   /** 서버에 채팅 저장 기능(Supabase)이 켜져 있는지 */
@@ -78,8 +81,9 @@ export default function App() {
   const [article, setArticle] = useState(articleFromPath)
   const [account, setAccount] = useState(accountFromPath)
   const { tokens } = useAuth()
-  /** 분석 중에 로고를 눌렀을 때 정말 떠날지 묻는 창 */
-  const [confirmingLeave, setConfirmingLeave] = useState(false)
+  /** 진행 중인 채팅을 두고 다른 화면으로 가려고 할 때, 정말 떠날지 묻는 창과 가려던 곳 */
+  const [leaveTo, setLeaveTo] = useState<LeaveTarget | null>(null)
+  const confirmingLeave = leaveTo !== null
   /** 채팅에서 로그인 화면으로 갔을 때, 로그인한 뒤에 돌아올 채팅과 로그인 화면에 보여줄 안내 */
   const loginReturn = useRef<{ id: string; notice: string } | null>(null)
   const [nudgeClosed, setNudgeClosed] = useState(() => nudgeChatsSinceClose() !== null)
@@ -279,7 +283,7 @@ export default function App() {
 
   const handleLeaveLogin = useCallback(() => {
     track('leave_login_click', { busy })
-    setConfirmingLeave(false)
+    setLeaveTo(null)
     loginFromChat('로그인하면 분석하던 채팅으로 바로 돌아가요.')
   }, [busy, loginFromChat])
 
@@ -300,14 +304,29 @@ export default function App() {
     if (nudging && !nudgeClosed) track('login_nudge_view')
   }, [nudging, nudgeClosed])
 
-  const handleHome = useCallback(() => {
-    if (!working) {
-      goHome()
-      return
-    }
-    track('leave_confirm_open', { busy })
-    setConfirmingLeave(true)
-  }, [busy, goHome, working])
+  const go = useCallback(
+    (target: LeaveTarget) => {
+      if (target === 'home') goHome()
+      else if (target === 'articles') openArticle(null)
+      else openAccount(target)
+    },
+    [goHome, openAccount, openArticle],
+  )
+
+  // 헤더의 링크는 어느 화면에서나 똑같이 보여주고, 잃어버릴 작업이 있을 때만 떠나기 전에 물어봐요.
+  const leaveFor = useCallback(
+    (target: LeaveTarget) => {
+      if (!working) {
+        go(target)
+        return
+      }
+      track('leave_confirm_open', { busy, to: target })
+      setLeaveTo(target)
+    },
+    [busy, go, working],
+  )
+
+  const handleHome = useCallback(() => leaveFor('home'), [leaveFor])
 
   // 새로 고치거나 탭을 닫을 때도 잃어버리는 작업이 있으면 브라우저의 경고 창을 띄워요.
   // 저장 기능이 켜져 있으면 끝난 요청까지는 다시 열 수 있어서, 분석이 돌고 있을 때만 경고해요.
@@ -324,14 +343,17 @@ export default function App() {
 
   const handleLeave = useCallback(() => {
     track('leave_confirm', { message_count: messages.length })
-    setConfirmingLeave(false)
+    const target = leaveTo ?? 'home'
+    setLeaveTo(null)
     abandon()
-    goHome()
-  }, [abandon, goHome, messages.length])
+    // 채팅을 버리고 가는 것이라, 로그인 화면으로 가더라도 채팅을 들고 가지 않아요.
+    loginReturn.current = null
+    go(target)
+  }, [abandon, go, leaveTo, messages.length])
 
   const handleStay = useCallback(() => {
     track('leave_cancel')
-    setConfirmingLeave(false)
+    setLeaveTo(null)
   }, [])
 
   const handleShare = useCallback(async () => {
@@ -364,16 +386,17 @@ export default function App() {
         onShare={handleShare}
         onCopyLink={handleCopyLink}
         onLoginToShare={handleLoginToShare}
-        onArticles={
-          working
-            ? undefined
-            : () => {
-                track('article_nav_click', { from: account ?? (article ? 'articles' : messages.length > 0 ? 'chat' : 'home') })
-                openArticle(null)
-              }
-        }
+        onArticles={() => {
+          track('article_nav_click', { from: account ?? (article ? 'articles' : messages.length > 0 ? 'chat' : 'home') })
+          leaveFor('articles')
+        }}
         signedIn={tokens !== null}
-        onAccount={working ? undefined : openAccount}
+        onAccount={(page) => {
+          // 분석하던 중에 로그인하러 가면 채팅을 들고 가서, 로그인한 뒤에 그대로 이어가요.
+          if (page === account && working) return
+          if (page === 'login' && working && storage && !account && chatId.current) loginFromChat('로그인하면 분석하던 채팅으로 바로 돌아가요.')
+          else leaveFor(page)
+        }}
       />
       {article ? (
         <Suspense fallback={<main className="flex-1" />}>
@@ -426,7 +449,7 @@ export default function App() {
       )}
       {nudging && !confirmingLeave && <LoginNudge collapsed={nudgeClosed} onLogin={handleNudgeLogin} onClose={closeNudge} onOpen={openNudge} />}
       {confirmingLeave && (
-        <LeaveDialog onStay={handleStay} onLeave={handleLeave} onLogin={storage && tokens === null && !account ? handleLeaveLogin : undefined} />
+        <LeaveDialog home={leaveTo === 'home'} onStay={handleStay} onLeave={handleLeave} onLogin={storage && tokens === null && !account ? handleLeaveLogin : undefined} />
       )}
       <Toast />
     </div>

@@ -18,7 +18,7 @@ interface Props {
   onCopyLink: () => Promise<boolean>
   /** 로그인하지 않은 채로 공유하려고 할 때 로그인 화면으로 보내요. 로그인하면 이 채팅으로 돌아와요. */
   onLoginToShare: () => void
-  /** 아티클 화면으로 가요. 진행 중인 채팅이 있을 때는 넘기지 않아서 링크가 보이지 않아요. */
+  /** 아티클 화면으로 가요. 넘기지 않으면 링크가 보이지 않아요. */
   onArticles?: () => void
   signedIn?: boolean
   onAccount?: (page: AccountPage) => void
