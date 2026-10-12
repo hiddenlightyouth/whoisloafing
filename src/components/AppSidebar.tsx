@@ -15,7 +15,7 @@ interface Props {
   /** 지금 열려 있는 채팅. 목록에서 강조해요. */
   activeChatId: string | null
   /** 지금 보고 있는 화면. 아래쪽 링크를 강조해요. */
-  page: 'deep' | 'articles' | 'me' | null
+  page: 'deep' | 'articles' | 'me' | 'admin' | null
   /** 값이 바뀌면 목록을 다시 받아요. */
   refreshKey: string
   onNew: () => void
@@ -26,6 +26,8 @@ interface Props {
   onChatChanged: (id: string, change: 'unshared' | 'deleted') => void
   onArticles: () => void
   onMe: () => void
+  /** 관리자 화면을 열어요. 관리자 계정일 때만 넘기고, 아니면 메뉴에 보여주지 않아요. */
+  onAdmin?: () => void
 }
 
 const SKELETON_ROWS = ['w-4/5', 'w-3/5', 'w-2/3', 'w-1/2']
@@ -145,7 +147,7 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
 }
 
 /** 앱 화면 왼쪽의 사이드바예요. 새 분석, 내 작업 목록과 관리, 아티클과 내 정보로 가는 링크가 있어요. */
-export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onOpenChat, onChatChanged, onArticles, onMe }: Props) {
+export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onOpenChat, onChatChanged, onArticles, onMe, onAdmin }: Props) {
   const { me } = useAuth()
   const [chats, setChats] = useState<ChatSummary[] | null>(null)
   const [nextPage, setNextPage] = useState<number | null>(null)
@@ -309,7 +311,7 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onOp
         )}
       </nav>
 
-      <AccountMenu me={me} page={page} onArticles={onArticles} onMe={onMe} />
+      <AccountMenu me={me} page={page} onArticles={onArticles} onMe={onMe} onAdmin={onAdmin} />
 
       {deleting && <DeleteDialog chat={deleting} working={working} onCancel={cancelDelete} onConfirm={() => void remove(deleting)} />}
     </aside>
@@ -329,7 +331,7 @@ const menuIcon = 'size-4 shrink-0 text-gray-500'
  * 사이드바 맨 아래의 계정 버튼이에요. 누르면 위로 메뉴가 펼쳐져서 내 정보, 아티클, 화면 설정, 업데이트 확인, 로그아웃을 한곳에서 골라요.
  * 바깥을 누르거나 Esc를 누르면 닫혀요.
  */
-function AccountMenu({ me, page, onArticles, onMe }: { me: Me | null; page: Props['page']; onArticles: () => void; onMe: () => void }) {
+function AccountMenu({ me, page, onArticles, onMe, onAdmin }: { me: Me | null; page: Props['page']; onArticles: () => void; onMe: () => void; onAdmin?: () => void }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const { theme, backdrop } = useAppSettings()
@@ -377,6 +379,14 @@ function AccountMenu({ me, page, onArticles, onMe }: { me: Me | null; page: Prop
             </svg>
             아티클
           </button>
+          {onAdmin && (
+            <button type="button" role="menuitem" onClick={go(onAdmin)} className={menuRow}>
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className={menuIcon} aria-hidden="true">
+                <path d="M8 2l4.5 1.7v3.6c0 2.9-1.8 5.3-4.5 6.4-2.7-1.1-4.5-3.5-4.5-6.4V3.7z" />
+              </svg>
+              관리자
+            </button>
+          )}
 
           <div className="my-1.5 border-t border-gray-100" />
 
@@ -485,7 +495,7 @@ function AccountMenu({ me, page, onArticles, onMe }: { me: Me | null; page: Prop
           if (!open) track('app_menu_open')
           setOpen((value) => !value)
         }}
-        className={`flex h-12 w-full items-center gap-2.5 rounded-xl px-3 text-left transition-colors ${tone(open || page === 'me' || page === 'articles')}`}
+        className={`flex h-12 w-full items-center gap-2.5 rounded-xl px-3 text-left transition-colors ${tone(open || page === 'me' || page === 'articles' || page === 'admin')}`}
       >
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13.5px] font-semibold text-gray-900">{name}</span>

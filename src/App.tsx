@@ -13,7 +13,7 @@ import { initAnalytics, repoLabel, track, trackPageView } from './lib/analytics'
 import { fetchChat, fetchConfig, shareChat } from './lib/api'
 import { isApp, isMac, MAC_DOWNLOAD_OPEN } from './lib/app'
 import './lib/theme'
-import { claimChats, loadMe, useAuth } from './lib/auth'
+import { claimChats, isAdmin, loadMe, useAuth } from './lib/auth'
 import { useShortcuts } from './lib/shortcuts'
 import { showToast } from './lib/toast'
 
@@ -45,6 +45,10 @@ function deepFromPath(): { repo: string | null } | null {
   return match ? { repo: match[1] ? `${match[1]}/${match[2]}` : null } : null
 }
 
+const ADMIN_PATH = /^\/admin\/?$/
+
+const adminFromPath = () => ADMIN_PATH.test(window.location.pathname)
+
 // 앱에서만 쓰는 화면과, 앱이 브라우저로 열어 주는 로그인 화면은 필요할 때만 받아요.
 const AppGate = lazy(() => import('./components/AppGate').then((module) => ({ default: module.AppGate })))
 const AppSidebar = lazy(() => import('./components/AppSidebar').then((module) => ({ default: module.AppSidebar })))
@@ -55,6 +59,9 @@ const Explore = lazy(() => import('./components/Explore').then((module) => ({ de
 
 // 심층 분석 대시보드는 앱에서만 쓰는 화면이라, 열 때만 받아요.
 const Deep = lazy(() => import('./components/Deep').then((module) => ({ default: module.Deep })))
+
+// 관리자 화면은 앱에서 관리자 계정만 쓰는 화면이라, 열 때만 받아요.
+const Admin = lazy(() => import('./components/Admin').then((module) => ({ default: module.Admin })))
 
 const Account = lazy(() => import('./components/Account').then((module) => ({ default: module.Account })))
 
@@ -116,6 +123,8 @@ export default function App() {
   const [exploreReady, setExploreReady] = useState<boolean | null>(null)
   /** 앱의 심층 분석 화면을 보고 있는지. repo가 null이면 레포를 고르는 화면이에요. */
   const [deepPage, setDeepPage] = useState(() => (isApp ? deepFromPath() : null))
+  /** 앱의 관리자 화면을 보고 있는지 */
+  const [adminPage, setAdminPage] = useState(() => isApp && adminFromPath())
   /** 사이드바에서 채팅을 지우거나 공유를 바꾸면 올라가요. 심층 분석이 내 작업을 다시 받게 해요. */
   const [chatsVersion, setChatsVersion] = useState(0)
   /** 지금 보고 있는 채팅의 상태. mine은 이 브라우저에서 만든 채팅인지, shared는 공유됐는지예요. */
@@ -129,7 +138,7 @@ export default function App() {
   const [appLogin, setAppLogin] = useState(appLoginFromPath)
   /** 앱의 사이드바를 펴 뒀는지. 다음에 켰을 때도 그대로 둬요. */
   const [sidebarOpen, setSidebarOpen] = useState(() => !sidebarClosed())
-  const { tokens } = useAuth()
+  const { tokens, me } = useAuth()
   /** 진행 중인 채팅을 두고 다른 화면으로 가려고 할 때, 정말 떠날지 묻는 창과 가려던 곳 */
   const [leaveTo, setLeaveTo] = useState<LeaveTarget | null>(null)
   const confirmingLeave = leaveTo !== null
@@ -165,6 +174,17 @@ export default function App() {
       setChat(null)
       setOpening(false)
       trackPageView('deep', { repo: nextDeep.repo ?? undefined })
+      return
+    }
+    // 관리자 화면도 앱에서만 써요. 권한은 서버가 확인하고, 관리자가 아니면 화면이 안내만 보여줘요.
+    const nextAdmin = adminFromPath()
+    if (nextAdmin && !isApp) window.history.replaceState(null, '', '/')
+    setAdminPage(isApp && nextAdmin)
+    if (nextAdmin && isApp) {
+      reset()
+      setChat(null)
+      setOpening(false)
+      trackPageView('admin')
       return
     }
     if (nextAccount) {
@@ -263,6 +283,7 @@ export default function App() {
     setAccount(null)
     setAppLogin(false)
     setDeepPage(null)
+    setAdminPage(false)
     if (window.location.pathname !== '/') window.history.pushState(null, '', '/')
     trackPageView('home')
   }, [account, article, chat, messages.length, reset])
@@ -277,7 +298,8 @@ export default function App() {
       setAccount(null)
       setAppLogin(false)
       setDeepPage(null)
-        setArticle({ slug })
+      setAdminPage(false)
+      setArticle({ slug })
       window.history.pushState(null, '', slug ? `/articles/${slug}` : '/articles')
       trackPageView(slug ? 'article' : 'articles', { slug: slug ?? undefined })
     },
@@ -297,7 +319,8 @@ export default function App() {
       setArticle(null)
       setAppLogin(false)
       setDeepPage(null)
-        setAccount(page)
+      setAdminPage(false)
+      setAccount(page)
       if (replace) window.history.replaceState(null, '', `/${page}`)
       else window.history.pushState(null, '', `/${page}`)
       trackPageView(page)
@@ -316,6 +339,14 @@ export default function App() {
     },
     [abandon, openFromLocation],
   )
+
+  /** 앱의 관리자 화면을 열어요. */
+  const openAdmin = useCallback(() => {
+    loginReturn.current = null
+    abandon()
+    window.history.pushState(null, '', '/admin')
+    void openFromLocation()
+  }, [abandon, openFromLocation])
 
   const openChat = useCallback(
     (id: string, replace = false) => {
@@ -510,7 +541,7 @@ export default function App() {
       <Header
         app={isApp}
         onHome={handleHome}
-        home={messages.length === 0 && !article && !account && !appLogin && !deepPage && !opening && !missing}
+        home={messages.length === 0 && !article && !account && !appLogin && !deepPage && !adminPage && !opening && !missing}
         inChat={messages.length > 0 && !readOnly && !account}
         storage={storage}
         busy={busy}
@@ -538,6 +569,10 @@ export default function App() {
       ) : deepPage ? (
         <Suspense fallback={<main className="flex-1" />}>
           <Deep repo={deepPage.repo} onOpen={openDeep} onNew={goHome} refreshKey={chatsVersion} />
+        </Suspense>
+      ) : adminPage ? (
+        <Suspense fallback={<main className="flex-1" />}>
+          <Admin />
         </Suspense>
       ) : article ? (
         <Suspense fallback={<main className="flex-1" />}>
@@ -630,13 +665,14 @@ export default function App() {
       {sidebarOpen && (
         <Suspense fallback={<aside data-app-drag className="w-64 shrink-0 border-r border-gray-200 bg-gray-50" />}>
           <AppSidebar
-            activeChatId={account || article || deepPage ? null : chatIdFromPath()}
-            page={deepPage ? 'deep' : account === 'me' ? 'me' : article ? 'articles' : null}
+            activeChatId={account || article || deepPage || adminPage ? null : chatIdFromPath()}
+            page={deepPage ? 'deep' : adminPage ? 'admin' : account === 'me' ? 'me' : article ? 'articles' : null}
             onDeep={deep ? () => openDeep(null) : undefined}
+            onAdmin={isAdmin(me) ? openAdmin : undefined}
             refreshKey={`${busy}:${account ?? ''}:${deepPage ? 'deep' : ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`}
             onNew={handleHome}
             onOpenChat={(id) => {
-              if (id === chatId.current && !account && !article && !deepPage) return
+              if (id === chatId.current && !account && !article && !deepPage && !adminPage) return
               track('history_chat_open', { from: 'sidebar' })
               // 돌던 분석은 서버가 끝까지 마쳐서 저장하니, 기다리지 않고 바로 다른 채팅을 열어요.
               abandon()

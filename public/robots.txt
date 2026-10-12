@@ -6,5 +6,6 @@ Disallow: /me
 Disallow: /history
 Disallow: /app-login
 Disallow: /deep
+Disallow: /admin
 
 Sitemap: https://whoisloafing.hidly.dev/sitemap.xml
