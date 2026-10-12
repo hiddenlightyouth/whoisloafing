@@ -98,33 +98,19 @@ export function ShortcutHelp({ onClose }: { onClose: () => void }) {
   )
 }
 
-const TIP_SEEN_KEY = 'whoisloafing:shortcut-tip-shown'
 /** 안내를 이만큼 보여준 뒤에 알아서 사라져요. */
 const TIP_MS = 6000
 
-function tipShownThisLaunch(): boolean {
-  try {
-    return sessionStorage.getItem(TIP_SEEN_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
 /**
  * 앱을 켰을 때 오른쪽 아래 구석(맵의 확대 버튼 위)에 잠깐 뜨는 안내예요. Option을 누르면 단축키가 보인다는 것을 알려줘요.
- * 몇 초 뒤에 사라지고, Option을 눌러 보면 바로 사라져요. 앱을 켤 때마다 한 번만 떠서, 새로 고쳐도 다시 뜨지 않아요.
+ * 몇 초 뒤에 사라지고, Option을 눌러 보면 바로 사라져요. 앱을 열거나 새로 고칠 때마다 다시 떠요.
  */
 export function ShortcutTip() {
   const held = useShortcutHints()
-  const [shown, setShown] = useState(() => !tipShownThisLaunch())
+  const [shown, setShown] = useState(true)
 
   useEffect(() => {
     if (!shown) return
-    try {
-      sessionStorage.setItem(TIP_SEEN_KEY, '1')
-    } catch {
-      // 저장하지 못해도 안내는 그대로 보여줘요.
-    }
     const timer = window.setTimeout(() => setShown(false), TIP_MS)
     return () => window.clearTimeout(timer)
   }, [shown])
