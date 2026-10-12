@@ -4,12 +4,14 @@ import { track } from '../lib/analytics'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { fetchChat, fetchDeepReport } from '../lib/api'
 import { fetchMyChats } from '../lib/auth'
+import { useShortcuts } from '../lib/shortcuts'
 import { formatDateTime, formatWhen } from '../lib/format'
 import { showToast } from '../lib/toast'
 import { Chat } from './Chat'
 import { MapMenu, toolButton } from './DeepParts'
 import { Forms } from './Forms'
 import { Avatar } from './History'
+import { Kbd } from './Shortcuts'
 import { Pipeline } from './Pipeline'
 import { RichText } from './RichText'
 import { Bone } from './Skeleton'
@@ -263,6 +265,22 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [section, current])
 
+  const ready = current !== undefined && current !== 'loading' && 'report' in current
+  useShortcuts({
+    Digit1: () => setSection('structure'),
+    Digit2: () => setSection('pipeline'),
+    Digit3: () => setSection('issues'),
+    Digit4: () => setSection('pulls'),
+    KeyR: ready ? () => void analyze(section, true) : undefined,
+    KeyC: chatId ? () => setChatOpen((value) => !value) : undefined,
+    // 메뉴나 채팅이 열려 있으면 그것부터 닫고, 아무것도 없을 때 레포 고르는 화면으로 돌아가요.
+    Escape: () => {
+      if (document.querySelector('[role="menu"]')) return
+      if (chatOpen) setChatOpen(false)
+      else onOpen(null)
+    },
+  })
+
   const [owner, name] = repo.split('/')
   // 받아 온 탭은 옅은 회색 바탕이 여백 없이 탭 아래를 가득 채워요.
   const bleed = !current || current === 'loading' || 'report' in current
@@ -302,6 +320,7 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
               <path d="M2.5 4.5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H7l-3 2.5V11.5h-.5a1 1 0 0 1-1-1z" />
             </svg>
             채팅
+            <Kbd>C</Kbd>
           </button>
         )}
       </div>
@@ -322,6 +341,7 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
             }`}
           >
             {SECTION_LABELS[item]}
+            <Kbd className="ml-1.5">{String(DEEP_SECTIONS.indexOf(item) + 1)}</Kbd>
           </button>
         ))}
         {/* 저장해 둔 결과를 보고 있을 때만, 레포가 바뀌었으면 새로 받을 수 있게 해요. */}
@@ -332,9 +352,10 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
             <button
               type="button"
               onClick={() => void analyze(section, true)}
-              className="h-8 rounded-lg px-3 text-[13px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              className="flex h-8 items-center rounded-lg px-3 text-[13px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
             >
               재분석 요청
+              <Kbd className="ml-1.5">R</Kbd>
             </button>
           </div>
         )}

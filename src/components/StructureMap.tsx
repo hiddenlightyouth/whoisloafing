@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import type { FolderPerson, StructureNode } from '../../shared/types'
 import { track } from '../lib/analytics'
 import { fetchDeepReport } from '../lib/api'
+import { useShortcuts } from '../lib/shortcuts'
 import { MapMenu, tag } from './DeepParts'
 
 interface Props {
@@ -332,6 +333,20 @@ export function StructureMap({ name, repo, root }: Props) {
     if (frame) zoomAt(factor, frame.clientWidth / 2, frame.clientHeight / 2)
   }
 
+  useShortcuts({
+    Equal: () => zoomBy(1.25),
+    'Shift+Equal': () => zoomBy(1.25),
+    NumpadAdd: () => zoomBy(1.25),
+    Minus: () => zoomBy(1 / 1.25),
+    NumpadSubtract: () => zoomBy(1 / 1.25),
+    Digit0: () => fit(),
+    KeyM: () => showFolders(mainFolders(root), 'main'),
+    KeyS: () => showFolders(sourceFolders(root), 'source'),
+    KeyE: () => showFolders(allFolders(root), 'all'),
+    KeyW: () => showFolders(new Set(), 'none'),
+    KeyH: toggleRoles,
+  })
+
   return (
     <div
       ref={frameRef}
@@ -456,13 +471,13 @@ export function StructureMap({ name, repo, root }: Props) {
             {
               title: '폴더',
               items: [
-                { label: '주요 폴더만 펼치기', checked: mode === 'main', onSelect: () => showFolders(mainFolders(root), 'main') },
-                { label: '소스 폴더만 펼치기', checked: mode === 'source', onSelect: () => showFolders(sourceFolders(root), 'source') },
-                { label: '모두 펼치기', checked: mode === 'all', onSelect: () => showFolders(allFolders(root), 'all') },
-                { label: '모두 접기', checked: mode === 'none', onSelect: () => showFolders(new Set(), 'none') },
+                { label: '주요 폴더만 펼치기', shortcut: 'M', checked: mode === 'main', onSelect: () => showFolders(mainFolders(root), 'main') },
+                { label: '소스 폴더만 펼치기', shortcut: 'S', checked: mode === 'source', onSelect: () => showFolders(sourceFolders(root), 'source') },
+                { label: '모두 펼치기', shortcut: 'E', checked: mode === 'all', onSelect: () => showFolders(allFolders(root), 'all') },
+                { label: '모두 접기', shortcut: 'W', checked: mode === 'none', onSelect: () => showFolders(new Set(), 'none') },
               ],
             },
-            { title: '표시', items: [{ label: '폴더 설명', checked: roles, onSelect: toggleRoles }] },
+            { title: '표시', items: [{ label: '폴더 설명', shortcut: 'H', checked: roles, onSelect: toggleRoles }] },
           ]}
         />
         <MapMenu
@@ -491,18 +506,18 @@ export function StructureMap({ name, repo, root }: Props) {
       </div>
 
       <div onPointerDown={(event) => event.stopPropagation()} className="absolute right-4 bottom-4 flex cursor-default items-center gap-0.5 rounded-lg border border-gray-200 bg-white p-1">
-        <button type="button" aria-label="작게" onClick={() => zoomBy(1 / 1.25)} className={control}>
+        <button type="button" aria-label="작게" title="축소 (-)" onClick={() => zoomBy(1 / 1.25)} className={control}>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
             <path d="M3.5 8h9" />
           </svg>
         </button>
         <span className="w-11 text-center text-[12.5px] text-gray-500 tabular-nums">{Math.round(view.k * 100)}%</span>
-        <button type="button" aria-label="크게" onClick={() => zoomBy(1.25)} className={control}>
+        <button type="button" aria-label="크게" title="확대 (+)" onClick={() => zoomBy(1.25)} className={control}>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
             <path d="M3.5 8h9M8 3.5v9" />
           </svg>
         </button>
-        <button type="button" onClick={() => fit()} className="h-8 rounded-md px-2.5 text-[13px] font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900">
+        <button type="button" title="한눈에 보기 (0)" onClick={() => fit()} className="h-8 rounded-md px-2.5 text-[13px] font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900">
           한눈에 보기
         </button>
       </div>

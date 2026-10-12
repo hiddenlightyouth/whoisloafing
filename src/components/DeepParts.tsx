@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { track } from '../lib/analytics'
+import { Kbd } from './Shortcuts'
 
 /** 심층 분석의 작은 이름표 모양이에요. 작동 조건, 라벨, 고를 수 있는 값, 파일 이름에 같이 써요. */
 export const tag = 'inline-flex h-7 max-w-full items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 text-[12.5px] text-gray-700'
@@ -64,6 +65,8 @@ export interface MenuItem {
   label: string
   /** 오른쪽에 옅게 붙는 값 (커밋 수 등) */
   hint?: string
+  /** 이 항목의 단축키. 오른쪽에 자판 모양으로 보여줘요. */
+  shortcut?: string
   checked?: boolean
   onSelect: () => void
 }
@@ -166,6 +169,7 @@ export function MapMenu({ label, value, active = false, groups, onOpen, icon }: 
                 >
                   <span className="min-w-0 flex-1 truncate">{item.label}</span>
                   {item.hint && <span className="shrink-0 text-[12px] text-gray-400 tabular-nums">{item.hint}</span>}
+                  {item.shortcut && <Kbd>{item.shortcut}</Kbd>}
                   <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className={`size-3.5 shrink-0 text-brand ${item.checked ? '' : 'invisible'}`} aria-hidden="true">
                     <path d="M3.5 8.5l3 3 6-7" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>

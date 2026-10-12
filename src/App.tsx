@@ -7,6 +7,7 @@ import { AppNudge } from './components/AppNudge'
 import { Hero } from './components/Hero'
 import { LeaveDialog } from './components/LeaveDialog'
 import { LoginNudge } from './components/LoginNudge'
+import { ShortcutHelp } from './components/Shortcuts'
 import { Toast } from './components/Toast'
 import { useAnalysis } from './hooks/useAnalysis'
 import { initAnalytics, repoLabel, track, trackPageView } from './lib/analytics'
@@ -14,6 +15,7 @@ import { fetchChat, fetchConfig, shareChat } from './lib/api'
 import { isApp, isMac, MAC_DOWNLOAD_OPEN } from './lib/app'
 import './lib/theme'
 import { claimChats, loadMe, useAuth } from './lib/auth'
+import { onShortcutHelp, useShortcuts } from './lib/shortcuts'
 import { showToast } from './lib/toast'
 
 const CHAT_PATH = /^\/c\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i
@@ -478,6 +480,22 @@ export default function App() {
   }, [chat])
 
   // 앱에서는 로그인부터 해요. 로그인하지 않았으면 다른 화면 대신 로그인 화면만 보여줘요.
+  const [helpOpen, setHelpOpen] = useState(false)
+  useEffect(() => onShortcutHelp(() => setHelpOpen(true)), [])
+  // 앱의 로그인 화면에서는 단축키를 받지 않아요.
+  useShortcuts(
+    {
+      'Shift+Slash': () => setHelpOpen(true),
+      'Key:?': () => setHelpOpen(true),
+      KeyN: handleHome,
+      KeyA: () => leaveFor('articles'),
+      Slash: () => document.querySelector<HTMLInputElement>('input[aria-label="GitHub 레포 링크"]')?.focus(),
+      KeyD: isApp && deep ? () => openDeep(null) : undefined,
+      KeyB: isApp ? () => toggleSidebar(!sidebarOpen) : undefined,
+    },
+    !(isApp && tokens === null) && !appLogin,
+  )
+
   if (isApp && tokens === null) {
     return (
       <Suspense fallback={<div data-app-drag className="h-dvh bg-white" />}>
@@ -574,6 +592,7 @@ export default function App() {
       {confirmingLeave && (
         <LeaveDialog home={leaveTo === 'home'} onStay={handleStay} onLeave={handleLeave} onLogin={storage && tokens === null && !account ? handleLeaveLogin : undefined} />
       )}
+      {helpOpen && <ShortcutHelp onClose={() => setHelpOpen(false)} />}
       <Toast />
     </div>
   )
