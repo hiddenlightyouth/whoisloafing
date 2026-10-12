@@ -521,7 +521,11 @@ export function StructureMap({ name, repo, root }: Props) {
       const [x, y] = toMap(event)
       if (!marquee && Math.hypot(x - corner[0], y - corner[1]) * view.k < DRAG_PX) return
       if (!marquee) event.currentTarget.setPointerCapture(event.pointerId)
-      setMarquee({ x: Math.min(corner[0], x), y: Math.min(corner[1], y), w: Math.abs(x - corner[0]), h: Math.abs(y - corner[1]) })
+      const box = { x: Math.min(corner[0], x), y: Math.min(corner[1], y), w: Math.abs(x - corner[0]), h: Math.abs(y - corner[1]) }
+      setMarquee(box)
+      // 끄는 동안에도 네모에 조금이라도 걸친 칸을 바로바로 골라서, 무엇이 골라지는지 보이게 해요.
+      const inside = placed.filter((item) => item.x < box.x + box.w && item.x + NODE_W > box.x && item.y < box.y + box.h && item.y + nodeH > box.y)
+      setPicked(new Set(inside.map((item) => item.node.path)))
       return
     }
     const held = nodeDrag.current
@@ -610,9 +614,7 @@ export function StructureMap({ name, repo, root }: Props) {
         if (marqueeStart.current) {
           marqueeStart.current = null
           if (marquee) {
-            // 네모에 조금이라도 걸친 칸을 모두 골라요.
-            const inside = placed.filter((item) => item.x < marquee.x + marquee.w && item.x + NODE_W > marquee.x && item.y < marquee.y + marquee.h && item.y + nodeH > marquee.y)
-            setPicked(new Set(inside.map((item) => item.node.path)))
+            // 고른 칸은 끄는 동안 이미 정해졌어요. 네모만 치워요.
             setMarquee(null)
             suppressClick.current = true
             window.setTimeout(() => (suppressClick.current = false), 0)
