@@ -68,6 +68,8 @@ export interface WorkflowJob {
   name: string
   runsOn?: string
   steps: { name: string; detail?: string }[]
+  /** 원문에서 이 작업이 시작되는 줄 (1부터) */
+  line?: number
 }
 
 /** GitHub Actions 워크플로 하나. stages는 먼저 도는 순서대로 묶은 작업들이에요. */

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import type { FolderPerson, StructureNode } from '../../shared/types'
 import { track } from '../lib/analytics'
 import { fetchDeepReport } from '../lib/api'
-import { MapMenu } from './DeepParts'
+import { MapMenu, tag } from './DeepParts'
 
 interface Props {
   /** 맵 한가운데서 가지가 뻗어 나가는 뿌리 칸에 적을 이름 (레포 이름) */
@@ -408,7 +408,7 @@ export function StructureMap({ name, repo, root }: Props) {
       {focus && (
         <aside
           onPointerDown={(event) => event.stopPropagation()}
-          className="absolute bottom-3 left-3 w-64 cursor-default rounded-xl border border-gray-200 bg-white p-3.5 select-text"
+          className="absolute bottom-4 left-4 w-72 cursor-default rounded-xl border border-gray-200 bg-white p-4 select-text"
         >
           <p className="font-mono text-[12.5px] font-semibold tracking-normal break-all text-gray-900">{focus.node.path}</p>
           {focus.node.role && <p className="mt-1 text-[12.5px] leading-snug text-gray-600">{focus.node.role}</p>}
@@ -421,9 +421,9 @@ export function StructureMap({ name, repo, root }: Props) {
             </p>
           )}
           {focus.node.samples && (
-            <div className="mt-2.5 flex flex-wrap gap-1">
+            <div className="mt-3 flex flex-wrap gap-1.5">
               {focus.node.samples.map((file) => (
-                <span key={file} className="max-w-full truncate rounded-md bg-gray-100 px-1.5 py-0.5 font-mono text-[11.5px] tracking-normal text-gray-600">
+                <span key={file} className={`${tag} font-mono tracking-normal`}>
                   {file}
                 </span>
               ))}
@@ -432,7 +432,7 @@ export function StructureMap({ name, repo, root }: Props) {
         </aside>
       )}
 
-      <div onPointerDown={(event) => event.stopPropagation()} className="absolute top-3 left-3 flex cursor-default items-center gap-1.5">
+      <div onPointerDown={(event) => event.stopPropagation()} className="absolute top-4 left-4 flex cursor-default items-center gap-2">
         <MapMenu
           label="보기"
           groups={[
@@ -454,15 +454,8 @@ export function StructureMap({ name, repo, root }: Props) {
           onOpen={() => void loadPeople()}
           groups={[
             {
-              title: '고친 폴더에 색 입히기',
-              note:
-                people === null || people === 'loading'
-                  ? '커밋을 하나씩 읽고 있어요. 처음에는 조금 걸려요.'
-                  : !Array.isArray(people)
-                    ? people.error
-                    : people.length === 0
-                      ? '살펴볼 커밋이 없어요.'
-                      : undefined,
+              loading: people === null || people === 'loading',
+              note: people !== null && people !== 'loading' && !Array.isArray(people) ? people.error : Array.isArray(people) && people.length === 0 ? '살펴볼 커밋이 없어요.' : undefined,
               items: Array.isArray(people)
                 ? [
                     { label: '전체', checked: person === null, onSelect: () => pickPerson(null) },
@@ -479,19 +472,19 @@ export function StructureMap({ name, repo, root }: Props) {
         />
       </div>
 
-      <div onPointerDown={(event) => event.stopPropagation()} className="absolute right-3 bottom-3 flex cursor-default items-center gap-0.5 rounded-lg border border-gray-200 bg-white p-0.5">
+      <div onPointerDown={(event) => event.stopPropagation()} className="absolute right-4 bottom-4 flex cursor-default items-center gap-0.5 rounded-lg border border-gray-200 bg-white p-1">
         <button type="button" aria-label="작게" onClick={() => zoomBy(1 / 1.25)} className={control}>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
             <path d="M3.5 8h9" />
           </svg>
         </button>
-        <span className="w-10 text-center text-[11.5px] text-gray-500 tabular-nums">{Math.round(view.k * 100)}%</span>
+        <span className="w-11 text-center text-[12.5px] text-gray-500 tabular-nums">{Math.round(view.k * 100)}%</span>
         <button type="button" aria-label="크게" onClick={() => zoomBy(1.25)} className={control}>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
             <path d="M3.5 8h9M8 3.5v9" />
           </svg>
         </button>
-        <button type="button" onClick={() => fit()} className="h-7 rounded-md px-2 text-[12px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900">
+        <button type="button" onClick={() => fit()} className="h-8 rounded-md px-2.5 text-[13px] font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900">
           한눈에 보기
         </button>
       </div>
@@ -499,4 +492,4 @@ export function StructureMap({ name, repo, root }: Props) {
   )
 }
 
-const control = 'flex size-7 items-center justify-center rounded-md text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900'
+const control = 'flex size-8 items-center justify-center rounded-md text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900'

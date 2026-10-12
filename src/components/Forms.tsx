@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { FormField, FormTemplate, RepoLabel } from '../../shared/types'
-import { Source } from './DeepParts'
+import { Source, tag } from './DeepParts'
 
 interface Props {
   kind: 'issue' | 'pull'
@@ -25,8 +25,8 @@ export function Forms({ kind, template, labels = [], large }: Props) {
         <div className={large ? 'lg:grid lg:grid-cols-2 lg:items-start lg:gap-4' : ''}>
           <Preview template={template} kind={kind} labels={labels} scroll={!large} />
           {large ? (
-            <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 lg:mt-0">
-              <Source path={template.path} content={template.content} kind={kind} tall />
+            <div className="mt-4 rounded-xl border border-gray-200 bg-white p-5 lg:mt-0">
+              <Source path={template.path} content={template.content} kind={kind} />
             </div>
           ) : (
             <p className="mt-2 font-mono text-[12px] tracking-normal break-all text-gray-400">{template.path}</p>
@@ -35,7 +35,7 @@ export function Forms({ kind, template, labels = [], large }: Props) {
       )}
 
       {labels.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
           <Labels labels={labels} large={large} />
         </div>
       )}
@@ -47,11 +47,11 @@ function Preview({ template, kind, labels, scroll }: { template: FormTemplate; k
   const colorOf = (name: string) => labels.find((label) => label.name === name)?.color ?? ''
 
   return (
-    <div className={`rounded-xl border border-gray-200 bg-white px-4 pt-3.5 pb-4 ${scroll ? 'max-h-96 overflow-y-auto' : ''}`}>
-      <p className="text-[14px] font-semibold text-gray-900">{template.name}</p>
-      {template.about && <p className="mt-0.5 text-[12.5px] leading-snug text-gray-500">{template.about}</p>}
+    <div className={`rounded-xl border border-gray-200 bg-white p-5 ${scroll ? 'max-h-96 overflow-y-auto' : ''}`}>
+      <p className="text-[15.5px] font-semibold text-gray-900">{template.name}</p>
+      {template.about && <p className="mt-1 text-[13px] leading-snug text-gray-500">{template.about}</p>}
 
-      <div className="mt-3 space-y-3.5">
+      <div className="mt-5 space-y-5">
         {template.title && (
           <Field label="제목">
             <Box>{template.title}</Box>
@@ -68,10 +68,10 @@ function Preview({ template, kind, labels, scroll }: { template: FormTemplate; k
       </div>
 
       {(template.labels.length > 0 || template.assignees.length > 0) && (
-        <dl className="mt-4 space-y-2 border-t border-gray-100 pt-3">
+        <dl className="mt-6 space-y-3 border-t border-gray-100 pt-4">
           {template.labels.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <dt className="mr-0.5 text-[12px] text-gray-500">자동으로 붙는 라벨</dt>
+            <div className="flex flex-wrap items-center gap-2">
+              <dt className="mr-1 text-[13px] text-gray-500">자동으로 붙는 라벨</dt>
               {template.labels.map((name) => (
                 <dd key={name}>
                   <LabelChip name={name} color={colorOf(name)} />
@@ -80,10 +80,10 @@ function Preview({ template, kind, labels, scroll }: { template: FormTemplate; k
             </div>
           )}
           {template.assignees.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <dt className="mr-0.5 text-[12px] text-gray-500">자동으로 정해지는 담당자</dt>
+            <div className="flex flex-wrap items-center gap-2">
+              <dt className="mr-1 text-[13px] text-gray-500">자동으로 정해지는 담당자</dt>
               {template.assignees.map((name) => (
-                <dd key={name} className="rounded-full bg-gray-100 px-2.5 py-1 text-[12px] leading-none text-gray-700">
+                <dd key={name} className={tag}>
                   {name}
                 </dd>
               ))}
@@ -103,10 +103,10 @@ function FieldView({ field }: { field: FormField }) {
   if (field.kind === 'checkboxes') {
     return (
       <Field label={field.label} hint={field.hint}>
-        <ul className="space-y-1.5">
+        <ul className="space-y-2">
           {(field.options ?? []).map((option, item) => (
-            <li key={`${item}:${option}`} className="flex gap-2 text-[13px] leading-snug text-gray-700">
-              <span className="mt-[2px] size-3.5 shrink-0 rounded-[4px] border border-gray-300" aria-hidden="true" />
+            <li key={`${item}:${option}`} className="flex gap-2.5 text-[13.5px] leading-snug text-gray-700">
+              <span className="mt-[1px] size-4 shrink-0 rounded-[5px] border border-gray-300" aria-hidden="true" />
               <span className="min-w-0">{option}</span>
             </li>
           ))}
@@ -120,7 +120,7 @@ function FieldView({ field }: { field: FormField }) {
       <Field label={field.label} hint={field.hint} required={field.required}>
         <div className="flex flex-wrap gap-1.5">
           {(field.options ?? []).map((option, item) => (
-            <span key={`${item}:${option}`} className="rounded-md border border-gray-200 px-2 py-1 text-[12.5px] leading-none text-gray-700">
+            <span key={`${item}:${option}`} className={tag}>
               {option}
             </span>
           ))}
@@ -141,12 +141,12 @@ function FieldView({ field }: { field: FormField }) {
 function Field({ label, hint, required, children }: { label: string; hint?: string; required?: boolean; children: ReactNode }) {
   return (
     <div>
-      <p className="text-[13px] font-medium text-gray-900">
+      <p className="text-[13.5px] font-medium text-gray-900">
         {label}
-        {required && <span className="ml-1.5 text-[11px] font-semibold text-brand">필수</span>}
+        {required && <span className="ml-2 text-[12px] font-medium text-brand">필수</span>}
       </p>
-      {hint && <p className="mt-0.5 text-[12px] leading-snug text-gray-500">{hint}</p>}
-      <div className="mt-1.5">{children}</div>
+      {hint && <p className="mt-1 text-[12.5px] leading-snug text-gray-500">{hint}</p>}
+      <div className="mt-2">{children}</div>
     </div>
   )
 }
@@ -155,7 +155,7 @@ function Field({ label, hint, required, children }: { label: string; hint?: stri
 function Box({ children, tall = false, muted = false }: { children: ReactNode; tall?: boolean; muted?: boolean }) {
   return (
     <div
-      className={`rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-[12.5px] leading-snug ${tall ? 'min-h-14' : 'min-h-8'} ${
+      className={`rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-[13px] leading-snug ${tall ? 'min-h-20' : 'min-h-10'} ${
         muted ? 'text-gray-400' : 'text-gray-700'
       }`}
     >
@@ -170,16 +170,16 @@ function Labels({ labels, large }: { labels: RepoLabel[]; large: boolean }) {
 
   return (
     <div>
-      <p className="mb-2 text-[12px] font-medium text-gray-500">라벨, 숫자는 최근 이슈에서 쓰인 횟수예요</p>
+      <p className="mb-3 text-[13px] font-medium text-gray-500">라벨</p>
       {large ? (
         <ul className="divide-y divide-gray-100">
           {shown.map((label) => (
-            <li key={label.name} className="flex items-center gap-3 py-2">
+            <li key={label.name} className="flex items-center gap-3 py-2.5">
               <span className="shrink-0">
                 <LabelChip name={label.name} color={label.color} />
               </span>
-              <span className="min-w-0 flex-1 truncate text-[12.5px] text-gray-500">{label.description ?? ''}</span>
-              <span className="shrink-0 text-[12px] text-gray-700 tabular-nums">{label.count.toLocaleString('ko-KR')}번</span>
+              <span className="min-w-0 flex-1 truncate text-[13px] text-gray-500">{label.description ?? ''}</span>
+              <span className="shrink-0 text-[12.5px] text-gray-500 tabular-nums">이슈 {label.count.toLocaleString('ko-KR')}개</span>
             </li>
           ))}
         </ul>
@@ -198,7 +198,7 @@ function Labels({ labels, large }: { labels: RepoLabel[]; large: boolean }) {
 /** 라벨 색은 GitHub에 등록된 값을 그대로 써요. 테마와 상관없는 자료라 토큰 색을 쓰지 않아요. */
 function LabelChip({ name, color, count }: { name: string; color: string; count?: number }) {
   return (
-    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-gray-200 px-2.5 py-1 text-[12px] leading-none text-gray-700">
+    <span className={tag}>
       <span
         className="size-2 shrink-0 rounded-full bg-gray-300"
         style={/^[0-9a-f]{6}$/i.test(color) ? { backgroundColor: `#${color}` } : undefined}

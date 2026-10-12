@@ -32,7 +32,7 @@ const SECTION_LABELS: Record<DeepSection, string> = {
 
 type Loaded = 'loading' | { report: DeepReport } | { error: string }
 
-const SAVED_PREFIX = 'whoisloafing:deep:v2:'
+const SAVED_PREFIX = 'whoisloafing:deep:v3:'
 
 /** 분석한 결과는 이 기기에 저장해 둬요. 다음에 열면 분석하기를 다시 누르지 않아도 바로 보여요. */
 function readSaved(repo: string): Partial<Record<DeepSection, Loaded>> {
@@ -244,12 +244,12 @@ function Dashboard({ repo, onOpen, onOpenChat }: { repo: string; onOpen: (repo: 
             <h1 className="truncate text-[20px] leading-tight font-semibold text-gray-900">{name}</h1>
           </div>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <a
             href={`https://github.com/${repo}`}
             target="_blank"
             rel="noreferrer"
-            className="flex h-8 items-center rounded-full px-3 text-[12.5px] font-medium text-gray-600 transition-colors hover:text-gray-900"
+            className={toolButton}
           >
             GitHub에서 보기
           </a>
@@ -260,7 +260,7 @@ function Dashboard({ repo, onOpen, onOpenChat }: { repo: string; onOpen: (repo: 
                 track('deep_chat_open', { repo })
                 onOpenChat(chatId)
               }}
-              className="h-8 rounded-full bg-gray-100 px-3.5 text-[12.5px] font-medium text-gray-700 transition-colors hover:text-brand"
+              className={toolButton}
             >
               채팅으로 이동
             </button>
@@ -291,7 +291,7 @@ function Dashboard({ repo, onOpen, onOpenChat }: { repo: string; onOpen: (repo: 
           <button
             type="button"
             onClick={() => void analyze(section, true)}
-            className="mb-1.5 ml-auto h-7 self-end rounded-full px-3 text-[12px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+            className="mb-1.5 ml-auto h-8 self-end rounded-lg px-3 text-[13px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
           >
             다시 분석하기
           </button>
@@ -360,9 +360,9 @@ function Report({ report, name }: { report: DeepReport; name: string }) {
           </p>
         </div>
       ) : (
-        <div className="h-full overflow-auto px-3 pt-14 pb-3">
+        <div className="h-full overflow-auto px-4 pt-16 pb-4">
           {report.section === 'pipeline' ? (
-            <Pipeline workflow={workflows[picked]} large />
+            <Pipeline workflow={workflows[picked]} />
           ) : (
             <Forms kind={report.section === 'issues' ? 'issue' : 'pull'} template={templates[picked]} labels={labels} large />
           )}
@@ -370,7 +370,7 @@ function Report({ report, name }: { report: DeepReport; name: string }) {
       )}
 
       {!empty && (
-        <div className="absolute top-3 left-3 flex items-center gap-1.5">
+        <div className="absolute inset-x-0 top-0 flex h-16 items-center gap-2 bg-gray-50 px-4">
           {choices.length > 1 && (
             <MapMenu
               label={report.section === 'pipeline' ? '워크플로' : '템플릿'}
@@ -378,9 +378,11 @@ function Report({ report, name }: { report: DeepReport; name: string }) {
               groups={[{ items: choices.map((choice, item) => ({ label: choice, checked: item === picked, onSelect: () => setIndex(item) })) }]}
             />
           )}
-          <button type="button" aria-pressed={summary} onClick={() => setSummary((value) => !value)} className={`${toolButton} ${summary ? 'border-brand text-brand-hover' : ''}`}>
-            요약
-          </button>
+          {report.section !== 'pipeline' && (
+            <button type="button" aria-pressed={summary} onClick={() => setSummary((value) => !value)} className={`${toolButton} ${summary ? 'border-brand text-brand-hover' : ''}`}>
+              요약
+            </button>
+          )}
         </div>
       )}
 
