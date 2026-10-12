@@ -1,4 +1,4 @@
-// 빌드한 프론트엔드(dist)에 아티클 화면을 페이지별 HTML 파일로 추가하고, 사이트맵을 만들어요.
+// 빌드한 프론트엔드(dist)에 소개 화면과 아티클 화면을 페이지별 HTML 파일로 추가하고, 사이트맵을 만들어요.
 // npm run build의 마지막 단계에서 실행돼요.
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -29,7 +29,7 @@ for (const page of pages) {
   html = replaceOnce(html, /<title>[^<]*<\/title>/, `<title>${title}</title>`)
   html = replaceOnce(html, /(<meta name="description" content=")[^"]*"/, `$1${description}"`)
   html = replaceOnce(html, /(<link rel="canonical" href=")[^"]*"/, `$1${url}"`)
-  html = replaceOnce(html, /(<meta property="og:type" content=")[^"]*"/, `$1${page.path === '/articles' ? 'website' : 'article'}"`)
+  html = replaceOnce(html, /(<meta property="og:type" content=")[^"]*"/, `$1${page.path.startsWith('/articles/') ? 'article' : 'website'}"`)
   html = replaceOnce(html, /(<meta property="og:title" content=")[^"]*"/, `$1${title}"`)
   html = replaceOnce(html, /(<meta property="og:description" content=")[^"]*"/, `$1${description}"`)
   html = replaceOnce(html, /(<meta property="og:url" content=")[^"]*"/, `$1${url}"`)
@@ -49,4 +49,4 @@ await writeFile(
 )
 
 await rm(ssrDir, { recursive: true, force: true })
-console.log(`아티클 화면 ${pages.length}개와 사이트맵을 만들었어요.`)
+console.log(`소개와 아티클 화면 ${pages.length}개와 사이트맵을 만들었어요.`)

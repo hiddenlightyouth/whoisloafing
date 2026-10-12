@@ -19,6 +19,8 @@ interface Props {
   onCopyLink: () => Promise<boolean>
   /** 로그인하지 않은 채로 공유하려고 할 때 로그인 화면으로 보내요. 로그인하면 이 채팅으로 돌아와요. */
   onLoginToShare: () => void
+  /** 소개 화면으로 가요. */
+  onAbout: () => void
   /** 아티클 화면으로 가요. 넘기지 않으면 링크가 보이지 않아요. */
   onArticles?: () => void
   signedIn?: boolean
@@ -41,6 +43,7 @@ export function Header({
   onStop,
   onCopyLink,
   onLoginToShare,
+  onAbout,
   onArticles,
   signedIn = false,
   onAccount,
@@ -87,6 +90,14 @@ export function Header({
       : ([['login', '로그인']] as const)
     : []
 
+  function goAbout(event: MouseEvent<HTMLAnchorElement>) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
+    event.preventDefault()
+    setMenuOpen(false)
+    setDownloadOpen(false)
+    onAbout()
+  }
+
   function goArticles(event: MouseEvent<HTMLAnchorElement>) {
     event.preventDefault()
     setMenuOpen(false)
@@ -105,12 +116,6 @@ export function Header({
     setDownloadOpen(false)
     setMenuOpen(false)
     track('app_download_click', { os: 'macos', from: 'header' })
-  }
-
-  function soon(item: string) {
-    setDownloadOpen(false)
-    track('nav_soon_click', { item })
-    window.alert('곧 찾아옵니다.')
   }
 
   return (
@@ -133,9 +138,9 @@ export function Header({
 
         <div ref={actionsRef} className="relative flex items-center gap-1 sm:gap-2">
           <nav className={app ? 'hidden' : 'hidden items-center gap-1 sm:flex sm:gap-2'}>
-            <button type="button" onClick={() => soon('intro')} className={`${quiet} text-gray-600 hover:text-gray-900`}>
+            <a href="/about" onClick={goAbout} className={`${quiet} inline-flex items-center text-gray-600 hover:text-gray-900`}>
               소개
-            </button>
+            </a>
 
             <div ref={downloadRef} className="relative">
               <button
@@ -330,9 +335,9 @@ export function Header({
           }}
         >
           <nav className="flex flex-col px-4 pt-2 pb-6">
-            <button type="button" onClick={() => soon('intro')} className={mobileItem}>
+            <a href="/about" onClick={goAbout} className={mobileItem}>
               소개
-            </button>
+            </a>
 
             <button
               type="button"

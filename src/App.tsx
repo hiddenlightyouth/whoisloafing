@@ -31,6 +31,10 @@ function articleFromPath(): { slug: string | null } | null {
   return match ? { slug: match[1] ?? null } : null
 }
 
+const ABOUT_PATH = /^\/about\/?$/
+
+const aboutFromPath = () => ABOUT_PATH.test(window.location.pathname)
+
 const ACCOUNT_PATH = /^\/(login|signup|me|history)\/?$/
 
 const accountFromPath = () => (ACCOUNT_PATH.exec(window.location.pathname)?.[1] as AccountPage | undefined) ?? null
@@ -70,6 +74,9 @@ const Deep = lazy(() => import('./components/Deep').then((module) => ({ default:
 const Admin = lazy(() => import('./components/Admin').then((module) => ({ default: module.Admin })))
 
 const Account = lazy(() => import('./components/Account').then((module) => ({ default: module.Account })))
+
+// 소개 화면은 헤더의 소개 링크로 들어올 때만 받아요.
+const About = lazy(() => import('./components/About').then((module) => ({ default: module.About })))
 
 // 아티클 글과 마크다운 변환 코드는 아티클 화면을 열 때만 받아요.
 const Articles = lazy(() => import('./components/Articles').then((module) => ({ default: module.Articles })))
@@ -117,7 +124,7 @@ async function copyLink(): Promise<boolean> {
 }
 
 /** 헤더에서 갈 수 있는 곳. 아티클은 목록으로 가요. */
-type LeaveTarget = 'home' | 'articles' | AccountPage
+type LeaveTarget = 'home' | 'about' | 'articles' | AccountPage
 
 export default function App() {
   const { messages, busy, paused, send, resume, stop, abandon, reset, load, settle, chatId } = useAnalysis()
@@ -142,6 +149,8 @@ export default function App() {
   /** 아티클 화면을 보고 있는지. slug가 null이면 목록이에요. */
   const [article, setArticle] = useState(articleFromPath)
   const [account, setAccount] = useState(accountFromPath)
+  /** 소개 화면을 보고 있는지 */
+  const [about, setAbout] = useState(aboutFromPath)
   /** 앱이 브라우저로 열어 준 앱 로그인 화면(/app-login)을 보고 있는지 */
   const [appLogin, setAppLogin] = useState(appLoginFromPath)
   /** 앱의 사이드바를 펴 뒀는지. 다음에 켰을 때도 그대로 둬요. */
@@ -164,6 +173,15 @@ export default function App() {
     setMissing(false)
     setArticle(nextArticle)
     setAccount(nextAccount)
+    const nextAbout = aboutFromPath()
+    setAbout(nextAbout)
+    if (nextAbout) {
+      reset()
+      setChat(null)
+      setOpening(false)
+      trackPageView('about')
+      return
+    }
     const nextAppLogin = appLoginFromPath()
     setAppLogin(nextAppLogin)
     if (nextAppLogin) {
@@ -290,6 +308,7 @@ export default function App() {
     setMissing(false)
     setArticle(null)
     setAccount(null)
+    setAbout(false)
     setAppLogin(false)
     setDeepPage(null)
     setAdminPage(null)
@@ -308,12 +327,20 @@ export default function App() {
       setAppLogin(false)
       setDeepPage(null)
       setAdminPage(null)
+      setAbout(false)
       setArticle({ slug })
       window.history.pushState(null, '', slug ? `/articles/${slug}` : '/articles')
       trackPageView(slug ? 'article' : 'articles', { slug: slug ?? undefined })
     },
     [reset],
   )
+
+  const openAbout = useCallback(() => {
+    if (!reset()) return
+    loginReturn.current = null
+    window.history.pushState(null, '', '/about')
+    void openFromLocation()
+  }, [openFromLocation, reset])
 
   const openAccount = useCallback(
     (page: AccountPage, replace = false) => {
@@ -329,6 +356,7 @@ export default function App() {
       setAppLogin(false)
       setDeepPage(null)
       setAdminPage(null)
+      setAbout(false)
       setAccount(page)
       if (replace) window.history.replaceState(null, '', `/${page}`)
       else window.history.pushState(null, '', `/${page}`)
@@ -444,10 +472,11 @@ export default function App() {
   const go = useCallback(
     (target: LeaveTarget) => {
       if (target === 'home') goHome()
+      else if (target === 'about') openAbout()
       else if (target === 'articles') openArticle(null)
       else openAccount(target)
     },
-    [goHome, openAccount, openArticle],
+    [goHome, openAbout, openAccount, openArticle],
   )
 
   // 헤더의 링크는 어느 화면에서나 똑같이 보여주고, 잃어버릴 작업이 있을 때만 떠나기 전에 물어봐요.
@@ -553,7 +582,7 @@ export default function App() {
       <Header
         app={isApp}
         onHome={handleHome}
-        home={messages.length === 0 && !article && !account && !appLogin && !deepPage && !adminPage && !opening && !missing}
+        home={messages.length === 0 && !article && !account && !about && !appLogin && !deepPage && !adminPage && !opening && !missing}
         inChat={messages.length > 0 && !readOnly && !account}
         storage={storage}
         busy={busy}
@@ -562,6 +591,11 @@ export default function App() {
         onShare={handleShare}
         onCopyLink={handleCopyLink}
         onLoginToShare={handleLoginToShare}
+        onAbout={() => {
+          if (about) return
+          track('about_nav_click', { from: account ?? (article ? 'articles' : messages.length > 0 ? 'chat' : 'home') })
+          leaveFor('about')
+        }}
         onArticles={() => {
           track('article_nav_click', { from: account ?? (article ? 'articles' : messages.length > 0 ? 'chat' : 'home') })
           leaveFor('articles')
@@ -585,6 +619,10 @@ export default function App() {
       ) : adminPage ? (
         <Suspense fallback={<main className="flex-1" />}>
           <Admin tab={adminPage} onTab={openAdmin} full={adminApi} onOpenChat={openChat} />
+        </Suspense>
+      ) : about ? (
+        <Suspense fallback={<main className="flex-1" />}>
+          <About onHome={goHome} onArticles={() => openArticle(null)} />
         </Suspense>
       ) : article ? (
         <Suspense fallback={<main className="flex-1" />}>
