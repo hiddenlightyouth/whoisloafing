@@ -306,7 +306,42 @@ export function StructureMap({ name, repo, root }: Props) {
   /** 펜이나 도형으로 맵 위에 그린 그림. 저장하지 않고, 이 화면에 있는 동안만 남아요. */
   const [shapes, setShapes] = useState<Shape[]>([])
   const [tool, setTool] = useState<Tool>('select')
-  const drawingTool = DRAW_TOOLS.includes(tool)
+  /** 스페이스바를 누르고 있는 동안에는 어떤 도구를 골랐든 잠깐 손 도구가 돼요. 떼면 고른 도구로 돌아와요. */
+  const [spaceHeld, setSpaceHeld] = useState(false)
+  const using: Tool = spaceHeld ? 'hand' : tool
+  const drawingTool = DRAW_TOOLS.includes(using)
+
+  useEffect(() => {
+    // 맵 안이나 아무것도 고르지 않은 곳에서 누른 스페이스바만 받아요. 글자를 입력하는 중이나 확인 창이 떠 있을 때는 받지 않아요.
+    const ours = (event: KeyboardEvent) => {
+      if (event.code !== 'Space' || event.metaKey || event.ctrlKey || event.altKey) return false
+      if (document.querySelector('[aria-modal="true"]')) return false
+      const target = event.target
+      if (!(target instanceof Element)) return true
+      if (target.closest('input, textarea, select, [contenteditable="true"]')) return false
+      return target === document.body || frameRef.current?.contains(target) === true
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!ours(event)) return
+      // 화면이 밀리거나, 방금 누른 버튼이 다시 눌리지 않게 막아요.
+      event.preventDefault()
+      if (!event.repeat) setSpaceHeld(true)
+    }
+    const onKeyUp = (event: KeyboardEvent) => {
+      if (event.code !== 'Space') return
+      if (ours(event)) event.preventDefault()
+      setSpaceHeld(false)
+    }
+    const release = () => setSpaceHeld(false)
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', release)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', release)
+    }
+  }, [])
   /** 빈 곳을 끌어서 한꺼번에 고른 칸들. 그중 하나를 끌면 같이 움직여요. */
   const [picked, setPicked] = useState<Set<string>>(() => new Set())
   /** 끌어서 고르는 동안 보이는 네모. 맵 기준 좌표예요. */
@@ -490,15 +525,15 @@ export function StructureMap({ name, repo, root }: Props) {
   function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.button !== 0) return
     // 선택 도구로 빈 곳을 끌면 네모가 그려지고, 그 안에 든 칸들이 한꺼번에 골라져요.
-    if (tool === 'select') {
+    if (using === 'select') {
       marqueeStart.current = toMap(event)
       return
     }
     // 펜이나 도형을 고른 동안에는 맵을 미는 대신 그림을 그려요.
-    if (tool === 'pen' || tool === 'rect' || tool === 'ellipse') {
+    if (using === 'pen' || using === 'rect' || using === 'ellipse') {
       const [x, y] = toMap(event)
       drawStart.current = [x, y]
-      setDrawing(tool === 'pen' ? { kind: 'pen', points: [[x, y]] } : { kind: tool, x, y, w: 0, h: 0 })
+      setDrawing(using === 'pen' ? { kind: 'pen', points: [[x, y]] } : { kind: using, x, y, w: 0, h: 0 })
       event.currentTarget.setPointerCapture(event.pointerId)
       return
     }
@@ -664,7 +699,7 @@ export function StructureMap({ name, repo, root }: Props) {
         }
       }}
       className="relative h-full touch-none overflow-hidden bg-gray-50 select-none"
-      style={{ cursor: tool === 'hand' ? 'grab' : drawingTool ? 'crosshair' : 'default' }}
+      style={{ cursor: using === 'hand' ? 'grab' : drawingTool ? 'crosshair' : 'default' }}
     >
       <div className="absolute top-0 left-0 origin-top-left" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})`, width, height }}>
         <svg width={width} height={height} className="absolute top-0 left-0 overflow-visible text-gray-300" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
@@ -708,7 +743,7 @@ export function StructureMap({ name, repo, root }: Props) {
               onPointerDown={(event) => {
                 // 칸을 누른 채로 끌면 맵 대신 이 칸이 움직여요. 뿌리 칸을 끌면 맵 전체가 따라와요.
                 // 손 도구로는 칸 위에서도 맵이 움직이고, 펜이나 도형을 고른 동안에는 칸 위에서도 그림을 그려요.
-                if (event.button !== 0 || tool !== 'select') return
+                if (event.button !== 0 || using !== 'select') return
                 event.stopPropagation()
                 // 여러 칸을 골라 둔 상태에서 그중 하나를 끌면 같이 움직여요. 위 폴더가 같이 골라져 있으면 아래 가지는 따라가니 따로 옮기지 않아요.
                 const group = picked.has(node.path) ? [...picked].filter((path) => ![...picked].some((other) => other !== path && (other === '' || path.startsWith(`${other}/`)))) : [node.path]
@@ -869,13 +904,13 @@ export function StructureMap({ name, repo, root }: Props) {
         </button>
         <span aria-hidden className="mx-1 h-5 w-px bg-gray-200" />
         {/* 선택 도구는 칸을 누르고 옮기고, 빈 곳을 끌어서 여러 칸을 골라요. 손 도구는 어디를 끌어도 맵이 움직여요. */}
-        <button type="button" aria-label="선택" aria-pressed={tool === 'select'} onClick={() => pickTool('select')} className={`${control} ${tool === 'select' ? chosen : ''}`}>
+        <button type="button" aria-label="선택" aria-pressed={using === 'select'} onClick={() => pickTool('select')} className={`${control} ${using === 'select' ? chosen : ''}`}>
           <Tip text="선택" keys="V" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
             <path d="M3.5 2.5l9 4.2-3.8 1.2-1.3 3.8z" />
           </svg>
         </button>
-        <button type="button" aria-label="손" aria-pressed={tool === 'hand'} onClick={() => pickTool('hand')} className={`${control} ${tool === 'hand' ? chosen : ''}`}>
+        <button type="button" aria-label="손" aria-pressed={using === 'hand'} onClick={() => pickTool('hand')} className={`${control} ${using === 'hand' ? chosen : ''}`}>
           <Tip text="손" keys="H" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden="true">
             <path d="M5.5 8V3.8a1 1 0 0 1 2 0V7M7.5 7V2.8a1 1 0 0 1 2 0V7M9.5 7V3.8a1 1 0 0 1 2 0M5.5 8.5L4.3 7.3a1 1 0 0 0-1.5 1.3l2.400 3.600a3.500 3.500 0 0 0 2.900 1.500h.9a3.500 3.500 0 0 0 3.500-3.500V4.800" />
