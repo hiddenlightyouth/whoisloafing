@@ -97,6 +97,12 @@ export function Header({
     onAccount?.(page)
   }
 
+  function download() {
+    setDownloadOpen(false)
+    setMenuOpen(false)
+    track('app_download_click', { os: 'macos' })
+  }
+
   function soon(item: string) {
     setDownloadOpen(false)
     track('nav_soon_click', { item })
@@ -141,19 +147,29 @@ export function Header({
               {downloadOpen && (
                 <div
                   role="menu"
-                  className="absolute top-full left-1/2 mt-2 w-36 -translate-x-1/2 animate-rise rounded-2xl border border-gray-200 bg-white/80 p-1.5 backdrop-blur-xl"
+                  className="absolute top-full left-1/2 mt-2 w-52 -translate-x-1/2 animate-rise rounded-2xl border border-gray-200 bg-white/80 p-1.5 backdrop-blur-xl"
                 >
-                  {DOWNLOADS.map(([os, label]) => (
-                    <button
-                      key={os}
-                      type="button"
-                      role="menuitem"
-                      onClick={() => soon(os)}
-                      className="block w-full rounded-xl px-3 py-2 text-left text-[13px] font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                    >
-                      {label}
-                    </button>
-                  ))}
+                  <a
+                    href={MAC_DOWNLOAD}
+                    download
+                    role="menuitem"
+                    onClick={download}
+                    className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  >
+                    <AppleLogo />
+                    <span>
+                      <span className="block text-[13px] font-medium">macOS</span>
+                      <span className="block text-[11.5px] text-gray-400">{MAC_SUPPORT}</span>
+                    </span>
+                  </a>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => soon('windows')}
+                    className="block w-full rounded-xl px-3 py-2 pl-[38px] text-left text-[13px] font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                  >
+                    Windows
+                  </button>
                 </div>
               )}
             </div>
@@ -292,16 +308,20 @@ export function Header({
             </button>
             {mobileDownloadOpen && (
               <div className="animate-rise pb-2 pl-3">
-                {DOWNLOADS.map(([os, label]) => (
-                  <button
-                    key={os}
-                    type="button"
-                    onClick={() => soon(os)}
-                    className="block w-full py-2.5 text-left text-[15px] text-gray-600 transition-colors hover:text-gray-900"
-                  >
-                    {label}
-                  </button>
-                ))}
+                <a href={MAC_DOWNLOAD} download onClick={download} className="flex items-center gap-2.5 py-2.5 text-gray-600 transition-colors hover:text-gray-900">
+                  <AppleLogo />
+                  <span>
+                    <span className="block text-[15px]">macOS</span>
+                    <span className="block text-[12px] text-gray-400">{MAC_SUPPORT}</span>
+                  </span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => soon('windows')}
+                  className="block w-full py-2.5 pl-[26px] text-left text-[15px] text-gray-600 transition-colors hover:text-gray-900"
+                >
+                  Windows
+                </button>
               </div>
             )}
 
@@ -323,10 +343,17 @@ export function Header({
   )
 }
 
-const DOWNLOADS = [
-  ['macos', 'macOS'],
-  ['windows', 'Windows'],
-] as const
+/** macOS 앱 설치 파일. 앱 레포에서 만든 DMG를 `public/download`에 넣어 둬요. 새 버전도 같은 이름으로 덮어써서 주소가 바뀌지 않아요. */
+const MAC_DOWNLOAD = '/download/WhoIsLoafing.dmg'
+const MAC_SUPPORT = 'Apple Silicon 전용'
+
+function AppleLogo() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="size-4 shrink-0" aria-hidden="true">
+      <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
+    </svg>
+  )
+}
 
 const mobileItem = 'block w-full border-b border-gray-200/70 py-3.5 text-left text-[16px] font-medium text-gray-800 transition-colors hover:text-gray-950'
 
