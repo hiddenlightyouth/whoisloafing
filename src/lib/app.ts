@@ -3,7 +3,7 @@ export const isApp = typeof navigator !== 'undefined' && /WhoIsLoafingApp\//.tes
 
 /** macOS 앱 설치 파일. 앱 레포에서 만든 DMG를 `public/download`에 넣어 둬요. 새 버전도 같은 이름으로 덮어써서 주소가 바뀌지 않아요. */
 export const MAC_DOWNLOAD = '/download/WhoIsLoafing.dmg'
-export const MAC_SUPPORT = 'Apple Silicon 전용'
+export const MAC_SUPPORT = 'for Apple Silicon'
 /**
  * macOS 앱을 받을 수 있게 열어 뒀는지. 지금은 잠깐 막아 둬서, 헤더의 macOS는 준비 중으로 보이고 앱을 권하는 툴팁과 안내도 띄우지 않아요.
  * 다시 열 때는 설치 파일을 `public/download`에 넣고 이 값을 true로 바꿔요.
