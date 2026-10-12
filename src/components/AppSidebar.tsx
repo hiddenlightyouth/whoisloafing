@@ -378,7 +378,7 @@ const menuRow = 'flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-lef
 const menuIcon = 'size-4 shrink-0 text-gray-500'
 
 /**
- * 사이드바 맨 아래의 계정 버튼이에요. 누르면 위로 메뉴가 펼쳐져서 내 정보, 설정, 아티클, 관리자 화면으로 가거나 로그아웃해요.
+ * 사이드바 맨 아래의 계정 버튼이에요. 누르면 위로 메뉴가 펼쳐져서 내 정보, 아티클, 관리자 화면으로 가거나 로그아웃해요. 오른쪽에는 설정과 버그 신고 버튼이 있어요.
  * 바깥을 누르거나 Esc를 누르면 닫혀요.
  */
 function AccountMenu({ me, page, onArticles, onMe, onSettings, onAdmin }: { me: Me | null; page: Props['page']; onArticles: () => void; onMe: () => void; onSettings: () => void; onAdmin?: () => void }) {
@@ -420,15 +420,6 @@ function AccountMenu({ me, page, onArticles, onMe, onSettings, onAdmin }: { me: 
               <path d="M3 13.5c.6-2.2 2.6-3.5 5-3.5s4.4 1.3 5 3.5" strokeLinecap="round" />
             </svg>
             내 정보
-          </button>
-          <button type="button" role="menuitem" onClick={go(onSettings)} className={menuRow}>
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" className={menuIcon} aria-hidden="true">
-              <path d="M2.5 4.5h4M9.5 4.5h4M2.5 8h7M12.5 8h1M2.5 11.5h2M7.5 11.5h6" />
-              <circle cx="8" cy="4.5" r="1.5" />
-              <circle cx="11" cy="8" r="1.5" />
-              <circle cx="6" cy="11.5" r="1.5" />
-            </svg>
-            설정
           </button>
           <button type="button" role="menuitem" onClick={go(onArticles)} className={menuRow}>
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className={menuIcon} aria-hidden="true">
@@ -473,7 +464,7 @@ function AccountMenu({ me, page, onArticles, onMe, onSettings, onAdmin }: { me: 
           if (!open) track('app_menu_open')
           setOpen((value) => !value)
         }}
-        className={`flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 text-left transition-colors ${tone(open || page === 'me' || page === 'settings' || page === 'articles' || page === 'admin')}`}
+        className={`flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 text-left transition-colors ${tone(open || page === 'me' || page === 'articles' || page === 'admin')}`}
       >
         {/* 프로필 사진 대신 이름의 첫 글자를 동그라미에 넣어요. */}
         <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[13px] font-semibold text-brand-hover">
@@ -481,10 +472,25 @@ function AccountMenu({ me, page, onArticles, onMe, onSettings, onAdmin }: { me: 
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13.5px] font-semibold text-gray-900">{name}</span>
-          {me?.email && <span className="block truncate text-[11.5px] text-gray-400">{me.email}</span>}
         </span>
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-4 shrink-0 text-gray-400" aria-hidden="true">
           <path d="M5 6.5L8 3.5l3 3M5 9.5l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {/* 설정 화면으로 가는 버튼이에요. 버그 신고 버튼 왼쪽에 둬요. */}
+      <button
+        type="button"
+        aria-label="설정"
+        title="설정"
+        aria-current={page === 'settings' ? 'page' : undefined}
+        onClick={onSettings}
+        className={`flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-gray-200/50 hover:text-gray-700 ${page === 'settings' ? 'bg-gray-200/70 text-gray-900' : 'text-gray-400'}`}
+      >
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" className="size-4" aria-hidden="true">
+          <path d="M2.5 4.5h4M9.5 4.5h4M2.5 8h7M12.5 8h1M2.5 11.5h2M7.5 11.5h6" />
+          <circle cx="8" cy="4.5" r="1.5" />
+          <circle cx="11" cy="8" r="1.5" />
+          <circle cx="6" cy="11.5" r="1.5" />
         </svg>
       </button>
       {/* 사이드바 오른쪽 아래의 버그 신고 버튼이에요. 서버가 신고를 받을 때만 보여줘요. */}
