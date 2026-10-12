@@ -157,6 +157,18 @@ function writeMoves(repo: string, direction: Direction, moves: Moves) {
   }
 }
 
+/** 맵 위에 그린 그림 하나. 좌표는 맵 기준이라, 맵을 옮기거나 키우면 같이 따라가요. 저장하지 않아서 화면을 떠나면 사라져요. */
+type Shape = { kind: 'pen'; points: [number, number][] } | { kind: 'rect' | 'ellipse'; x: number; y: number; w: number; h: number }
+
+/** 지금 고른 도구. move는 칸을 옮기고 맵을 미는 평소 상태예요. */
+type Tool = 'move' | 'pen' | 'rect' | 'ellipse'
+
+/** 되돌리기에 쓰는 한 시점의 모습 */
+interface Snapshot {
+  moves: Moves
+  shapes: Shape[]
+}
+
 /** 자동으로 잡은 자리에 사용자가 옮긴 거리를 더해요. 폴더를 옮기면 그 아래 가지도 같이 따라가요. */
 function applyMoves(placed: Placed[], moves: Moves): Placed[] {
   const shifted = new Map<Placed, Placed>()
@@ -283,10 +295,16 @@ export function StructureMap({ name, repo, root }: Props) {
   const [moves, setMoves] = useState<Moves>(() => readMoves(repo, savedDirection()))
   const arranged = Object.keys(moves).length > 0
   /** 칸을 옮기기 전의 배치들. Command Z로 하나씩 되돌리고, Shift를 같이 누르면 다시 돌려놔요. */
-  const undoStack = useRef<Moves[]>([])
-  const redoStack = useRef<Moves[]>([])
+  const undoStack = useRef<Snapshot[]>([])
+  const redoStack = useRef<Snapshot[]>([])
   /** 끌기 시작했을 때의 배치. 손을 뗄 때 되돌리기 기록에 넣어요. */
   const beforeDrag = useRef<Moves | null>(null)
+  /** 펜이나 도형으로 맵 위에 그린 그림. 저장하지 않고, 이 화면에 있는 동안만 남아요. */
+  const [shapes, setShapes] = useState<Shape[]>([])
+  const [tool, setTool] = useState<Tool>('move')
+  /** 지금 그리고 있는 그림. 손을 떼면 shapes에 들어가요. */
+  const [drawing, setDrawing] = useState<Shape | null>(null)
+  const drawStart = useRef<[number, number] | null>(null)
   // 자동으로 잡은 자리예요. 펼치고 접을 때 누른 칸을 제자리에 두는 계산은 이 자리로 해요.
   const base = useMemo(() => layout(root, open, nodeH, direction), [root, open, nodeH, direction])
   const placed = useMemo(() => applyMoves(base, moves), [base, moves])
@@ -358,23 +376,44 @@ export function StructureMap({ name, repo, root }: Props) {
   /** 끌어서 옮긴 칸을 모두 원래 자리로 돌려놔요. */
   function resetMoves() {
     track('deep_map_reset', { repo })
-    undoStack.current.push(moves)
+    undoStack.current.push({ moves, shapes })
     redoStack.current = []
     refit.current = true
     setMoves({})
     writeMoves(repo, direction, {})
   }
 
-  /** 칸을 옮기거나 배치를 되돌린 것을 한 단계 무르거나(undo), 무른 것을 다시 해요(redo). */
+  /** 그린 그림을 모두 지워요. */
+  function clearShapes() {
+    track('deep_map_draw_clear', { repo })
+    undoStack.current.push({ moves, shapes })
+    redoStack.current = []
+    setShapes([])
+  }
+
+  function pickTool(next: Tool) {
+    if (next !== 'move') track('deep_map_tool', { repo, tool: next })
+    // 같은 도구를 다시 누르면 평소 상태로 돌아가요.
+    setTool((prev) => (prev === next ? 'move' : next))
+  }
+
+  /** 화면에서 누른 자리를 맵 기준 좌표로 바꿔요. */
+  function toMap(event: { clientX: number; clientY: number }): [number, number] {
+    const rect = frameRef.current!.getBoundingClientRect()
+    return [(event.clientX - rect.left - view.x) / view.k, (event.clientY - rect.top - view.y) / view.k]
+  }
+
+  /** 칸을 옮기거나, 그림을 그리거나 지우거나, 배치를 되돌린 것을 한 단계 무르거나(undo), 무른 것을 다시 해요(redo). */
   function stepMoves(kind: 'undo' | 'redo') {
     const from = kind === 'undo' ? undoStack.current : redoStack.current
     const to = kind === 'undo' ? redoStack.current : undoStack.current
     const target = from.pop()
     if (!target) return
-    to.push(moves)
+    to.push({ moves, shapes })
     track('deep_map_undo', { repo, kind })
-    setMoves(target)
-    writeMoves(repo, direction, target)
+    setMoves(target.moves)
+    setShapes(target.shapes)
+    writeMoves(repo, direction, target.moves)
   }
 
   // Command Z(Windows는 Ctrl Z)로 옮긴 칸을 되돌려요. 글자를 입력하는 중이나 확인 창이 떠 있을 때는 받지 않아요.
@@ -440,10 +479,28 @@ export function StructureMap({ name, repo, root }: Props) {
 
   function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.button !== 0) return
+    // 펜이나 도형을 고른 동안에는 맵을 미는 대신 그림을 그려요.
+    if (tool !== 'move') {
+      const [x, y] = toMap(event)
+      drawStart.current = [x, y]
+      setDrawing(tool === 'pen' ? { kind: 'pen', points: [[x, y]] } : { kind: tool, x, y, w: 0, h: 0 })
+      event.currentTarget.setPointerCapture(event.pointerId)
+      return
+    }
     drag.current = { x: event.clientX, y: event.clientY, moved: false }
   }
 
   function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const start = drawStart.current
+    if (start) {
+      const [x, y] = toMap(event)
+      setDrawing((prev) => {
+        if (!prev) return prev
+        if (prev.kind === 'pen') return { kind: 'pen', points: [...prev.points, [x, y]] }
+        return { kind: prev.kind, x: Math.min(start[0], x), y: Math.min(start[1], y), w: Math.abs(x - start[0]), h: Math.abs(y - start[1]) }
+      })
+      return
+    }
     const held = nodeDrag.current
     if (held) {
       const dx = event.clientX - held.x
@@ -516,12 +573,26 @@ export function StructureMap({ name, repo, root }: Props) {
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={() => {
+        if (drawStart.current) {
+          drawStart.current = null
+          // 점 하나만 찍힌 것처럼 너무 작은 그림은 남기지 않아요.
+          const drawn = drawing && (drawing.kind === 'pen' ? drawing.points.length > 2 : drawing.w > 4 || drawing.h > 4) ? drawing : null
+          setDrawing(null)
+          suppressClick.current = true
+          window.setTimeout(() => (suppressClick.current = false), 0)
+          if (drawn) {
+            undoStack.current.push({ moves, shapes })
+            redoStack.current = []
+            setShapes([...shapes, drawn])
+          }
+          return
+        }
         // 끌어서 옮긴 직후의 클릭은 칸을 누른 것으로 치지 않아요.
         suppressClick.current = drag.current?.moved === true || nodeDrag.current?.moved === true
         if (nodeDrag.current?.moved) {
           track('deep_map_move', { repo })
           writeMoves(repo, direction, moves)
-          if (beforeDrag.current) undoStack.current.push(beforeDrag.current)
+          if (beforeDrag.current) undoStack.current.push({ moves: beforeDrag.current, shapes })
           redoStack.current = []
           beforeDrag.current = null
         }
@@ -532,13 +603,15 @@ export function StructureMap({ name, repo, root }: Props) {
       onPointerCancel={() => {
         drag.current = null
         nodeDrag.current = null
+        drawStart.current = null
+        setDrawing(null)
       }}
       onClick={(event) => {
         // 칸이나 버튼이 아닌 빈 곳을 누르면 골라 둔 폴더의 설명을 닫아요.
         if (!suppressClick.current && !(event.target as HTMLElement).closest('button, aside')) setSelected(null)
       }}
       className="relative h-full touch-none overflow-hidden bg-gray-50 select-none"
-      style={{ cursor: 'grab' }}
+      style={{ cursor: tool === 'move' ? 'grab' : 'crosshair' }}
     >
       <div className="absolute top-0 left-0 origin-top-left" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})`, width, height }}>
         <svg width={width} height={height} className="absolute top-0 left-0 overflow-visible text-gray-300" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
@@ -581,7 +654,8 @@ export function StructureMap({ name, repo, root }: Props) {
               aria-expanded={expandable ? expanded : undefined}
               onPointerDown={(event) => {
                 // 칸을 누른 채로 끌면 맵 대신 이 칸이 움직여요. 뿌리 칸을 끌면 맵 전체가 따라와요.
-                if (event.button !== 0) return
+                // 펜이나 도형을 고른 동안에는 칸 위에서도 그림을 그려요.
+                if (event.button !== 0 || tool !== 'move') return
                 event.stopPropagation()
                 nodeDrag.current = { path: node.path, x: event.clientX, y: event.clientY, moved: false }
               }}
@@ -623,6 +697,18 @@ export function StructureMap({ name, repo, root }: Props) {
             </button>
           )
         })}
+        {/* 펜과 도형으로 그린 그림이에요. 칸 위에 얹히고, 누르는 것을 가로막지 않아요. */}
+        <svg width={width} height={height} className="pointer-events-none absolute top-0 left-0 overflow-visible text-brand" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          {[...shapes, ...(drawing ? [drawing] : [])].map((shape, index) =>
+            shape.kind === 'pen' ? (
+              <polyline key={index} points={shape.points.map(([x, y]) => `${x},${y}`).join(' ')} />
+            ) : shape.kind === 'rect' ? (
+              <rect key={index} x={shape.x} y={shape.y} width={shape.w} height={shape.h} rx="8" />
+            ) : (
+              <ellipse key={index} cx={shape.x + shape.w / 2} cy={shape.y + shape.h / 2} rx={shape.w / 2} ry={shape.h / 2} />
+            ),
+          )}
+        </svg>
       </div>
 
       {focus && (
@@ -725,6 +811,39 @@ export function StructureMap({ name, repo, root }: Props) {
             <path d="M8 5.5V8M4 10.5V9a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1.5" />
           </svg>
         </button>
+        <span aria-hidden className="mx-1 h-5 w-px bg-gray-200" />
+        {/* 맵 위에 그리는 도구예요. 고른 도구를 다시 누르면 평소처럼 맵을 밀고 칸을 옮겨요. 그림은 저장하지 않아요. */}
+        <button type="button" aria-label="펜" aria-pressed={tool === 'pen'} onClick={() => pickTool('pen')} className={`${control} ${tool === 'pen' ? chosen : ''}`}>
+          <Tip text="펜" />
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden="true">
+            <path d="M10.5 3l2.5 2.5L5.5 13H3v-2.5zM9 4.5L11.5 7" />
+          </svg>
+        </button>
+        <button type="button" aria-label="사각형" aria-pressed={tool === 'rect'} onClick={() => pickTool('rect')} className={`${control} ${tool === 'rect' ? chosen : ''}`}>
+          <Tip text="사각형" />
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
+            <rect x="2.5" y="3.5" width="11" height="9" rx="1.5" />
+          </svg>
+        </button>
+        <button type="button" aria-label="원" aria-pressed={tool === 'ellipse'} onClick={() => pickTool('ellipse')} className={`${control} ${tool === 'ellipse' ? chosen : ''}`}>
+          <Tip text="원" />
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" className="size-4" aria-hidden="true">
+            <circle cx="8" cy="8" r="5.5" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          aria-label="그림 지우기"
+          disabled={shapes.length === 0}
+          onClick={clearShapes}
+          className={`${control} disabled:text-gray-300 disabled:hover:bg-transparent`}
+        >
+          <Tip text="그림 지우기" />
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden="true">
+            <path d="M9.5 3L13 6.5l-6 6H4.5L3 11zM7 5.5L10.5 9M7 12.5h6" />
+          </svg>
+        </button>
+        <span aria-hidden className="mx-1 h-5 w-px bg-gray-200" />
         {/* 끌어서 옮긴 칸이 있을 때만 눌러요. 모두 원래 자리로 돌려놔요. */}
         <button
           type="button"
