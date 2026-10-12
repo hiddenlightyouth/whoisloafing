@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
-import { track } from '../lib/analytics'
 import { isApp } from '../lib/app'
 import { useAppSettings } from '../lib/theme'
 import { ContributionBackdrop } from './ContributionBackdrop'
+import { Footer } from './Footer'
 import { RepoInput } from './RepoInput'
 
 /** 타이틀을 어절 단위로 나눠요. 어절이 하나씩 흐릿하게 떠오르며 나타나요. */
@@ -83,21 +83,7 @@ export function Hero({ onSubmit, below }: Props) {
         </div>
       </div>
 
-      <footer className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 whitespace-nowrap px-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-[11px] text-gray-400 sm:px-6 sm:text-xs">
-        <a
-          href="https://hidly.dev/"
-          target="_blank"
-          rel="noreferrer"
-          onClick={() => track('team_link_click')}
-          className="inline-flex items-center gap-1 transition-colors hover:text-gray-700"
-        >
-          숨은빚청년들 팀
-          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" className="size-3" aria-hidden="true">
-            <path d="M3.5 8.5l5-5M4.5 3.5h4v4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </a>
-        <span>© 2026 WhoIsLoafing. 모든 권리 보유.</span>
-      </footer>
+      <Footer className="absolute inset-x-0 bottom-0" />
     </main>
   )
 }

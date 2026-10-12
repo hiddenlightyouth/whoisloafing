@@ -100,7 +100,7 @@ src/
   lib/articles.ts     아티클 마크다운 읽기와 변환
   hooks/useAnalysis.ts  채팅 메시지 큐, 입력 중 표시 타이밍
   components/About.tsx       소개 화면 (/about)
-  components/         Header, Logo, Hero, AppNudge, ContributionBackdrop, RepoInput, Chat, Bubble, TypingDots, RichText, Articles, PeoplePicker, AssistantOrb, LeaveDialog, RankingCarousel, StatsCard, SummaryChart, Charts, Followup, Account, AuthForm, MyPage, History, LoginNudge, Skeleton, Toast
+  components/         Header, Logo, Hero, Footer, AppNudge, ContributionBackdrop, RepoInput, Chat, Bubble, TypingDots, RichText, Articles, PeoplePicker, AssistantOrb, LeaveDialog, RankingCarousel, StatsCard, SummaryChart, Charts, Followup, Account, AuthForm, MyPage, History, LoginNudge, Skeleton, Toast
 ```
 
 ## 실행 방법
@@ -363,7 +363,7 @@ AI 사용량 탭(`AdminUsage`)
   - 기능 덩어리에 `data-reveal`을 붙여요. `About`이 화면에 들어왔는지 지켜보다가(IntersectionObserver) `data-shown`을 붙이고, 움직임은 `src/index.css`의 규칙이 맡아요. 라이브러리는 쓰지 않아요.
   - 움직임 줄이기 설정에서는 숨기지 않고 처음부터 다 보여줘요. 자바스크립트가 뜬 뒤에만 숨겨서(`data-armed`) 미리 그려 둔 화면에서는 내용이 그대로 보여요. 처음 화면에 이미 들어와 있는 기능은 숨기지 않아요.
 - 맨 위에는 가운데에 로고(`public/logo.svg`), 제목 "레포를 더 쉽게 분석하기", 메인 화면과 같은 설명 문구, 버튼 두 개가 있어요. 버튼은 메인 화면으로 가는 "시작하기"와, Apple 로고가 붙은 "macOS 앱 다운로드"예요. 앱 다운로드 버튼은 `MAC_DOWNLOAD_OPEN`이 켜져 있을 때만 보여줘요. 제목은 화면 폭에 따라 30px에서 56px까지 커져요. 제목을 30px로 묶는 원칙의 예외예요.
-- 그 아래에 기능(`FEATURES`) 여덟 가지(프로젝트 요약, 기여도 분석, 담당 기능 분석, 활동 시간 분석, 협업 방식 분석, 프로젝트 구조 분석, CI/CD 파이프라인 구조 분석, Issues, PR Template)를 웹과 앱을 나누지 않고 한 줄에 두 개씩 늘어놓아요. 좁은 화면에서는 한 줄에 하나씩 쌓아요. 기능마다 위에 스크린샷, 아래에 이름과 한 줄 설명이 있어요. 맨 아래에는 숨은빚청년들 팀 링크가 있어요.
+- 그 아래에 기능(`FEATURES`) 여덟 가지(프로젝트 요약, 기여도 분석, 담당 기능 분석, 활동 시간 분석, 협업 방식 분석, 프로젝트 구조 분석, CI/CD 파이프라인 구조 분석, Issues, PR Template)를 웹과 앱을 나누지 않고 한 줄에 두 개씩 늘어놓아요. 좁은 화면에서는 한 줄에 하나씩 쌓아요. 기능마다 위에 스크린샷, 아래에 이름과 한 줄 설명이 있어요. 맨 아래에는 메인 화면과 똑같은 줄(`Footer`)이 있어요. 왼쪽에 숨은빚청년들 팀 링크, 오른쪽에 저작권 문구예요.
 - 기능의 이름은 "프로젝트 구조 분석", "CI/CD 파이프라인 구조 분석", "Issues, PR Template"처럼 짧은 이름으로 적어요. "~해요"로 끝나는 문장으로 풀지 않아요. 설명도 한 줄짜리 짧은 구절로 적어요. 존댓말 문장으로 쓰는 텍스트 작성 규칙의 예외예요.
 - 앱에서만 되는 기능에는 이름 옆에 "앱 전용" 태그를 달아요. 태그는 이름 위가 아니라 옆에 둬요. 저장과 공유, 인기 레포 둘러보기는 넣었다가 뺐어요.
 - 스크린샷은 `public/about`에 webp로 있어요(가로 1600px). 공개 레포(vitejs/vite)를 로컬 서버에서 분석한 뒤, 앱의 라이트 모드 화면을 헤드리스 크롬으로 두 배 해상도로 찍은 실제 화면이에요. 참여자 이름은 공개된 커밋 기록 그대로예요. 화면 모양이 크게 바뀌면 다시 찍어요.

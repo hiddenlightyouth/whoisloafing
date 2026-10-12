@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, type CSSProperties, type MouseEvent } from 'react'
 import { track } from '../lib/analytics'
 import { MAC_DOWNLOAD, MAC_DOWNLOAD_OPEN } from '../lib/app'
+import { Footer } from './Footer'
 import { AppleLogo } from './Header'
 
 interface Props {
@@ -153,19 +154,7 @@ export function About({ onHome }: Props) {
         ))}
       </div>
 
-      <p className="pb-14 text-center text-[13px] text-gray-500">
-        WhoIsLoafing은{' '}
-        <a
-          href="https://hidly.dev/"
-          target="_blank"
-          rel="noreferrer"
-          onClick={() => track('team_link_click', { from: 'about' })}
-          className="font-medium text-gray-700 transition-colors hover:text-gray-900"
-        >
-          숨은빚청년들 팀
-        </a>
-        이 만들어요.
-      </p>
+      <Footer className="mt-10" from="about" />
     </main>
   )
 }
