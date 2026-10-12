@@ -6,6 +6,8 @@ export interface ToastMessage {
 }
 
 const SHOW_MS = 2400
+/** 긴 안내는 읽을 시간이 더 필요해서, 글자 수에 맞춰 더 오래 보여줘요. */
+const MS_PER_CHAR = 80
 
 let current: ToastMessage | null = null
 let nextId = 1
@@ -23,7 +25,7 @@ export function showToast(text: string) {
   timer = setTimeout(() => {
     current = null
     emit()
-  }, SHOW_MS)
+  }, Math.max(SHOW_MS, text.length * MS_PER_CHAR))
   emit()
 }
 

@@ -119,7 +119,7 @@ export function BugReport({ chatId }: { chatId: string | null }) {
       showToast('신고를 보내지 못했어요. 잠시 뒤에 다시 시도해 주세요.')
       return
     }
-    showToast('신고 고마워요. 확인해 볼게요.')
+    showToast('버그 신고가 접수되었습니다. 불편을 겪지 않도록 빠른 시일 내로 해결하겠습니다.')
     closeBugReport()
   }
 
