@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react'
 import { track } from '../lib/analytics'
 import { deleteChat, unshareChat } from '../lib/api'
-import { fetchMyChats, useAuth, type ChatSummary } from '../lib/auth'
+import { appAtLeast, appVersion, postToApp, type AppTheme } from '../lib/app'
+import { fetchMyChats, signOut, useAuth, type ChatSummary, type Me } from '../lib/auth'
 import { formatWhen } from '../lib/format'
+import { setAppBackdrop, setAppTheme, useAppSettings } from '../lib/theme'
 import { showToast } from '../lib/toast'
 import { copyChatLink, DeleteDialog } from './History'
 import { Bone } from './Skeleton'
@@ -218,7 +220,7 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onOp
   }
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col border-r border-gray-200 bg-gray-50">
+    <aside className="relative z-30 flex w-64 shrink-0 flex-col border-r border-gray-200 bg-gray-50">
       <div data-app-drag className="h-11 shrink-0" />
 
       <div className="px-3">
@@ -303,32 +305,177 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onOp
         )}
       </nav>
 
-      <div className="shrink-0 border-t border-gray-200 p-3">
-        <a
-          href="/articles"
-          onClick={(event) => {
-            if (!plain(event)) return
-            event.preventDefault()
-            onArticles()
-          }}
-          className={`${link} ${tone(page === 'articles')}`}
-        >
-          아티클
-        </a>
-        <a
-          href="/me"
-          onClick={(event) => {
-            if (!plain(event)) return
-            event.preventDefault()
-            onMe()
-          }}
-          className={`${link} ${tone(page === 'me')}`}
-        >
-          <span className="min-w-0 truncate">{me?.name || '내 정보'}</span>
-        </a>
-      </div>
+      <AccountMenu me={me} page={page} onArticles={onArticles} onMe={onMe} />
 
       {deleting && <DeleteDialog chat={deleting} working={working} onCancel={cancelDelete} onConfirm={() => void remove(deleting)} />}
     </aside>
+  )
+}
+
+const THEMES: [AppTheme, string][] = [
+  ['system', '시스템'],
+  ['light', '라이트'],
+  ['dark', '다크'],
+]
+
+const menuRow = 'flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[13.5px] text-gray-800 transition-colors hover:bg-gray-100'
+const menuIcon = 'size-4 shrink-0 text-gray-500'
+
+/**
+ * 사이드바 맨 아래의 계정 버튼이에요. 누르면 위로 메뉴가 펼쳐져서 내 정보, 아티클, 화면 설정, 업데이트 확인, 로그아웃을 한곳에서 골라요.
+ * 바깥을 누르거나 Esc를 누르면 닫혀요.
+ */
+function AccountMenu({ me, page, onArticles, onMe }: { me: Me | null; page: Props['page']; onArticles: () => void; onMe: () => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const { theme, backdrop } = useAppSettings()
+  const name = me?.name || '내 정보'
+
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (event: PointerEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [open])
+
+  const go = (action: () => void) => () => {
+    setOpen(false)
+    action()
+  }
+
+  return (
+    <div ref={ref} className="relative shrink-0 border-t border-gray-200 p-2">
+      {open && (
+        <div role="menu" className="absolute bottom-full left-2 mb-1 w-[272px] animate-rise rounded-2xl border border-gray-200 bg-white p-1.5">
+          {me?.email && <p className="truncate px-2.5 pt-1.5 pb-2 text-[12.5px] text-gray-500">{me.email}</p>}
+
+          <button type="button" role="menuitem" onClick={go(onMe)} className={menuRow}>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" className={menuIcon} aria-hidden="true">
+              <circle cx="8" cy="5.5" r="2.5" />
+              <path d="M3 13.5c.6-2.2 2.6-3.5 5-3.5s4.4 1.3 5 3.5" strokeLinecap="round" />
+            </svg>
+            내 정보
+          </button>
+          <button type="button" role="menuitem" onClick={go(onArticles)} className={menuRow}>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className={menuIcon} aria-hidden="true">
+              <path d="M3.5 2.5h6l3 3v8h-9z" />
+              <path d="M5.5 8h5M5.5 10.5h5" strokeLinecap="round" />
+            </svg>
+            아티클
+          </button>
+
+          <div className="my-1.5 border-t border-gray-100" />
+
+          <div className="flex h-10 items-center justify-between gap-3 px-2.5">
+            <span className="text-[13.5px] text-gray-800">화면 모드</span>
+            <div role="radiogroup" aria-label="화면 모드" className="inline-flex rounded-lg bg-gray-100 p-0.5">
+              {THEMES.map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={theme === value}
+                  onClick={() => {
+                    track('app_theme_change', { theme: value, from: 'menu' })
+                    setAppTheme(value)
+                  }}
+                  className={`h-7 rounded-md px-2.5 text-[12.5px] font-medium transition-colors ${theme === value ? 'bg-white text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex h-10 items-center justify-between gap-3 px-2.5">
+            <span className="text-[13.5px] text-gray-800">지렁이 표시</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={backdrop}
+              aria-label="새 분석 화면에서 지렁이 표시"
+              onClick={() => {
+                track('app_backdrop_change', { on: !backdrop, from: 'menu' })
+                setAppBackdrop(!backdrop)
+              }}
+              className={`flex h-6 w-10 items-center rounded-full p-0.5 transition-colors ${backdrop ? 'bg-brand' : 'bg-gray-200'}`}
+            >
+              {/* 손잡이는 다크 모드에서도 흰색이라 색 토큰을 쓰지 않아요. */}
+              <span style={{ background: '#fff' }} className={`size-5 rounded-full transition-transform ${backdrop ? 'translate-x-4' : ''}`} />
+            </button>
+          </div>
+
+          <div className="my-1.5 border-t border-gray-100" />
+
+          {/* 예전 앱은 업데이트 확인 요청을 받지 못해서, 버전만 보여줘요. */}
+          {appAtLeast('1.1') ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={go(() => {
+                track('app_update_check', { from: 'menu' })
+                postToApp({ type: 'update' })
+              })}
+              className={menuRow}
+            >
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className={menuIcon} aria-hidden="true">
+                <path d="M13 8a5 5 0 1 1-1.5-3.570M13 3v2.5h-2.5" />
+              </svg>
+              <span className="flex-1">업데이트 확인</span>
+              <span className="text-[12px] text-gray-400 tabular-nums">{appVersion}</span>
+            </button>
+          ) : (
+            <p className="flex h-9 items-center justify-between px-2.5 text-[13.5px] text-gray-500">
+              버전
+              <span className="text-[12px] text-gray-400 tabular-nums">{appVersion}</span>
+            </p>
+          )}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={go(() => {
+              track('auth_logout', { from: 'menu' })
+              void signOut()
+            })}
+            className={menuRow}
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className={menuIcon} aria-hidden="true">
+              <path d="M6.5 2.5h-2a1.5 1.5 0 0 0-1.5 1.5v8a1.5 1.5 0 0 0 1.5 1.5h2M10 5l3 3-3 3M13 8H6.5" />
+            </svg>
+            로그아웃
+          </button>
+        </div>
+      )}
+
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => {
+          if (!open) track('app_menu_open')
+          setOpen((value) => !value)
+        }}
+        className={`flex h-12 w-full items-center gap-2.5 rounded-xl px-2 text-left transition-colors ${tone(open || page === 'me' || page === 'articles')}`}
+      >
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[13px] font-semibold text-brand-hover">
+          {(name[0] ?? '?').toUpperCase()}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[13.5px] font-semibold text-gray-900">{name}</span>
+          {me?.email && <span className="block truncate text-[11.5px] text-gray-400">{me.email}</span>}
+        </span>
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-4 shrink-0 text-gray-400" aria-hidden="true">
+          <path d="M5 6.5L8 3.5l3 3M5 9.5l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+    </div>
   )
 }
