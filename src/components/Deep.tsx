@@ -8,6 +8,7 @@ import { useShortcuts } from '../lib/shortcuts'
 import { formatDateTime, formatWhen } from '../lib/format'
 import { showToast } from '../lib/toast'
 import { Chat } from './Chat'
+import { ConfirmDialog } from './AdminParts'
 import { MapMenu, toolButton } from './DeepParts'
 import { Forms } from './Forms'
 import { Avatar } from './History'
@@ -266,12 +267,14 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
   }, [section, current])
 
   const ready = current !== undefined && current !== 'loading' && 'report' in current
+  /** 재분석을 요청하기 전에 한 번 더 묻는 창이 떠 있는지 */
+  const [asking, setAsking] = useState(false)
   useShortcuts({
     Digit1: () => setSection('structure'),
     Digit2: () => setSection('pipeline'),
     Digit3: () => setSection('issues'),
     Digit4: () => setSection('pulls'),
-    KeyR: ready ? () => void analyze(section, true) : undefined,
+    KeyR: ready ? () => setAsking(true) : undefined,
     KeyC: chatId ? () => setChatOpen((value) => !value) : undefined,
     // 메뉴나 채팅이 열려 있으면 그것부터 닫고, 아무것도 없을 때 레포 고르는 화면으로 돌아가요.
     Escape: () => {
@@ -351,7 +354,7 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
             {analyzedAt && <span className="text-[12.5px] text-gray-400 tabular-nums">마지막 분석 {analyzedAt}</span>}
             <button
               type="button"
-              onClick={() => void analyze(section, true)}
+              onClick={() => setAsking(true)}
               className="relative flex h-8 items-center rounded-lg px-3 text-[13px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
             >
               재분석 요청
@@ -388,6 +391,19 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
       </div>
     </div>
       {chatOpen && chatId && <SideChat key={chatId} chatId={chatId} onClose={() => setChatOpen(false)} />}
+      {asking && (
+        <ConfirmDialog
+          title="다시 분석할까요?"
+          body={`${SECTION_LABELS[section]} 탭을 처음부터 다시 분석해요. 시간이 조금 걸리고, 지금 보고 있는 결과는 새 결과로 바뀌어요. 레포에 새 커밋이 없으면 지금 결과를 그대로 둬요.`}
+          confirm="재분석 요청"
+          working={false}
+          onCancel={() => setAsking(false)}
+          onConfirm={() => {
+            setAsking(false)
+            void analyze(section, true)
+          }}
+        />
+      )}
     </main>
   )
 }

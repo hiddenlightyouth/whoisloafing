@@ -19,6 +19,8 @@ interface Props {
   onCopyLink: () => Promise<boolean>
   /** 로그인하지 않은 채로 공유하려고 할 때 로그인 화면으로 보내요. 로그인하면 이 채팅으로 돌아와요. */
   onLoginToShare: () => void
+  /** 앱에서 보고 있는 채팅의 레포를 심층 분석으로 열어요. 넘기지 않으면 버튼이 보이지 않아요. */
+  onDeep?: () => void
   /** 소개 화면으로 가요. */
   onAbout: () => void
   /** 아티클 화면으로 가요. 넘기지 않으면 링크가 보이지 않아요. */
@@ -43,6 +45,7 @@ export function Header({
   onStop,
   onCopyLink,
   onLoginToShare,
+  onDeep,
   onAbout,
   onArticles,
   signedIn = false,
@@ -233,6 +236,12 @@ export function Header({
               </a>
             ))}
           </nav>
+
+          {onDeep && (
+            <button type="button" onClick={onDeep} className={`${quiet} bg-gray-100 text-gray-700 hover:text-brand`}>
+              심층 분석
+            </button>
+          )}
 
           {shared ? (
             <button type="button" onClick={copy} className={`${quiet} bg-brand-soft text-brand-hover hover:bg-brand hover:text-white`}>

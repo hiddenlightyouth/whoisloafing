@@ -21,6 +21,8 @@ interface Props {
   onNew: () => void
   /** 심층 분석 화면을 열어요. 서버에 심층 분석 API가 없으면 넘기지 않고, 그때는 버튼을 숨겨요. */
   onDeep?: () => void
+  /** 내 작업의 채팅에서 그 레포의 심층 분석으로 바로 가요. 서버에 심층 분석 API가 없으면 넘기지 않아요. */
+  onDeepRepo?: (repo: string) => void
   onOpenChat: (id: string) => void
   /** 목록에서 공유를 취소하거나 지웠을 때 불러요. 열려 있는 채팅이면 화면도 맞춰요. */
   onChatChanged: (id: string, change: 'unshared' | 'deleted') => void
@@ -49,10 +51,12 @@ interface RowProps {
   onUnshare: () => void
   /** 맨 위에 고정하거나 고정을 풀어요. 서버가 지원하지 않으면 넘기지 않아요. */
   onPin?: () => void
+  /** 이 채팅의 레포를 심층 분석으로 열어요. */
+  onDeep?: () => void
   onDelete: () => void
 }
 
-function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onCloseMenu, onUnshare, onPin, onDelete }: RowProps) {
+function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onCloseMenu, onUnshare, onPin, onDeep, onDelete }: RowProps) {
   const [owner, repo] = chat.repoName.includes('/') ? chat.repoName.split('/') : ['', chat.repoName]
   const menuRef = useRef<HTMLLIElement>(null)
 
@@ -106,15 +110,33 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
 
       {/* 평소에는 자리를 차지하지 않다가, 마우스를 올리면 시간 옆으로 부드럽게 밀고 들어와요. */}
       <div
-        className={`shrink-0 overflow-hidden transition-[width,opacity] duration-200 ease-out group-hover:w-8 group-hover:opacity-100 group-focus-within:w-8 group-focus-within:opacity-100 ${menuOpen ? 'w-8 opacity-100' : 'w-0 opacity-0'}`}
+        className={`flex shrink-0 items-center overflow-hidden transition-[width,opacity] duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100 ${
+          onDeep ? 'group-hover:w-[60px] group-focus-within:w-[60px]' : 'group-hover:w-8 group-focus-within:w-8'
+        } ${menuOpen ? `${onDeep ? 'w-[60px]' : 'w-8'} opacity-100` : 'w-0 opacity-0'}`}
       >
+        {onDeep && (
+          <button
+            type="button"
+            aria-label={`${chat.repoName} 심층 분석`}
+            title="심층 분석"
+            onClick={onDeep}
+            className="flex size-7 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-3.5" aria-hidden="true">
+              <rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1" />
+              <rect x="9" y="2.5" width="4.5" height="4.5" rx="1" />
+              <rect x="2.5" y="9" width="4.5" height="4.5" rx="1" />
+              <rect x="9" y="9" width="4.5" height="4.5" rx="1" />
+            </svg>
+          </button>
+        )}
         <button
           type="button"
           aria-label={`${chat.repoName} 채팅 관리`}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           onClick={onToggleMenu}
-          className="flex size-7 items-center justify-center gap-[3px] rounded-full text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700"
+          className="flex size-7 shrink-0 items-center justify-center gap-[3px] rounded-full text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700"
         >
           <span className="size-[3px] rounded-full bg-current" />
           <span className="size-[3px] rounded-full bg-current" />
@@ -159,7 +181,7 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
 }
 
 /** 앱 화면 왼쪽의 사이드바예요. 새 분석, 내 작업 목록과 관리, 아티클과 내 정보로 가는 링크가 있어요. */
-export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onOpenChat, onChatChanged, onArticles, onMe, onAdmin }: Props) {
+export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onOpenChat, onDeepRepo, onChatChanged, onArticles, onMe, onAdmin }: Props) {
   const { me } = useAuth()
   const [chats, setChats] = useState<ChatSummary[] | null>(null)
   const [nextPage, setNextPage] = useState<number | null>(null)
@@ -327,6 +349,7 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onOp
                 onCloseMenu={closeMenu}
                 onUnshare={() => void unshare(chat)}
                 onPin={canPin ? () => void pin(chat) : undefined}
+                onDeep={onDeepRepo && chat.repoName.includes('/') ? () => onDeepRepo(chat.repoName) : undefined}
                 onDelete={() => {
                   setMenuFor(null)
                   setDeleting(chat)

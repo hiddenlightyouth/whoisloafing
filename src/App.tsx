@@ -144,6 +144,8 @@ export default function App() {
   const [chatsVersion, setChatsVersion] = useState(0)
   /** 지금 보고 있는 채팅의 상태. mine은 이 브라우저에서 만든 채팅인지, shared는 공유됐는지예요. */
   const [chat, setChat] = useState<{ mine: boolean; shared: boolean } | null>(null)
+  /** 보고 있는 채팅의 레포(소유자/레포). 앱에서 이 레포의 심층 분석으로 바로 넘어갈 때 써요. */
+  const [chatRepo, setChatRepo] = useState<string | null>(null)
   const [opening, setOpening] = useState(() => chatIdFromPath() !== null)
   const [missing, setMissing] = useState(false)
   /** 아티클 화면을 보고 있는지. slug가 null이면 목록이에요. */
@@ -255,6 +257,7 @@ export default function App() {
     }
     load(snapshot)
     setChat({ mine: snapshot.owner, shared: snapshot.shared })
+    setChatRepo(repoLabel(snapshot.repoUrl))
     trackPageView(snapshot.shared ? 'shared_chat' : 'chat', {
       repo: repoLabel(snapshot.repoUrl),
       is_owner: snapshot.owner,
@@ -293,6 +296,7 @@ export default function App() {
         storeNudge(reopen ? null : closedFor + 1)
         if (reopen) setNudgeClosed(false)
       }
+      setChatRepo(repoLabel(url))
       track('repo_submit', { repo: repoLabel(url), storage })
       trackPageView('chat', { repo: repoLabel(url), is_owner: true })
       void send({ url }, url.trim())
@@ -591,6 +595,14 @@ export default function App() {
         onShare={handleShare}
         onCopyLink={handleCopyLink}
         onLoginToShare={handleLoginToShare}
+        onDeep={
+          isApp && deep && messages.length > 0 && !account && chatRepo?.includes('/')
+            ? () => {
+                track('deep_open', { from: 'chat', repo: chatRepo })
+                openDeep(chatRepo)
+              }
+            : undefined
+        }
         onAbout={() => {
           if (about) return
           track('about_nav_click', { from: account ?? (article ? 'articles' : messages.length > 0 ? 'chat' : 'home') })
@@ -719,6 +731,14 @@ export default function App() {
             activeChatId={account || article || deepPage || adminPage ? null : chatIdFromPath()}
             page={deepPage ? 'deep' : adminPage ? 'admin' : account === 'me' ? 'me' : article ? 'articles' : null}
             onDeep={deep ? () => openDeep(null) : undefined}
+            onDeepRepo={
+              deep
+                ? (repo) => {
+                    track('deep_open', { from: 'sidebar', repo })
+                    openDeep(repo)
+                  }
+                : undefined
+            }
             onAdmin={isAdmin(me) ? () => openAdmin() : undefined}
             refreshKey={`${busy}:${account ?? ''}:${deepPage ? 'deep' : ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`}
             onNew={handleHome}

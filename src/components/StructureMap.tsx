@@ -541,18 +541,6 @@ export function StructureMap({ name, repo, root }: Props) {
           ]}
         />
         <MapMenu
-          label="방향"
-          value={vertical ? '세로' : '가로'}
-          groups={[
-            {
-              items: [
-                { label: '가로로 뻗기', shortcut: 'V', checked: !vertical, onSelect: () => changeDirection('horizontal') },
-                { label: '세로로 뻗기', shortcut: 'V', checked: vertical, onSelect: () => changeDirection('vertical') },
-              ],
-            },
-          ]}
-        />
-        <MapMenu
           label="참여자"
           value={person?.name}
           active={person !== null}
@@ -577,7 +565,39 @@ export function StructureMap({ name, repo, root }: Props) {
         />
       </div>
 
-      <div onPointerDown={(event) => event.stopPropagation()} className="absolute right-4 bottom-4 flex cursor-default items-center gap-0.5 rounded-lg border border-gray-200 bg-white p-1">
+      {/* 맵을 다루는 버튼을 오른쪽 위에 한 줄로 모아 둬요. 가지가 뻗는 방향, 확대와 축소, 한눈에 보기 순서예요. */}
+      <div onPointerDown={(event) => event.stopPropagation()} className="absolute top-4 right-4 flex cursor-default items-center gap-0.5 rounded-lg border border-gray-200 bg-white p-1">
+        <button
+          type="button"
+          aria-label="가로로 뻗기"
+          aria-pressed={!vertical}
+          title="가로로 뻗기 (V)"
+          onClick={() => changeDirection('horizontal')}
+          className={`${control} ${vertical ? '' : chosen}`}
+        >
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
+            <rect x="1.5" y="6" width="4" height="4" rx="1" />
+            <rect x="10.5" y="2" width="4" height="4" rx="1" />
+            <rect x="10.5" y="10" width="4" height="4" rx="1" />
+            <path d="M5.5 8H8M10.5 4H9a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1.5" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          aria-label="세로로 뻗기"
+          aria-pressed={vertical}
+          title="세로로 뻗기 (V)"
+          onClick={() => changeDirection('vertical')}
+          className={`${control} ${vertical ? chosen : ''}`}
+        >
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
+            <rect x="6" y="1.5" width="4" height="4" rx="1" />
+            <rect x="2" y="10.5" width="4" height="4" rx="1" />
+            <rect x="10" y="10.5" width="4" height="4" rx="1" />
+            <path d="M8 5.5V8M4 10.5V9a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1.5" />
+          </svg>
+        </button>
+        <span aria-hidden className="mx-1 h-5 w-px bg-gray-200" />
         <button type="button" aria-label="작게" title="축소 (-)" onClick={() => zoomBy(1 / 1.25)} className={control}>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
             <path d="M3.5 8h9" />
@@ -601,3 +621,5 @@ export function StructureMap({ name, repo, root }: Props) {
 }
 
 const control = 'flex size-8 items-center justify-center rounded-md text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900'
+/** 지금 고른 방향의 버튼 */
+const chosen = 'bg-gray-100 text-gray-900'
