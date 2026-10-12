@@ -74,7 +74,7 @@ src/
   lib/analytics.ts    Google Analytics 이벤트 전송
   lib/toast.ts        화면 아래에 잠깐 뜨는 안내(토스트) 저장소
   lib/theme.ts        앱의 화면 설정(화면 모드, 새 분석 화면의 지렁이) 저장과 적용
-  lib/app.ts          macOS 앱 안에서 열렸는지 판별, 앱에 메시지 보내기, 창을 옮기는 곳(data-app-drag) 처리
+  lib/app.ts          macOS 앱 안에서 열렸는지 판별, 앱 설치 파일 주소, 앱에 메시지 보내기, 창을 옮기는 곳(data-app-drag) 처리
   components/AppGate.tsx     앱에서 로그인하지 않았을 때 보여주는 로그인 화면
   components/AppSidebar.tsx  앱 화면 왼쪽의 사이드바 (새 분석, 내 작업 목록, 아티클, 내 정보)
   components/AppLogin.tsx    앱이 브라우저로 열어 주는 앱 로그인 화면 (/app-login)
@@ -85,7 +85,7 @@ src/
   components/DeepParts.tsx   심층 분석에서 같이 쓰는 탭, 원문 칸, 복사 버튼
   lib/articles.ts     아티클 마크다운 읽기와 변환
   hooks/useAnalysis.ts  채팅 메시지 큐, 입력 중 표시 타이밍
-  components/         Header, Logo, Hero, ContributionBackdrop, RepoInput, Chat, Bubble, TypingDots, RichText, Articles, PeoplePicker, AssistantOrb, LeaveDialog, RankingCarousel, StatsCard, SummaryChart, Charts, Followup, Account, AuthForm, MyPage, History, LoginNudge, Skeleton, Toast
+  components/         Header, Logo, Hero, AppNudge, ContributionBackdrop, RepoInput, Chat, Bubble, TypingDots, RichText, Articles, PeoplePicker, AssistantOrb, LeaveDialog, RankingCarousel, StatsCard, SummaryChart, Charts, Followup, Account, AuthForm, MyPage, History, LoginNudge, Skeleton, Toast
 ```
 
 ## 실행 방법
@@ -161,6 +161,10 @@ npm run dev            # http://localhost:5173
 - 로그인하지 않은 채로 공유하기를 누르면 확인 창이 "공유하기"라는 제목과 "로그인하여 이 분석을 저장하고, 링크로 다른 사람에게 공유할 수 있어요."라는 설명으로 로그인을 안내해요. 버튼은 취소와 공유하기예요. 누르면 로그인 화면으로 가고("로그인하면 공유하려던 채팅으로 바로 돌아가요."), 로그인하거나 가입하면 이 브라우저의 채팅이 계정에 연결된 뒤 그 채팅(`/c/아이디`)으로 돌아와요. 돌아온 뒤에 공유하기를 한 번 더 누르면 공유돼요.
 - 로그인한 채로 공유하기를 누르면 확인 창으로 한 번 더 물어봐요. 공유하면 서버에 공유한 시각이 기록되고, 그 뒤로는 링크를 아는 누구나 열람할 수 있지만 공유하는 동안에는 아무도 이어서 작업할 수 없어요. 서버도 공유된 채팅의 분석 요청을 거절해요.
 - 로그인하지 않고 분석하는 동안에는 첫 말풍선이 나온 뒤에 로그인 안내(`LoginNudge`)를 띄워요. 제목은 "분석을 잃어버리지 마세요", 버튼은 "로그인하여 분석 저장하기"예요. 넓은 화면에서는 왼쪽 아래에 X 버튼이 달린 작은 카드로 떠 있고, 좁은 화면(768px 미만)에서는 아래에서 올라오는 시트로 보여줘요. 시트는 "나중에 하기"나 바깥의 어두운 부분, Esc로 닫아요. 좁은 화면에서는 닫은 뒤에 채팅을 3번 새로 시작하면 다시 띄워요. 넓은 화면에서는 카드를 닫으면 같은 자리에 로그인 아이콘이 둥둥 떠 있고, 누르면 카드가 다시 열려요. 움직임 줄이기 설정에서는 멈춰 있어요. 닫은 뒤에 시작한 채팅 수는 localStorage의 `whoisloafing:login-nudge-dismissed`에 둬요. 저장 기능이 꺼져 있으면 띄우지 않아요.
+- 웹에서 채팅을 보는 Mac 사용자에게는 앱 안내(`AppNudge`)도 띄워요. 로그인 안내와 같은 왼쪽 아래 자리에 같은 모양의 카드로 뜨고, 제목은 "여기서 멈추긴 아쉬워요", 설명은 "앱에서는 이 레포를 훨씬 깊이 들여다볼 수 있어요."예요. 아래에 앱에서만 쓸 수 있는 기능(프로젝트 구조 맵, CI/CD 순서, 이슈와 PR 템플릿, 참여자가 고친 폴더)을 체크 목록으로 보여주고, "macOS 앱 다운로드" 버튼으로 설치 파일을 바로 받아요. 목록에는 앱에 실제로 있는 기능만 적어요. 심층 분석의 탭이 바뀌면 `FEATURES`도 같이 고쳐요.
+  - 첫 말풍선이 나온 뒤에 띄우고, 공유받은 채팅을 보는 사람에게도 띄워요. 넓은 화면(768px 이상)의 Mac에서만 띄우고, 앱 안과 휴대폰, Windows에서는 띄우지 않아요.
+  - 로그인 안내 카드가 떠 있는 동안에는 자리를 양보해요. 로그인 안내를 닫아서 아이콘만 남으면 그 위에 떠요.
+  - X로 닫으면 다운로드 아이콘이 둥둥 떠 있고, 누르면 다시 열려요. 닫았는지는 localStorage의 `whoisloafing:app-nudge-closed`에 둬요.
 - 채팅에서 로그인 화면으로 갈 때(로그인 안내, 공유하려다 로그인)는 채팅을 비우지 않아요. 돌던 분석은 뒤에서 그대로 이어지고, 로그인하면 서버에서 다시 받지 않고 보던 채팅으로 돌아와요. 로그인하는 사이에 돌던 요청은 로그인 전에 보낸 것이라, 그 요청이 끝나면 채팅을 계정에 한 번 더 연결해요(`claimChats`).
 - 공유하면 링크를 바로 복사하고, 결과는 화면 아래 가운데에 잠깐 뜨는 토스트로 알려줘요. 휴대폰 브라우저는 공유 요청을 기다리는 사이에 복사 권한이 사라지기도 해서, 그때는 링크 복사 버튼을 누르라고 안내해요. 링크 복사, 공유 취소, 삭제 결과도 모두 토스트로 보여줘요. (`showToast`)
 - 공유를 취소하면 다시 만든 사람만 열 수 있고, 이어서 분석할 수도 있어요. 이미 받은 링크로는 열 수 없다고 안내해요.
@@ -322,7 +326,8 @@ Claude 호출 기록은 백엔드 서버가 남기고, 관리자 API(`/api/v1/ai
 | `article_cta_click` | 글 아래의 레포 분석하러 가기를 눌렀을 때 | `slug` |
 | `team_articles_click` | 아티클 목록 아래의 팀 개발 기록 링크를 눌렀을 때 | |
 | `nav_soon_click` | 헤더의 소개를 눌렀을 때 | `item`(intro) |
-| `app_download_click` | 헤더의 앱 다운로드에서 macOS를 눌러 설치 파일을 받았을 때 | `os`(macos) |
+| `app_download_click` | 헤더의 앱 다운로드나 채팅의 앱 안내에서 macOS 설치 파일을 받았을 때 | `os`(macos), `from`(header, nudge) |
+| `app_nudge_view`, `app_nudge_click`, `app_nudge_close`, `app_nudge_open` | 채팅의 앱 안내가 뜨고, 다운로드를 누르거나 닫았을 때, 떠 있는 아이콘을 눌러 다시 열었을 때 | |
 | `account_nav_click` | 헤더의 로그인, 내 작업, 내 정보 링크를 눌렀을 때 | `page` |
 | `auth_login`, `auth_signup` | 로그인이나 회원가입을 시도했을 때 | `success` |
 | `auth_logout` | 내 정보에서 로그아웃했을 때 | |

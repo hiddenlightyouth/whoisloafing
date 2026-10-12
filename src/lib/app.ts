@@ -1,6 +1,13 @@
 /** macOS 앱의 웹뷰는 User-Agent 끝에 WhoIsLoafingApp/버전을 붙여요. 앱 안에서 열렸을 때만 앱 화면을 보여줘요. */
 export const isApp = typeof navigator !== 'undefined' && /WhoIsLoafingApp\//.test(navigator.userAgent)
 
+/** macOS 앱 설치 파일. 앱 레포에서 만든 DMG를 `public/download`에 넣어 둬요. 새 버전도 같은 이름으로 덮어써서 주소가 바뀌지 않아요. */
+export const MAC_DOWNLOAD = '/download/WhoIsLoafing.dmg'
+export const MAC_SUPPORT = 'Apple Silicon 전용'
+
+/** 앱을 깔 수 있는 Mac에서 보고 있는지. iPad는 Mac으로 알려 오기도 해서 터치 여부로 걸러요. */
+export const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform) && navigator.maxTouchPoints < 2
+
 /** 앱이 로그인 코드를 받아 왔을 때 웹뷰에 보내는 이벤트예요. */
 export const APP_LOGIN_EVENT = 'whoisloafing:app-login'
 

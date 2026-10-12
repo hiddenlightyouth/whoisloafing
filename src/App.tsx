@@ -3,6 +3,7 @@ import type { AccountPage } from './components/Account'
 import { Chat } from './components/Chat'
 import { ChatSkeleton } from './components/Skeleton'
 import { Header } from './components/Header'
+import { AppNudge } from './components/AppNudge'
 import { Hero } from './components/Hero'
 import { LeaveDialog } from './components/LeaveDialog'
 import { LoginNudge } from './components/LoginNudge'
@@ -10,7 +11,7 @@ import { Toast } from './components/Toast'
 import { useAnalysis } from './hooks/useAnalysis'
 import { initAnalytics, repoLabel, track, trackPageView } from './lib/analytics'
 import { fetchChat, fetchConfig, shareChat } from './lib/api'
-import { isApp } from './lib/app'
+import { isApp, isMac } from './lib/app'
 import './lib/theme'
 import { claimChats, loadMe, useAuth } from './lib/auth'
 import { showToast } from './lib/toast'
@@ -386,6 +387,9 @@ export default function App() {
   useEffect(() => {
     if (nudging && !nudgeClosed) track('login_nudge_view')
   }, [nudging, nudgeClosed])
+  // 웹에서 채팅을 보는 Mac 사용자에게는 앱을 권해요. 로그인 안내 카드가 떠 있는 동안에는 자리를 양보해요.
+  const appNudging =
+    !isApp && isMac && !account && !article && !opening && !missing && messages.some((message) => message.from === 'bot') && !(nudging && !nudgeClosed)
 
   const go = useCallback(
     (target: LeaveTarget) => {
@@ -566,6 +570,7 @@ export default function App() {
         />
       )}
       {nudging && !confirmingLeave && <LoginNudge collapsed={nudgeClosed} onLogin={handleNudgeLogin} onClose={closeNudge} onOpen={openNudge} />}
+      {appNudging && !confirmingLeave && <AppNudge raised={nudging} />}
       {confirmingLeave && (
         <LeaveDialog home={leaveTo === 'home'} onStay={handleStay} onLeave={handleLeave} onLogin={storage && tokens === null && !account ? handleLeaveLogin : undefined} />
       )}

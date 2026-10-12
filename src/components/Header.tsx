@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
 import { track } from '../lib/analytics'
+import { MAC_DOWNLOAD, MAC_SUPPORT } from '../lib/app'
 import { showToast } from '../lib/toast'
 import type { AccountPage } from './Account'
 import { Logo } from './Logo'
@@ -105,7 +106,7 @@ export function Header({
   function download() {
     setDownloadOpen(false)
     setMenuOpen(false)
-    track('app_download_click', { os: 'macos' })
+    track('app_download_click', { os: 'macos', from: 'header' })
   }
 
   function soon(item: string) {
@@ -381,9 +382,6 @@ export function Header({
   )
 }
 
-/** macOS 앱 설치 파일. 앱 레포에서 만든 DMG를 `public/download`에 넣어 둬요. 새 버전도 같은 이름으로 덮어써서 주소가 바뀌지 않아요. */
-const MAC_DOWNLOAD = '/download/WhoIsLoafing.dmg'
-const MAC_SUPPORT = 'Apple Silicon 전용'
 
 const APP_TIP_KEY = 'whoisloafing:app-tip-seen'
 
