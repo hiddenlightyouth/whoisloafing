@@ -274,7 +274,8 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
     Digit2: () => setSection('pipeline'),
     Digit3: () => setSection('issues'),
     Digit4: () => setSection('pulls'),
-    KeyR: ready ? () => setAsking(true) : undefined,
+    // R은 구조 맵의 사각형 도구가 쓰고 있어서, 재분석 요청은 Shift와 같이 눌러요.
+    'Shift+KeyR': ready ? () => setAsking(true) : undefined,
     KeyC: chatId ? () => setChatOpen((value) => !value) : undefined,
     // 메뉴나 채팅이 열려 있으면 그것부터 닫고, 아무것도 없을 때 레포 고르는 화면으로 돌아가요.
     Escape: () => {
@@ -358,7 +359,7 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
               className="relative flex h-8 items-center rounded-lg px-3 text-[13px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
             >
               재분석 요청
-              <Kbd corner>R</Kbd>
+              <Kbd corner>⇧R</Kbd>
             </button>
           </div>
         )}

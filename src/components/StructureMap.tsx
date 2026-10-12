@@ -590,12 +590,13 @@ export function StructureMap({ name, repo, root }: Props) {
     KeyS: () => showFolders(sourceFolders(root), 'source'),
     KeyE: () => showFolders(allFolders(root), 'all'),
     KeyW: () => showFolders(new Set(), 'none'),
-    KeyH: toggleRoles,
-    KeyV: () => changeDirection(vertical ? 'horizontal' : 'vertical'),
-    KeyQ: () => pickTool('select'),
-    KeyG: () => pickTool('hand'),
+    KeyI: toggleRoles,
+    KeyL: () => changeDirection(vertical ? 'horizontal' : 'vertical'),
+    // 도구의 키는 피그마와 같아요.
+    KeyV: () => pickTool('select'),
+    KeyH: () => pickTool('hand'),
     KeyP: () => pickTool('pen'),
-    KeyT: () => pickTool('rect'),
+    KeyR: () => pickTool('rect'),
     KeyO: () => pickTool('ellipse'),
     KeyX: shapes.length > 0 ? clearShapes : undefined,
   })
@@ -804,7 +805,7 @@ export function StructureMap({ name, repo, root }: Props) {
                 { label: '모두 접기', shortcut: 'W', checked: mode === 'none', onSelect: () => showFolders(new Set(), 'none') },
               ],
             },
-            { title: '표시', items: [{ label: '폴더 설명', shortcut: 'H', checked: roles, onSelect: toggleRoles }] },
+            { title: '표시', items: [{ label: '폴더 설명', shortcut: 'I', checked: roles, onSelect: toggleRoles }] },
           ]}
         />
         <MapMenu
@@ -841,7 +842,7 @@ export function StructureMap({ name, repo, root }: Props) {
           onClick={() => changeDirection('horizontal')}
           className={`${control} ${vertical ? '' : chosen}`}
         >
-          <Tip text="가로로 뻗기" keys="V" />
+          <Tip text="가로로 뻗기" keys="L" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
             <rect x="1.5" y="6" width="4" height="4" rx="1" />
             <rect x="10.5" y="2" width="4" height="4" rx="1" />
@@ -856,7 +857,7 @@ export function StructureMap({ name, repo, root }: Props) {
           onClick={() => changeDirection('vertical')}
           className={`${control} ${vertical ? chosen : ''}`}
         >
-          <Tip text="세로로 뻗기" keys="V" />
+          <Tip text="세로로 뻗기" keys="L" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
             <rect x="6" y="1.5" width="4" height="4" rx="1" />
             <rect x="2" y="10.5" width="4" height="4" rx="1" />
@@ -867,13 +868,13 @@ export function StructureMap({ name, repo, root }: Props) {
         <span aria-hidden className="mx-1 h-5 w-px bg-gray-200" />
         {/* 선택 도구는 칸을 누르고 옮기고, 빈 곳을 끌어서 여러 칸을 골라요. 손 도구는 어디를 끌어도 맵이 움직여요. */}
         <button type="button" aria-label="선택" aria-pressed={tool === 'select'} onClick={() => pickTool('select')} className={`${control} ${tool === 'select' ? chosen : ''}`}>
-          <Tip text="선택" keys="Q" />
+          <Tip text="선택" keys="V" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
             <path d="M3.5 2.5l9 4.2-3.8 1.2-1.3 3.8z" />
           </svg>
         </button>
         <button type="button" aria-label="손" aria-pressed={tool === 'hand'} onClick={() => pickTool('hand')} className={`${control} ${tool === 'hand' ? chosen : ''}`}>
-          <Tip text="손" keys="G" />
+          <Tip text="손" keys="H" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden="true">
             <path d="M5.5 8V3.8a1 1 0 0 1 2 0V7M7.5 7V2.8a1 1 0 0 1 2 0V7M9.5 7V3.8a1 1 0 0 1 2 0M5.5 8.5L4.3 7.3a1 1 0 0 0-1.5 1.3l2.400 3.600a3.500 3.500 0 0 0 2.900 1.500h.9a3.500 3.500 0 0 0 3.500-3.500V4.800" />
           </svg>
@@ -886,7 +887,7 @@ export function StructureMap({ name, repo, root }: Props) {
           </svg>
         </button>
         <button type="button" aria-label="사각형" aria-pressed={tool === 'rect'} onClick={() => pickTool('rect')} className={`${control} ${tool === 'rect' ? chosen : ''}`}>
-          <Tip text="사각형" keys="T" />
+          <Tip text="사각형" keys="R" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
             <rect x="2.5" y="3.5" width="11" height="9" rx="1.5" />
           </svg>
