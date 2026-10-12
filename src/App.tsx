@@ -1,7 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import type { AccountPage } from './components/Account'
 import { Chat } from './components/Chat'
-import { ChatSkeleton } from './components/Skeleton'
+import { ChatSkeleton, ExploreSkeleton } from './components/Skeleton'
 import { Header } from './components/Header'
 import { AppNudge } from './components/AppNudge'
 import { Hero } from './components/Hero'
@@ -112,8 +112,8 @@ export default function App() {
   const [storage, setStorage] = useState(false)
   /** 서버에 심층 분석 API가 있는지. 있을 때만 앱의 사이드바에 심층 분석을 보여줘요. */
   const [deep, setDeep] = useState(false)
-  /** 서버에 탐색 API가 있는지. 있을 때만 앱의 새 분석 화면 아래에 인기 레포를 보여줘요. */
-  const [exploreReady, setExploreReady] = useState(false)
+  /** 서버에 탐색 API가 있는지. 있을 때만 앱의 새 분석 화면 아래에 인기 레포를 보여줘요. 아직 물어보는 중이면 null이에요. */
+  const [exploreReady, setExploreReady] = useState<boolean | null>(null)
   /** 앱의 심층 분석 화면을 보고 있는지. repo가 null이면 레포를 고르는 화면이에요. */
   const [deepPage, setDeepPage] = useState(() => (isApp ? deepFromPath() : null))
   /** 사이드바에서 채팅을 지우거나 공유를 바꾸면 올라가요. 심층 분석이 내 작업을 다시 받게 해요. */
@@ -578,11 +578,14 @@ export default function App() {
         <Hero
           onSubmit={handleSubmit}
           below={
-            isApp && exploreReady ? (
-              <Suspense fallback={null}>
+            // 탐색이 있는지 아직 모를 때도 뼈대로 자리를 잡아 둬서, 입력창이 가운데에 있다가 위로 튀어 오르지 않게 해요.
+            !isApp || exploreReady === false ? undefined : exploreReady ? (
+              <Suspense fallback={<ExploreSkeleton />}>
                 <Explore onPick={(repo) => handleSubmit(`https://github.com/${repo}`)} />
               </Suspense>
-            ) : undefined
+            ) : (
+              <ExploreSkeleton />
+            )
           }
         />
       ) : (

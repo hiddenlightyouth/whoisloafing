@@ -49,7 +49,7 @@ export function Hero({ onSubmit, below }: Props) {
               className="mt-3 mb-7 animate-rise text-balance break-keep text-center text-[13px] leading-relaxed text-gray-500 sm:mb-8 sm:text-[14px]"
               style={{ animationDelay: '250ms' }}
             >
-              GitHub Repository 링크를 입력하거나, 아래에서 프로젝트를 골라 분석을 시작하세요
+              원하는 깃허브 레포지토리 링크를 입력하거나, 아래에서 탐색하여 분석을 시작하세요
             </p>
             <div className="animate-rise" style={{ animationDelay: '350ms' }}>
               <RepoInput onSubmit={onSubmit} />

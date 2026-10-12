@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { track } from '../lib/analytics'
 import { fetchExplore, type ExploreKind, type ExploreRepo } from '../lib/api'
 import { Avatar } from './History'
+import { ExploreCardsSkeleton } from './Skeleton'
 
 interface Props {
   /** 고른 레포(소유자/레포)로 새 분석을 시작해요. */
@@ -79,12 +80,7 @@ export function Explore({ onPick }: Props) {
       </div>
 
       {list === undefined ? (
-        <ul className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3" aria-busy="true">
-          <li className="sr-only">불러오고 있어요.</li>
-          {Array.from({ length: 12 }, (_, item) => (
-            <li key={item} aria-hidden className="h-[168px] rounded-2xl bg-gray-100 motion-safe:animate-pulse" />
-          ))}
-        </ul>
+        <ExploreCardsSkeleton />
       ) : list === 'failed' || list.length === 0 ? (
         <div className="mt-10 flex flex-col items-center gap-4 text-center">
           <p className="text-[14px] leading-relaxed text-gray-600">목록을 불러오지 못했어요. 잠시 뒤에 다시 시도해 주세요.</p>
