@@ -24,6 +24,8 @@ interface Props {
   onAccount?: (page: AccountPage) => void
   /** 앱 안에서는 로고와 링크를 사이드바가 대신해서, 공유와 중단하기 버튼만 남겨요. 빈 곳을 잡으면 창이 움직여요. */
   app?: boolean
+  /** 메인 화면인지. 이때만 앱 다운로드 아래에 앱을 권하는 툴팁을 띄워요. */
+  home?: boolean
 }
 
 const quiet = 'h-8 rounded-full px-3 text-[13px] font-medium transition-colors'
@@ -42,12 +44,15 @@ export function Header({
   signedIn = false,
   onAccount,
   app = false,
+  home = false,
 }: Props) {
   const [confirming, setConfirming] = useState(false)
   const [working, setWorking] = useState(false)
   const actionsRef = useRef<HTMLDivElement>(null)
 
   const [downloadOpen, setDownloadOpen] = useState(false)
+  /** 앱 다운로드를 한 번 열어 본 사람에게는 툴팁을 다시 띄우지 않아요. */
+  const [tipSeen, setTipSeen] = useState(appTipSeen)
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileDownloadOpen, setMobileDownloadOpen] = useState(false)
   const downloadRef = useRef<HTMLDivElement>(null)
@@ -138,12 +143,32 @@ export function Header({
                 type="button"
                 aria-haspopup="menu"
                 aria-expanded={downloadOpen}
-                onClick={() => setDownloadOpen((open) => !open)}
+                onClick={() => {
+                  setDownloadOpen((open) => !open)
+                  if (!tipSeen) {
+                    setTipSeen(true)
+                    try {
+                      localStorage.setItem(APP_TIP_KEY, '1')
+                    } catch {
+                      return
+                    }
+                  }
+                }}
                 className={`${quiet} inline-flex items-center gap-1 text-gray-600 hover:text-gray-900`}
               >
                 앱 다운로드
                 <Caret open={downloadOpen} />
               </button>
+              {home && !tipSeen && !downloadOpen && (
+                <p
+                  className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 animate-rise rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-medium whitespace-nowrap text-white"
+                  style={{ animationDelay: '600ms' }}
+                >
+                  {/* 앱 다운로드를 가리키는 말풍선 꼬리 */}
+                  <span className="absolute -top-1 left-1/2 size-2 -translate-x-1/2 rotate-45 rounded-[1px] bg-brand" aria-hidden="true" />
+                  앱에서 더 많은 기능 사용하기
+                </p>
+              )}
               {downloadOpen && (
                 <div
                   role="menu"
@@ -359,6 +384,16 @@ export function Header({
 /** macOS 앱 설치 파일. 앱 레포에서 만든 DMG를 `public/download`에 넣어 둬요. 새 버전도 같은 이름으로 덮어써서 주소가 바뀌지 않아요. */
 const MAC_DOWNLOAD = '/download/WhoIsLoafing.dmg'
 const MAC_SUPPORT = 'Apple Silicon 전용'
+
+const APP_TIP_KEY = 'whoisloafing:app-tip-seen'
+
+function appTipSeen(): boolean {
+  try {
+    return localStorage.getItem(APP_TIP_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 function WindowsLogo() {
   return (

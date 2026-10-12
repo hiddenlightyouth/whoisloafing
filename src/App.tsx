@@ -487,6 +487,7 @@ export default function App() {
       <Header
         app={isApp}
         onHome={handleHome}
+        home={messages.length === 0 && !article && !account && !appLogin && !deepPage && !opening && !missing}
         inChat={messages.length > 0 && !readOnly && !account}
         storage={storage}
         busy={busy}
