@@ -154,13 +154,26 @@ export function Header({
                     download
                     role="menuitem"
                     onClick={download}
-                    className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                    className="group flex items-center gap-2.5 rounded-xl px-3 py-2 text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900"
                   >
                     <AppleLogo />
-                    <span>
+                    <span className="min-w-0 flex-1">
                       <span className="block text-[13px] font-medium">macOS</span>
                       <span className="block text-[11.5px] text-gray-400">{MAC_SUPPORT}</span>
                     </span>
+                    {/* 마우스를 올리거나 키보드로 고르면, 누르면 받는다는 것을 아이콘으로 알려줘요. */}
+                    <svg
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="size-4 shrink-0 text-gray-500 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+                      aria-hidden="true"
+                    >
+                      <path d="M8 2.5v7.5M4.75 7L8 10.25 11.25 7M3 13.5h10" />
+                    </svg>
                   </a>
                   {/* 아직 받을 수 없어서 누를 수 없게 흐리게 둬요. */}
                   <div role="menuitem" aria-disabled="true" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-gray-400 cursor-not-allowed">
