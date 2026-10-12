@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useShortcutHints } from '../lib/shortcuts'
 
 interface KbdProps {
@@ -23,5 +24,40 @@ export function Kbd({ children, className = '', corner = false }: KbdProps) {
     >
       {children}
     </kbd>
+  )
+}
+
+/** 안내를 이만큼 보여준 뒤에 알아서 사라져요. */
+const TIP_MS = 6000
+
+/**
+ * 앱을 켰을 때 오른쪽 아래 구석에 잠깐 뜨는 안내예요. 다크 모드에서도 같은 검은 바탕이라 색 토큰을 쓰지 않아요. Option을 누르면 단축키가 보인다는 것을 알려줘요.
+ * 몇 초 뒤에 사라지고, Option을 눌러 보면 바로 사라져요. 앱을 열거나 새로 고칠 때마다 다시 떠요. 단축키 힌트 표시를 켜 둔 사람에게는 띄우지 않아요.
+ */
+export function ShortcutTip() {
+  const hinting = useShortcutHints()
+  const [shown, setShown] = useState(true)
+
+  useEffect(() => {
+    if (!shown) return
+    const timer = window.setTimeout(() => setShown(false), TIP_MS)
+    return () => window.clearTimeout(timer)
+  }, [shown])
+
+  useEffect(() => {
+    if (hinting) setShown(false)
+  }, [hinting])
+
+  if (!shown || hinting) return null
+  return (
+    <p
+      role="status"
+      className="pointer-events-none fixed right-3 bottom-3 z-40 flex animate-rise items-center gap-1.5 rounded-md bg-black/90 px-2 py-1 text-[11.5px] font-medium text-white"
+      style={{ animationDelay: '800ms' }}
+    >
+      {/* Mac 자판의 Option 키에 그려진 기호예요. */}
+      <span className="rounded-[4px] border border-white/30 px-1 py-px text-[10.5px] leading-none">⌥ option</span>
+      을 눌러 단축키 표시
+    </p>
   )
 }
