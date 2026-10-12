@@ -13,6 +13,7 @@ const COL_GAP = 72
 const ROW_GAP = 10
 const MIN_ZOOM = 0.3
 const MAX_ZOOM = 1.6
+const READABLE_ZOOM = 0.7
 /** 이만큼 넘게 움직이면 누른 것이 아니라 끌어서 옮긴 것으로 봐요. */
 const DRAG_PX = 4
 
@@ -27,6 +28,29 @@ interface Placed {
 }
 
 const count = (value: number) => value.toLocaleString('ko-KR')
+
+/** 코드가 아니라 설정, 문서, 자료가 들어 있는 폴더 이름. 처음에는 접어 둬요. */
+const SIDE_FOLDERS = new Set([
+  'gradle', 'docs', 'doc', 'scripts', 'public', 'static', 'assets', 'images', 'img', 'patches',
+  'examples', 'example', 'playground', 'fixtures', 'vendor', 'third_party', 'node_modules', 'build', 'dist',
+])
+
+const isSide = (node: StructureNode) => {
+  const first = node.name.split('/')[0].toLowerCase()
+  return first.startsWith('.') || SIDE_FOLDERS.has(first)
+}
+
+/** 처음에 펼쳐 둘 폴더예요. 코드가 든 폴더는 끝까지 펼치고, 설정이나 문서 같은 곁가지 폴더는 접어 둬요. */
+function initialOpen(root: StructureNode): Set<string> {
+  const open = new Set<string>()
+  const visit = (node: StructureNode) => {
+    if (isSide(node) || node.children.length === 0) return
+    open.add(node.path)
+    node.children.forEach(visit)
+  }
+  root.children.forEach(visit)
+  return open
+}
 
 /** 펼쳐 둔 폴더만 가로로 뻗는 나무로 자리를 잡아요. 부모는 자식들의 가운데 높이에 와요. */
 function layout(root: StructureNode, open: Set<string>): Placed[] {
@@ -63,7 +87,7 @@ function layout(root: StructureNode, open: Set<string>): Placed[] {
  * 빈 곳을 끌거나 두 손가락으로 밀면 맵이 움직이고, 두 손가락을 벌리거나 아래 버튼을 누르면 커지고 작아져요.
  */
 export function StructureMap({ name, root }: Props) {
-  const [open, setOpen] = useState<Set<string>>(() => new Set())
+  const [open, setOpen] = useState<Set<string>>(() => initialOpen(root))
   const [selected, setSelected] = useState<string | null>(null)
   const [view, setView] = useState({ x: 24, y: 24, k: 1 })
   const frameRef = useRef<HTMLDivElement>(null)
@@ -79,20 +103,27 @@ export function StructureMap({ name, root }: Props) {
   const height = Math.max(...placed.map((item) => item.y)) + NODE_H
 
   /** 맵 전체가 화면에 들어오게 맞춰요. 작은 맵을 억지로 키우지는 않아요. */
-  const fit = useCallback(() => {
-    const frame = frameRef.current
-    if (!frame) return
-    const pad = 32
-    const k = Math.min(1, Math.max(MIN_ZOOM, Math.min((frame.clientWidth - pad * 2) / width, (frame.clientHeight - pad * 2) / height)))
-    setView({ k, x: pad, y: Math.max(pad, (frame.clientHeight - height * k) / 2) })
-  }, [width, height])
+  const rootY = placed[0].y
+  const fit = useCallback(
+    (floor = MIN_ZOOM) => {
+      const frame = frameRef.current
+      if (!frame) return
+      const pad = 32
+      const k = Math.min(1, Math.max(floor, Math.min((frame.clientWidth - pad * 2) / width, (frame.clientHeight - pad * 2) / height)))
+      // 다 들어오지 않을 만큼 크면, 가지가 시작되는 뿌리 칸이 화면 가운데 높이에 오게 해요.
+      const fits = height * k <= frame.clientHeight - pad * 2
+      setView({ k, x: pad, y: fits ? (frame.clientHeight - height * k) / 2 : frame.clientHeight / 2 - (rootY + NODE_H / 2) * k })
+    },
+    [width, height, rootY],
+  )
 
   // 처음 그릴 때 한 번만 화면에 맞춰요. 그 뒤로는 보던 자리를 그대로 둬요.
   const fitted = useRef(false)
   useLayoutEffect(() => {
     if (fitted.current) return
     fitted.current = true
-    fit()
+    // 처음에는 글자를 읽을 수 있는 크기까지만 줄여요. 전체는 한눈에 보기로 볼 수 있어요.
+    fit(READABLE_ZOOM)
   }, [fit])
 
   // 펼치거나 접으면 다른 칸들의 높이가 바뀌어요. 누른 칸은 화면에서 움직이지 않게 맵을 그만큼 옮겨요.
@@ -285,7 +316,7 @@ export function StructureMap({ name, root }: Props) {
             <path d="M3.5 8h9M8 3.5v9" />
           </svg>
         </button>
-        <button type="button" onClick={fit} className="h-7 rounded-full px-2.5 text-[12px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900">
+        <button type="button" onClick={() => fit()} className="h-7 rounded-full px-2.5 text-[12px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900">
           한눈에 보기
         </button>
       </div>

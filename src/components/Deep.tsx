@@ -18,6 +18,8 @@ interface Props {
   onOpen: (repo: string | null) => void
   /** 분석한 레포가 아직 없을 때, 새 분석을 시작하러 가요. */
   onNew: () => void
+  /** 이 레포를 분석한 채팅으로 가요. */
+  onOpenChat: (id: string) => void
 }
 
 const SECTION_LABELS: Record<DeepSection, string> = {
@@ -37,6 +39,30 @@ const SECTION_GUIDES: Record<DeepSection, string> = {
 
 type Loaded = 'loading' | { report: DeepReport } | { error: string }
 
+const SAVED_PREFIX = 'whoisloafing:deep:'
+
+/** 분석한 결과는 이 기기에 저장해 둬요. 다음에 열면 분석하기를 다시 누르지 않아도 바로 보여요. */
+function readSaved(repo: string): Partial<Record<DeepSection, Loaded>> {
+  const saved: Partial<Record<DeepSection, Loaded>> = {}
+  for (const section of DEEP_SECTIONS) {
+    try {
+      const raw = localStorage.getItem(`${SAVED_PREFIX}${repo.toLowerCase()}:${section}`)
+      if (raw) saved[section] = { report: JSON.parse(raw) as DeepReport }
+    } catch {
+      continue
+    }
+  }
+  return saved
+}
+
+function writeSaved(repo: string, section: DeepSection, report: DeepReport) {
+  try {
+    localStorage.setItem(`${SAVED_PREFIX}${repo.toLowerCase()}:${section}`, JSON.stringify(report))
+  } catch {
+    // 저장 공간이 모자라면 저장하지 않아요. 화면에는 그대로 보여요.
+  }
+}
+
 /** 갤러리에 보여줄 레포 하나. 같은 레포를 여러 번 분석했으면 가장 최근 것 하나만 남겨요. */
 interface RepoCard {
   repo: string
@@ -47,10 +73,10 @@ interface RepoCard {
  * 앱에서만 쓰는 심층 분석 화면이에요. 채팅처럼 말풍선이 쌓이지 않고, 레포 하나를 탭으로 나눠 한 화면에서 살펴봐요.
  * 탭은 처음 열 때 한 번만 받아 두고, 다른 탭에 다녀와도 다시 받지 않아요.
  */
-export function Deep({ repo, onOpen, onNew }: Props) {
+export function Deep({ repo, onOpen, onNew, onOpenChat }: Props) {
   if (!repo) return <Gallery onOpen={onOpen} onNew={onNew} />
   // 레포가 바뀌면 받아 둔 내용과 보던 탭을 처음으로 되돌려요.
-  return <Dashboard key={repo} repo={repo} onOpen={onOpen} />
+  return <Dashboard key={repo} repo={repo} onOpen={onOpen} onOpenChat={onOpenChat} />
 }
 
 /** 링크를 다시 적지 않고, 채팅으로 분석해 둔 레포 중에서 골라요. */
@@ -157,16 +183,42 @@ function Gallery({ onOpen, onNew }: { onOpen: (repo: string) => void; onNew: () 
   )
 }
 
-function Dashboard({ repo, onOpen }: { repo: string; onOpen: (repo: string | null) => void }) {
+/** 채팅으로 이동 버튼에 쓸 채팅을 찾을 때, 내 작업을 이만큼까지만 넘겨 봐요. */
+const CHAT_LOOKUP_PAGES = 3
+
+function Dashboard({ repo, onOpen, onOpenChat }: { repo: string; onOpen: (repo: string | null) => void; onOpenChat: (id: string) => void }) {
+  /** 이 레포를 가장 최근에 분석한 채팅. 찾지 못하면 채팅으로 이동 버튼을 숨겨요. */
+  const [chatId, setChatId] = useState<string | null>(null)
+
+  useEffect(() => {
+    let stale = false
+    void (async () => {
+      for (let page = 0; page < CHAT_LOOKUP_PAGES; page += 1) {
+        const result = await fetchMyChats(page)
+        if (stale || !result.ok) return
+        const found = result.data.items.find((chat) => chat.repoName.toLowerCase() === repo.toLowerCase())
+        if (found) {
+          setChatId(found.id)
+          return
+        }
+        if (!result.data.hasNext) return
+      }
+    })()
+    return () => {
+      stale = true
+    }
+  }, [repo])
+
   const [section, setSection] = useState<DeepSection>('structure')
-  const [loaded, setLoaded] = useState<Partial<Record<DeepSection, Loaded>>>({})
+  const [loaded, setLoaded] = useState<Partial<Record<DeepSection, Loaded>>>(() => readSaved(repo))
   const current = loaded[section]
 
-  /** 탭의 분석하기를 눌렀을 때만 받아요. 받아 둔 탭은 다른 탭에 다녀와도 그대로 있어요. */
-  async function analyze(target: DeepSection) {
-    track('deep_analyze', { repo, section: target })
+  /** 탭의 분석하기를 눌렀을 때만 받아요. 받은 결과는 이 기기에 저장해서, 다음에 열면 바로 보여요. */
+  async function analyze(target: DeepSection, again = false) {
+    track('deep_analyze', { repo, section: target, again })
     setLoaded((prev) => ({ ...prev, [target]: 'loading' }))
     const result = await fetchDeepReport(repo, target)
+    if ('report' in result) writeSaved(repo, target, result.report)
     setLoaded((prev) => ({ ...prev, [target]: result }))
   }
 
@@ -174,10 +226,22 @@ function Dashboard({ repo, onOpen }: { repo: string; onOpen: (repo: string | nul
 
   return (
     <main className="flex min-h-0 flex-1 flex-col px-6 pt-14 pb-6 md:px-10">
-      <div className="flex shrink-0 flex-wrap items-end justify-between gap-x-6 gap-y-3 pt-4">
-        <div className="min-w-0">
-          <p className="text-[12px] text-gray-500">{owner}</p>
-          <h1 className="truncate text-[20px] leading-tight font-semibold text-gray-900">{name}</h1>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-3 pt-4">
+        <div className="flex min-w-0 items-center gap-2">
+          <button
+            type="button"
+            aria-label="레포 고르는 화면으로 돌아가기"
+            onClick={() => onOpen(null)}
+            className="-ml-2 flex size-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" className="size-4" aria-hidden="true">
+              <path d="M10 3.5L5.5 8 10 12.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <div className="min-w-0">
+            <p className="text-[12px] text-gray-500">{owner}</p>
+            <h1 className="truncate text-[20px] leading-tight font-semibold text-gray-900">{name}</h1>
+          </div>
         </div>
         <div className="flex items-center gap-1.5">
           <a
@@ -188,13 +252,18 @@ function Dashboard({ repo, onOpen }: { repo: string; onOpen: (repo: string | nul
           >
             GitHub에서 보기
           </a>
-          <button
-            type="button"
-            onClick={() => onOpen(null)}
-            className="h-8 rounded-full bg-gray-100 px-3.5 text-[12.5px] font-medium text-gray-700 transition-colors hover:text-brand"
-          >
-            다른 레포 고르기
-          </button>
+          {chatId && (
+            <button
+              type="button"
+              onClick={() => {
+                track('deep_chat_open', { repo })
+                onOpenChat(chatId)
+              }}
+              className="h-8 rounded-full bg-gray-100 px-3.5 text-[12.5px] font-medium text-gray-700 transition-colors hover:text-brand"
+            >
+              채팅으로 이동
+            </button>
+          )}
         </div>
       </div>
 
@@ -216,6 +285,16 @@ function Dashboard({ repo, onOpen }: { repo: string; onOpen: (repo: string | nul
             {SECTION_LABELS[item]}
           </button>
         ))}
+        {/* 저장해 둔 결과를 보고 있을 때만, 레포가 바뀌었으면 새로 받을 수 있게 해요. */}
+        {current && current !== 'loading' && 'report' in current && (
+          <button
+            type="button"
+            onClick={() => void analyze(section, true)}
+            className="mb-1.5 ml-auto h-7 self-end rounded-full px-3 text-[12px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+          >
+            다시 분석하기
+          </button>
+        )}
       </div>
 
       <div role="tabpanel" className="mt-5 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto xl:flex-row xl:overflow-visible">
@@ -260,6 +339,15 @@ function Report({ report, name }: { report: DeepReport; name: string }) {
   const hasWorkflows = (report.workflows?.length ?? 0) > 0
   const hasForms = (report.templates?.length ?? 0) > 0 || (report.labels?.length ?? 0) > 0
 
+  // 프로젝트 구조는 설명 없이 맵만 크게 보여줘요.
+  if (hasStructure && report.structure) {
+    return (
+      <div className="h-[560px] min-w-0 shrink-0 xl:h-auto xl:flex-1 xl:shrink">
+        <StructureMap name={name} root={report.structure} />
+      </div>
+    )
+  }
+
   return (
     <>
       <aside className="shrink-0 xl:w-80 xl:overflow-y-auto">
@@ -278,11 +366,6 @@ function Report({ report, name }: { report: DeepReport; name: string }) {
         )}
       </aside>
 
-      {hasStructure && report.structure && (
-        <div className="h-[520px] min-w-0 shrink-0 xl:h-auto xl:flex-1 xl:shrink">
-          <StructureMap name={name} root={report.structure} />
-        </div>
-      )}
       {hasWorkflows && report.workflows && (
         <div className="min-w-0 rounded-2xl border border-gray-200 p-5 xl:flex-1 xl:overflow-y-auto">
           <Pipeline workflows={report.workflows} large />
