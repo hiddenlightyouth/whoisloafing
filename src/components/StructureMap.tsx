@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import type { FolderPerson, StructureNode } from '../../shared/types'
 import { track } from '../lib/analytics'
 import { fetchDeepReport } from '../lib/api'
+import { MapMenu } from './DeepParts'
 
 interface Props {
   /** 맵 한가운데서 가지가 뻗어 나가는 뿌리 칸에 적을 이름 (레포 이름) */
@@ -68,6 +69,26 @@ function allFolders(root: StructureNode): Set<string> {
   return open
 }
 
+const PEOPLE_PREFIX = 'whoisloafing:deep:v2:'
+
+/** 참여자 자료는 받는 데 오래 걸려서, 한 번 받으면 이 기기에 저장해 둬요. */
+function readPeople(repo: string): FolderPerson[] | null {
+  try {
+    const raw = localStorage.getItem(`${PEOPLE_PREFIX}${repo.toLowerCase()}:people`)
+    return raw ? (JSON.parse(raw) as FolderPerson[]) : null
+  } catch {
+    return null
+  }
+}
+
+function writePeople(repo: string, people: FolderPerson[]) {
+  try {
+    localStorage.setItem(`${PEOPLE_PREFIX}${repo.toLowerCase()}:people`, JSON.stringify(people))
+  } catch {
+    // 저장 공간이 모자라면 저장하지 않아요.
+  }
+}
+
 const ROLES_HIDDEN_KEY = 'whoisloafing:deep-map-roles-hidden'
 
 function rolesHidden(): boolean {
@@ -108,6 +129,8 @@ function layout(root: StructureNode, open: Set<string>, nodeH: number): Placed[]
  */
 export function StructureMap({ name, repo, root }: Props) {
   const [open, setOpen] = useState<Set<string>>(() => sourceFolders(root))
+  /** 메뉴에서 고른 펼침 방식. 폴더를 직접 눌러서 바꾸면 어느 것도 아니게 돼요. */
+  const [mode, setMode] = useState<'source' | 'all' | 'none' | null>('source')
   const [selected, setSelected] = useState<string | null>(null)
   const [view, setView] = useState({ x: 24, y: 24, k: 1 })
   const frameRef = useRef<HTMLDivElement>(null)
@@ -123,37 +146,46 @@ export function StructureMap({ name, repo, root }: Props) {
   /** 펼친 폴더를 한꺼번에 바꾼 뒤에는 맵을 다시 화면에 맞춰요. */
   const refit = useRef(false)
 
-  /** 참여자별 보기. 메뉴를 처음 열 때 한 번 받아요. 커밋을 하나씩 읽어서 시간이 걸려요. */
-  const [people, setPeople] = useState<FolderPerson[] | 'loading' | { error: string } | null>(null)
-  const [peopleOpen, setPeopleOpen] = useState(false)
+  /** 참여자별 보기. 저장해 둔 것이 없으면 메뉴를 처음 열 때 받아요. 커밋을 하나씩 읽어서 시간이 걸려요. */
+  const [people, setPeople] = useState<FolderPerson[] | 'loading' | { error: string } | null>(() => readPeople(repo))
   const [personId, setPersonId] = useState<string | null>(null)
   const person = Array.isArray(people) ? (people.find((item) => item.id === personId) ?? null) : null
   /** 고른 사람이 가장 많이 고친 최상위 폴더의 횟수. 색의 진하기를 정하는 기준이에요. */
   const personMax = person ? Math.max(1, ...root.children.map((node) => person.folders[node.path] ?? 0)) : 1
 
-  async function openPeople() {
-    setPeopleOpen((value) => !value)
-    if (people !== null && people !== 'loading' && !('error' in people)) return
-    if (people === 'loading') return
+  async function loadPeople() {
+    if (people !== null && (people === 'loading' || Array.isArray(people))) return
     setPeople('loading')
     const result = await fetchDeepReport(repo, 'people')
-    setPeople('error' in result ? { error: result.error } : (result.report.people ?? []))
+    if ('error' in result) {
+      setPeople({ error: result.error })
+      return
+    }
+    const list = result.report.people ?? []
+    writePeople(repo, list)
+    setPeople(list)
   }
 
-  /** 한 사람을 고르면 그 사람이 고친 폴더가 다 보이게 펼쳐요. */
+  /**
+   * 한 사람을 고르면 그 사람이 고친 폴더에 색을 입혀요. 같은 사람을 다시 고르면 풀어요.
+   * 보던 맵은 그대로 두고, 그 사람이 고친 폴더 중 접혀 있던 것만 더 펼쳐요. 뿌리 칸은 화면에서 움직이지 않아요.
+   */
   function pickPerson(next: FolderPerson | null) {
-    setPeopleOpen(false)
-    setPersonId(next?.id ?? null)
-    track('deep_person_select', { repo, picked: next !== null })
-    if (!next) return
-    const touched = new Set<string>()
+    const picked = next && next.id !== personId ? next : null
+    setPersonId(picked?.id ?? null)
+    track('deep_person_select', { repo, picked: picked !== null })
+    if (!picked) return
+    const added = new Set(open)
     const visit = (node: StructureNode) => {
-      if (node.children.length === 0 || !next.folders[node.path]) return
-      touched.add(node.path)
+      if (node.children.length === 0 || !picked.folders[node.path]) return
+      added.add(node.path)
       node.children.forEach(visit)
     }
     root.children.forEach(visit)
-    showFolders(touched)
+    if (added.size === open.size) return
+    anchor.current = { key: '', y: placed[0].y }
+    setMode(null)
+    setOpen(added)
   }
 
   const placed = useMemo(() => layout(root, open, nodeH), [root, open, nodeH])
@@ -191,9 +223,10 @@ export function StructureMap({ name, repo, root }: Props) {
     fit(READABLE_ZOOM)
   }, [placed, fit])
 
-  function showFolders(next: Set<string>) {
+  function showFolders(next: Set<string>, picked: 'source' | 'all' | 'none') {
     refit.current = true
     setSelected(null)
+    setMode(picked)
     setOpen(next)
   }
 
@@ -263,6 +296,7 @@ export function StructureMap({ name, repo, root }: Props) {
     setSelected(item.node.path)
     if (item.depth === 0 || item.node.children.length === 0) return
     anchor.current = { key: keyOf(item), y: item.y }
+    setMode(null)
     setOpen((prev) => {
       const next = new Set(prev)
       if (next.has(item.node.path)) {
@@ -398,67 +432,54 @@ export function StructureMap({ name, repo, root }: Props) {
         </aside>
       )}
 
-      <div onPointerDown={(event) => event.stopPropagation()} className="absolute top-3 left-3 flex cursor-default flex-wrap items-center gap-1 rounded-full border border-gray-200 bg-white p-1">
-        <button type="button" onClick={() => showFolders(sourceFolders(root))} className={option}>
-          소스 폴더만 펼치기
-        </button>
-        <button type="button" onClick={() => showFolders(allFolders(root))} className={option}>
-          전체 펼치기
-        </button>
-        <button type="button" onClick={() => showFolders(new Set())} className={option}>
-          전체 접기
-        </button>
-        <button type="button" aria-pressed={roles} onClick={toggleRoles} className={option}>
-          {roles ? '설명 숨기기' : '설명 표시'}
-        </button>
-        <button
-          type="button"
-          aria-haspopup="menu"
-          aria-expanded={peopleOpen}
-          onClick={() => void openPeople()}
-          className={`${option} ${person ? 'bg-brand-soft text-brand-hover' : ''}`}
-        >
-          {person ? `${person.name}님이 고친 폴더` : '참여자별 보기'}
-        </button>
+      <div onPointerDown={(event) => event.stopPropagation()} className="absolute top-3 left-3 flex cursor-default items-center gap-1.5">
+        <MapMenu
+          label="보기"
+          groups={[
+            {
+              title: '폴더',
+              items: [
+                { label: '소스 폴더만 펼치기', checked: mode === 'source', onSelect: () => showFolders(sourceFolders(root), 'source') },
+                { label: '모두 펼치기', checked: mode === 'all', onSelect: () => showFolders(allFolders(root), 'all') },
+                { label: '모두 접기', checked: mode === 'none', onSelect: () => showFolders(new Set(), 'none') },
+              ],
+            },
+            { title: '표시', items: [{ label: '폴더 설명', checked: roles, onSelect: toggleRoles }] },
+          ]}
+        />
+        <MapMenu
+          label="참여자"
+          value={person?.name}
+          active={person !== null}
+          onOpen={() => void loadPeople()}
+          groups={[
+            {
+              title: '고친 폴더에 색 입히기',
+              note:
+                people === null || people === 'loading'
+                  ? '커밋을 하나씩 읽고 있어요. 처음에는 조금 걸려요.'
+                  : !Array.isArray(people)
+                    ? people.error
+                    : people.length === 0
+                      ? '살펴볼 커밋이 없어요.'
+                      : undefined,
+              items: Array.isArray(people)
+                ? [
+                    { label: '전체', checked: person === null, onSelect: () => pickPerson(null) },
+                    ...people.map((item) => ({
+                      label: item.name,
+                      hint: `커밋 ${count(item.commits)}`,
+                      checked: item.id === personId,
+                      onSelect: () => pickPerson(item),
+                    })),
+                  ]
+                : [],
+            },
+          ]}
+        />
       </div>
 
-      {peopleOpen && (
-        <div
-          role="menu"
-          onPointerDown={(event) => event.stopPropagation()}
-          className="absolute top-14 left-3 max-h-[60%] w-64 cursor-default overflow-y-auto rounded-2xl border border-gray-200 bg-white p-1.5"
-        >
-          {people === 'loading' || people === null ? (
-            <p className="px-3 py-2 text-[12.5px] leading-relaxed text-gray-500">커밋을 하나씩 읽고 있어요. 처음에는 조금 걸려요.</p>
-          ) : 'error' in people ? (
-            <p className="px-3 py-2 text-[12.5px] leading-relaxed text-gray-500">{people.error}</p>
-          ) : people.length === 0 ? (
-            <p className="px-3 py-2 text-[12.5px] text-gray-500">살펴볼 커밋이 없어요.</p>
-          ) : (
-            <>
-              {person && (
-                <button type="button" role="menuitem" onClick={() => pickPerson(null)} className={`${personItem} text-gray-500`}>
-                  전체 보기로 돌아가기
-                </button>
-              )}
-              {people.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  role="menuitem"
-                  onClick={() => pickPerson(item)}
-                  className={`${personItem} ${item.id === personId ? 'bg-brand-soft text-brand-hover' : 'text-gray-700'}`}
-                >
-                  <span className="min-w-0 truncate">{item.name}</span>
-                  <span className="shrink-0 text-[11.5px] text-gray-400 tabular-nums">커밋 {count(item.commits)}개</span>
-                </button>
-              ))}
-            </>
-          )}
-        </div>
-      )}
-
-      <div onPointerDown={(event) => event.stopPropagation()} className="absolute right-3 bottom-3 flex cursor-default items-center gap-1 rounded-full border border-gray-200 bg-white p-1">
+      <div onPointerDown={(event) => event.stopPropagation()} className="absolute right-3 bottom-3 flex cursor-default items-center gap-0.5 rounded-lg border border-gray-200 bg-white p-0.5">
         <button type="button" aria-label="작게" onClick={() => zoomBy(1 / 1.25)} className={control}>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
             <path d="M3.5 8h9" />
@@ -470,7 +491,7 @@ export function StructureMap({ name, repo, root }: Props) {
             <path d="M3.5 8h9M8 3.5v9" />
           </svg>
         </button>
-        <button type="button" onClick={() => fit()} className="h-7 rounded-full px-2.5 text-[12px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900">
+        <button type="button" onClick={() => fit()} className="h-7 rounded-md px-2 text-[12px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900">
           한눈에 보기
         </button>
       </div>
@@ -478,6 +499,4 @@ export function StructureMap({ name, repo, root }: Props) {
   )
 }
 
-const control = 'flex size-7 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900'
-const option = 'h-7 rounded-full px-2.5 text-[12px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900'
-const personItem = 'flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-[13px] font-medium transition-colors hover:bg-gray-50'
+const control = 'flex size-7 items-center justify-center rounded-md text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900'

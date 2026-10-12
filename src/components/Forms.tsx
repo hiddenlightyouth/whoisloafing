@@ -1,10 +1,11 @@
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { FormField, FormTemplate, RepoLabel } from '../../shared/types'
-import { Source, Tabs } from './DeepParts'
+import { Source } from './DeepParts'
 
 interface Props {
   kind: 'issue' | 'pull'
-  templates: FormTemplate[]
+  /** 보여줄 템플릿. 템플릿 없이 라벨만 있으면 넘기지 않아요. */
+  template?: FormTemplate
   labels?: RepoLabel[]
   /** 넓은 자리에 그릴 때 true. 양식 옆에 원문을 나란히 보여주고, 라벨도 설명과 함께 다 보여줘요. */
   large: boolean
@@ -17,29 +18,27 @@ const COMPACT_LABELS = 10
  * 이슈 템플릿이나 PR 템플릿을 원문 대신 실제로 글을 쓸 때 보이는 양식처럼 그려요.
  * 무엇을 적어야 하는지, 무엇이 필수인지, 어떤 라벨이 자동으로 붙는지가 한눈에 보여요.
  */
-export function Forms({ kind, templates, labels = [], large }: Props) {
-  const [index, setIndex] = useState(0)
-  const template = templates[Math.min(index, templates.length - 1)]
-
+export function Forms({ kind, template, labels = [], large }: Props) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {template && (
-        <div>
-          <Tabs names={templates.map((item) => item.name)} index={index} onSelect={setIndex} />
-          <div className={large ? 'lg:grid lg:grid-cols-2 lg:items-start lg:gap-5' : ''}>
-            <Preview template={template} kind={kind} labels={labels} scroll={!large} />
-            {large ? (
-              <div className="mt-5 lg:mt-0">
-                <Source path={template.path} content={template.content} kind={kind} tall />
-              </div>
-            ) : (
-              <p className="mt-2 font-mono text-[12px] tracking-normal break-all text-gray-400">{template.path}</p>
-            )}
-          </div>
+        <div className={large ? 'lg:grid lg:grid-cols-2 lg:items-start lg:gap-4' : ''}>
+          <Preview template={template} kind={kind} labels={labels} scroll={!large} />
+          {large ? (
+            <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4 lg:mt-0">
+              <Source path={template.path} content={template.content} kind={kind} tall />
+            </div>
+          ) : (
+            <p className="mt-2 font-mono text-[12px] tracking-normal break-all text-gray-400">{template.path}</p>
+          )}
         </div>
       )}
 
-      {labels.length > 0 && <Labels labels={labels} large={large} />}
+      {labels.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-4">
+          <Labels labels={labels} large={large} />
+        </div>
+      )}
     </div>
   )
 }
@@ -48,7 +47,7 @@ function Preview({ template, kind, labels, scroll }: { template: FormTemplate; k
   const colorOf = (name: string) => labels.find((label) => label.name === name)?.color ?? ''
 
   return (
-    <div className={`rounded-lg border border-gray-200 px-3.5 pt-3 pb-3.5 ${scroll ? 'max-h-96 overflow-y-auto' : ''}`}>
+    <div className={`rounded-xl border border-gray-200 bg-white px-4 pt-3.5 pb-4 ${scroll ? 'max-h-96 overflow-y-auto' : ''}`}>
       <p className="text-[14px] font-semibold text-gray-900">{template.name}</p>
       {template.about && <p className="mt-0.5 text-[12.5px] leading-snug text-gray-500">{template.about}</p>}
 

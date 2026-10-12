@@ -1,9 +1,9 @@
-import { Fragment, useState } from 'react'
+import { Fragment } from 'react'
 import type { Workflow, WorkflowJob } from '../../shared/types'
-import { Source, Tabs } from './DeepParts'
+import { Source } from './DeepParts'
 
 interface Props {
-  workflows: Workflow[]
+  workflow: Workflow
   /** 넓은 자리에 그릴 때 true. 단계를 줄이지 않고 다 보여주고, 원문도 함께 보여줘요. */
   large: boolean
 }
@@ -16,20 +16,14 @@ const COMPACT_STEPS = 4
  * 언제 도는지를 먼저 보여주고, 그 아래에 먼저 도는 작업부터 왼쪽에서 오른쪽으로 늘어놓아요.
  * 같은 칸에 있는 작업은 동시에 돌아요. 좁은 화면에서는 위에서 아래로 늘어놓아요.
  */
-export function Pipeline({ workflows, large }: Props) {
-  const [index, setIndex] = useState(0)
-  const workflow = workflows[Math.min(index, workflows.length - 1)]
-  if (!workflow) return null
-
+export function Pipeline({ workflow, large }: Props) {
   return (
     <div>
-      <Tabs names={workflows.map((item) => item.name)} index={index} onSelect={setIndex} />
-
       {workflow.triggers.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="mr-0.5 text-[12px] text-gray-500">이럴 때 돌아요</span>
           {workflow.triggers.map((trigger) => (
-            <span key={trigger} className="rounded-full bg-brand-soft px-2.5 py-1 text-[12px] leading-none font-medium text-brand-hover">
+            <span key={trigger} className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[12px] leading-none font-medium text-brand-hover">
               {trigger}
             </span>
           ))}
@@ -54,7 +48,7 @@ export function Pipeline({ workflows, large }: Props) {
       )}
 
       {large ? (
-        <div className="mt-5">
+        <div className="mt-4 rounded-xl border border-gray-200 bg-white p-4">
           <Source path={workflow.path} content={workflow.content} kind="pipeline" tall />
         </div>
       ) : (
@@ -69,7 +63,7 @@ function Job({ job, order, large }: { job: WorkflowJob; order: number; large: bo
   const hidden = job.steps.length - steps.length
 
   return (
-    <section className="flex-1 rounded-lg border border-gray-200 px-3 pt-2.5 pb-3">
+    <section className="flex-1 rounded-xl border border-gray-200 bg-white px-3.5 pt-3 pb-3.5">
       <div className="flex items-center gap-2">
         <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-brand text-[11px] font-semibold text-white tabular-nums">
           {order}

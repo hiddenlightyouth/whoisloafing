@@ -4,6 +4,7 @@ import { track } from '../lib/analytics'
 import { fetchDeepReport } from '../lib/api'
 import { fetchMyChats } from '../lib/auth'
 import { formatWhen } from '../lib/format'
+import { MapMenu, toolButton } from './DeepParts'
 import { Forms } from './Forms'
 import { Avatar } from './History'
 import { Pipeline } from './Pipeline'
@@ -221,8 +222,8 @@ function Dashboard({ repo, onOpen, onOpenChat }: { repo: string; onOpen: (repo: 
   }, [section, current])
 
   const [owner, name] = repo.split('/')
-  // 프로젝트 구조는 맵이 여백 없이 탭 아래를 가득 채워요.
-  const bleed = section === 'structure' && current !== undefined && current !== 'loading' && 'report' in current && current.report.structure !== undefined
+  // 받아 온 탭은 옅은 회색 바탕이 여백 없이 탭 아래를 가득 채워요.
+  const bleed = current !== undefined && current !== 'loading' && 'report' in current
 
   return (
     <main className="flex min-h-0 flex-1 flex-col px-6 pt-14 pb-6 md:px-10">
@@ -319,21 +320,23 @@ function Dashboard({ repo, onOpen, onOpenChat }: { repo: string; onOpen: (repo: 
             </button>
           </div>
         ) : (
-          <Report report={current.report} name={name} />
+          <Report key={section} report={current.report} name={name} />
         )}
       </div>
     </main>
   )
 }
 
-/** 왼쪽에는 해설과 숫자를, 오른쪽에는 그림을 둬요. 좁은 창에서는 위아래로 쌓아요. */
+/**
+ * 탭 하나의 내용이에요. 네 탭 모두 옅은 회색 바탕 위에 그림을 올리고, 왼쪽 위에 메뉴를 띄워요.
+ * 프로젝트 구조는 맵이 바탕을 통째로 쓰고, 나머지는 흰 카드를 바탕 위에 놓아요.
+ */
 function Report({ report, name }: { report: DeepReport; name: string }) {
-  const hasStructure = report.section === 'structure' && report.structure !== undefined
-  const hasWorkflows = (report.workflows?.length ?? 0) > 0
-  const hasForms = (report.templates?.length ?? 0) > 0 || (report.labels?.length ?? 0) > 0
+  const [index, setIndex] = useState(0)
+  /** 해설과 숫자를 담은 요약 카드를 열어 뒀는지 */
+  const [summary, setSummary] = useState(false)
 
-  // 프로젝트 구조는 설명 없이 맵만 크게 보여줘요.
-  if (hasStructure && report.structure) {
+  if (report.section === 'structure' && report.structure) {
     return (
       <div className="min-h-0 min-w-0 flex-1">
         <StructureMap name={name} repo={report.repo} root={report.structure} />
@@ -341,35 +344,64 @@ function Report({ report, name }: { report: DeepReport; name: string }) {
     )
   }
 
-  return (
-    <>
-      <aside className="shrink-0 xl:w-80 xl:overflow-y-auto">
-        <p className="text-[14.5px] leading-relaxed whitespace-pre-line text-gray-900">
-          <RichText text={report.summary} />
-        </p>
-        {report.facts.length > 0 && (
-          <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-2">
-            {report.facts.map((fact) => (
-              <div key={fact.label} className="rounded-xl bg-gray-50 px-3.5 py-3">
-                <dt className="text-[12px] text-gray-500">{fact.label}</dt>
-                <dd className="mt-1 text-[14px] leading-snug font-semibold break-words text-gray-900 tabular-nums">{fact.value}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
-      </aside>
+  const workflows = report.workflows ?? []
+  const templates = report.templates ?? []
+  const labels = report.labels ?? []
+  const choices = report.section === 'pipeline' ? workflows.map((item) => item.name) : templates.map((item) => item.name)
+  const picked = Math.min(index, Math.max(0, choices.length - 1))
+  const empty = workflows.length === 0 && templates.length === 0 && labels.length === 0
 
-      {hasWorkflows && report.workflows && (
-        <div className="min-w-0 rounded-2xl border border-gray-200 p-5 xl:flex-1 xl:overflow-y-auto">
-          <Pipeline workflows={report.workflows} large />
+  return (
+    <div className="relative min-h-0 min-w-0 flex-1 bg-gray-50">
+      {empty ? (
+        <div className="flex h-full items-center justify-center px-6">
+          <p className="max-w-md text-center text-[14px] leading-relaxed text-balance text-gray-600">
+            <RichText text={report.summary} />
+          </p>
+        </div>
+      ) : (
+        <div className="h-full overflow-auto px-3 pt-14 pb-3">
+          {report.section === 'pipeline' ? (
+            <Pipeline workflow={workflows[picked]} large />
+          ) : (
+            <Forms kind={report.section === 'issues' ? 'issue' : 'pull'} template={templates[picked]} labels={labels} large />
+          )}
         </div>
       )}
-      {(report.section === 'issues' || report.section === 'pulls') && hasForms && (
-        <div className="min-w-0 rounded-2xl border border-gray-200 p-5 xl:flex-1 xl:overflow-y-auto">
-          <Forms kind={report.section === 'issues' ? 'issue' : 'pull'} templates={report.templates ?? []} labels={report.labels} large />
+
+      {!empty && (
+        <div className="absolute top-3 left-3 flex items-center gap-1.5">
+          {choices.length > 1 && (
+            <MapMenu
+              label={report.section === 'pipeline' ? '워크플로' : '템플릿'}
+              value={choices[picked]}
+              groups={[{ items: choices.map((choice, item) => ({ label: choice, checked: item === picked, onSelect: () => setIndex(item) })) }]}
+            />
+          )}
+          <button type="button" aria-pressed={summary} onClick={() => setSummary((value) => !value)} className={`${toolButton} ${summary ? 'border-brand text-brand-hover' : ''}`}>
+            요약
+          </button>
         </div>
       )}
-    </>
+
+      {summary && !empty && (
+        <aside className="absolute bottom-3 left-3 max-h-[70%] w-80 overflow-y-auto rounded-xl border border-gray-200 bg-white p-4">
+          <p className="text-[13.5px] leading-relaxed whitespace-pre-line text-gray-900">
+            <RichText text={report.summary} />
+          </p>
+          {report.facts.length > 0 && (
+            <dl className="mt-3 divide-y divide-gray-100 border-t border-gray-100">
+              {report.facts.map((fact) => (
+                <div key={fact.label} className="flex items-baseline justify-between gap-4 py-2">
+                  <dt className="shrink-0 text-[12px] text-gray-500">{fact.label}</dt>
+                  <dd className="min-w-0 text-right text-[13px] font-medium text-gray-900 tabular-nums">{fact.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </aside>
+      )}
+    </div>
   )
 }
 
