@@ -13,7 +13,8 @@ interface Props {
 
 const SKELETON_ROWS = ['w-4/5', 'w-3/5', 'w-2/3', 'w-1/2', 'w-3/4', 'w-3/5']
 
-function Avatar({ owner }: { owner: string }) {
+/** 레포 소유자의 GitHub 프로필 사진이에요. 받지 못하면 이름의 첫 글자를 보여줘요. 심층 분석의 갤러리에서도 써요. */
+export function Avatar({ owner }: { owner: string }) {
   const [failed, setFailed] = useState(false)
 
   if (failed || !owner) {

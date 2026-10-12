@@ -511,7 +511,7 @@ export default function App() {
         </Suspense>
       ) : deepPage ? (
         <Suspense fallback={<main className="flex-1" />}>
-          <Deep repo={deepPage.repo} onOpen={openDeep} />
+          <Deep repo={deepPage.repo} onOpen={openDeep} onNew={goHome} />
         </Suspense>
       ) : article ? (
         <Suspense fallback={<main className="flex-1" />}>

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { parseRepoUrl } from '../../shared/repo'
 import { DEEP_SECTIONS, type DeepReport, type DeepSection } from '../../shared/types'
 import { track } from '../lib/analytics'
 import { fetchDeepReport } from '../lib/api'
+import { fetchMyChats } from '../lib/auth'
+import { formatWhen } from '../lib/format'
 import { Forms } from './Forms'
+import { Avatar } from './History'
 import { Pipeline } from './Pipeline'
-import { RepoInput } from './RepoInput'
 import { RichText } from './RichText'
 import { Bone } from './Skeleton'
 import { StructureMap } from './StructureMap'
@@ -15,6 +16,8 @@ interface Props {
   repo: string | null
   /** 다른 레포를 열거나(소유자/레포), 레포를 고르는 화면으로 돌아가요(null). */
   onOpen: (repo: string | null) => void
+  /** 분석한 레포가 아직 없을 때, 새 분석을 시작하러 가요. */
+  onNew: () => void
 }
 
 const SECTION_LABELS: Record<DeepSection, string> = {
@@ -24,35 +27,132 @@ const SECTION_LABELS: Record<DeepSection, string> = {
   pulls: 'PR 템플릿',
 }
 
-type Loaded = { report: DeepReport } | { error: string }
+/** 분석하기를 누르기 전에 탭이 무엇을 보여주는지 알려 주는 말 */
+const SECTION_GUIDES: Record<DeepSection, string> = {
+  structure: '폴더가 어떻게 나뉘어 있고 각각 무슨 일을 하는지, 맵을 펼쳐 가며 둘러볼 수 있어요.',
+  pipeline: '코드를 올리면 어떤 검사와 배포가 어떤 순서로 자동으로 도는지 흐름으로 보여줘요.',
+  issues: '이슈를 쓸 때 뜨는 양식과 이 팀이 쓰는 라벨을 실제 화면처럼 보여줘요.',
+  pulls: 'PR을 올릴 때 뜨는 양식과, 팀이 그 양식을 얼마나 따르는지 보여줘요.',
+}
+
+type Loaded = 'loading' | { report: DeepReport } | { error: string }
+
+/** 갤러리에 보여줄 레포 하나. 같은 레포를 여러 번 분석했으면 가장 최근 것 하나만 남겨요. */
+interface RepoCard {
+  repo: string
+  updatedAt: string
+}
 
 /**
  * 앱에서만 쓰는 심층 분석 화면이에요. 채팅처럼 말풍선이 쌓이지 않고, 레포 하나를 탭으로 나눠 한 화면에서 살펴봐요.
  * 탭은 처음 열 때 한 번만 받아 두고, 다른 탭에 다녀와도 다시 받지 않아요.
  */
-export function Deep({ repo, onOpen }: Props) {
-  if (!repo) return <Start onOpen={onOpen} />
+export function Deep({ repo, onOpen, onNew }: Props) {
+  if (!repo) return <Gallery onOpen={onOpen} onNew={onNew} />
   // 레포가 바뀌면 받아 둔 내용과 보던 탭을 처음으로 되돌려요.
   return <Dashboard key={repo} repo={repo} onOpen={onOpen} />
 }
 
-function Start({ onOpen }: { onOpen: (repo: string) => void }) {
+/** 링크를 다시 적지 않고, 채팅으로 분석해 둔 레포 중에서 골라요. */
+function Gallery({ onOpen, onNew }: { onOpen: (repo: string) => void; onNew: () => void }) {
+  const [cards, setCards] = useState<RepoCard[] | null>(null)
+  const [nextPage, setNextPage] = useState<number | null>(0)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function load(page: number) {
+    setLoading(true)
+    const result = await fetchMyChats(page)
+    setLoading(false)
+    if (!result.ok) {
+      setError(result.message)
+      return
+    }
+    setError('')
+    setCards((prev) => {
+      const seen = new Set((prev ?? []).map((card) => card.repo))
+      const added = result.data.items
+        .filter((chat) => chat.repoName.includes('/'))
+        .map((chat) => ({ repo: chat.repoName, updatedAt: chat.updatedAt }))
+        .filter((card) => !seen.has(card.repo) && seen.add(card.repo))
+      return [...(prev ?? []), ...added]
+    })
+    setNextPage(result.data.hasNext ? page + 1 : null)
+  }
+
+  useEffect(() => {
+    void load(0)
+  }, [])
+
   return (
-    <main className="flex flex-1 items-center justify-center px-5">
-      <div className="w-full max-w-lg">
-        <h1 className="text-center text-[24px] leading-snug font-semibold text-gray-900 sm:text-[30px]">심층 분석 시작하기</h1>
-        <p className="mt-3 mb-7 text-center text-[13px] leading-relaxed text-balance break-keep text-gray-500 sm:mb-8 sm:text-[14px]">
-          GitHub Repository 링크를 입력하면 프로젝트 구조, CI/CD 파이프라인, 이슈와 PR 템플릿을 한 화면에서 살펴볼 수 있어요
-        </p>
-        <RepoInput
-          onSubmit={(url) => {
-            const parsed = parseRepoUrl(url)
-            if (!parsed) return
-            track('deep_submit', { repo: `${parsed.owner}/${parsed.repo}` })
-            onOpen(`${parsed.owner}/${parsed.repo}`)
-          }}
-        />
-      </div>
+    <main className="min-h-0 flex-1 overflow-y-auto px-6 pt-14 pb-10 md:px-10">
+      <h1 className="pt-6 text-[22px] leading-snug font-semibold text-gray-900">심층 분석</h1>
+      <p className="mt-1.5 text-[13.5px] leading-relaxed text-gray-500">
+        분석해 둔 레포를 고르면 프로젝트 구조, CI/CD, 이슈와 PR 템플릿을 한 화면에서 살펴볼 수 있어요.
+      </p>
+
+      {cards === null ? (
+        error ? (
+          <p className="mt-8 text-[14px] text-gray-500">{error}</p>
+        ) : (
+          <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3" aria-busy="true">
+            <li className="sr-only">불러오고 있어요.</li>
+            {[0, 1, 2, 3, 4, 5].map((item) => (
+              <li key={item} aria-hidden className="h-[132px] rounded-2xl bg-gray-100 motion-safe:animate-pulse" />
+            ))}
+          </ul>
+        )
+      ) : cards.length === 0 ? (
+        <div className="mt-16 flex flex-col items-center gap-4 text-center">
+          <p className="text-[14px] leading-relaxed text-gray-600">
+            아직 분석한 레포가 없어요.
+            <br />
+            새 분석으로 레포를 먼저 분석하면 여기에서 고를 수 있어요.
+          </p>
+          <button type="button" onClick={onNew} className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover">
+            새 분석 시작하기
+          </button>
+        </div>
+      ) : (
+        <>
+          <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
+            {cards.map((card) => {
+              const [owner, name] = card.repo.split('/')
+              return (
+                <li key={card.repo}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      track('deep_repo_select', { repo: card.repo })
+                      onOpen(card.repo)
+                    }}
+                    className="flex h-[132px] w-full flex-col justify-between rounded-2xl border border-gray-200 bg-white p-4 text-left transition-colors hover:border-brand"
+                  >
+                    <Avatar owner={owner} />
+                    <span className="min-w-0">
+                      <span className="block truncate text-[14.5px] font-semibold text-gray-900">{name}</span>
+                      <span className="mt-0.5 flex items-center justify-between gap-2 text-[12px] text-gray-400">
+                        <span className="min-w-0 truncate">{owner}</span>
+                        <span className="shrink-0">{formatWhen(card.updatedAt)}</span>
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+          {nextPage !== null && (
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => void load(nextPage)}
+              className="mt-4 h-9 rounded-full bg-gray-100 px-4 text-[13px] font-medium text-gray-700 transition-colors hover:text-brand disabled:text-gray-400"
+            >
+              {loading ? '처리 중' : '더 보기'}
+            </button>
+          )}
+        </>
+      )}
     </main>
   )
 }
@@ -60,21 +160,15 @@ function Start({ onOpen }: { onOpen: (repo: string) => void }) {
 function Dashboard({ repo, onOpen }: { repo: string; onOpen: (repo: string | null) => void }) {
   const [section, setSection] = useState<DeepSection>('structure')
   const [loaded, setLoaded] = useState<Partial<Record<DeepSection, Loaded>>>({})
-  /** 다시 시도하기를 누르면 숫자를 올려서 같은 탭을 한 번 더 받아요. */
-  const [attempt, setAttempt] = useState(0)
   const current = loaded[section]
 
-  useEffect(() => {
-    if (current) return
-    let stale = false
-    void fetchDeepReport(repo, section).then((result) => {
-      if (!stale) setLoaded((prev) => ({ ...prev, [section]: result }))
-    })
-    return () => {
-      stale = true
-    }
-    // 받아 둔 탭은 다시 받지 않아요.
-  }, [repo, section, attempt, current])
+  /** 탭의 분석하기를 눌렀을 때만 받아요. 받아 둔 탭은 다른 탭에 다녀와도 그대로 있어요. */
+  async function analyze(target: DeepSection) {
+    track('deep_analyze', { repo, section: target })
+    setLoaded((prev) => ({ ...prev, [target]: 'loading' }))
+    const result = await fetchDeepReport(repo, target)
+    setLoaded((prev) => ({ ...prev, [target]: result }))
+  }
 
   const [owner, name] = repo.split('/')
 
@@ -99,7 +193,7 @@ function Dashboard({ repo, onOpen }: { repo: string; onOpen: (repo: string | nul
             onClick={() => onOpen(null)}
             className="h-8 rounded-full bg-gray-100 px-3.5 text-[12.5px] font-medium text-gray-700 transition-colors hover:text-brand"
           >
-            다른 레포 살펴보기
+            다른 레포 고르기
           </button>
         </div>
       </div>
@@ -126,16 +220,27 @@ function Dashboard({ repo, onOpen }: { repo: string; onOpen: (repo: string | nul
 
       <div role="tabpanel" className="mt-5 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto xl:flex-row xl:overflow-visible">
         {!current ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+            <div>
+              <h2 className="text-[17px] font-semibold text-gray-900">{SECTION_LABELS[section]}</h2>
+              <p className="mt-1.5 max-w-sm text-[13.5px] leading-relaxed text-balance break-keep text-gray-500">{SECTION_GUIDES[section]}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void analyze(section)}
+              className="h-10 rounded-full bg-brand px-5 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover"
+            >
+              분석하기
+            </button>
+          </div>
+        ) : current === 'loading' ? (
           <Loading />
         ) : 'error' in current ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <p className="text-[14px] leading-relaxed text-gray-600">{current.error}</p>
             <button
               type="button"
-              onClick={() => {
-                setLoaded((prev) => ({ ...prev, [section]: undefined }))
-                setAttempt((value) => value + 1)
-              }}
+              onClick={() => void analyze(section)}
               className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover"
             >
               다시 시도하기
