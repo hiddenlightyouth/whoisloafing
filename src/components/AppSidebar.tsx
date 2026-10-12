@@ -486,11 +486,10 @@ function AccountMenu({ me, page, onArticles, onMe, onSettings, onAdmin }: { me: 
         onClick={onSettings}
         className={`flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-gray-200/50 hover:text-gray-700 ${page === 'settings' ? 'bg-gray-200/70 text-gray-900' : 'text-gray-400'}`}
       >
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" className="size-4" aria-hidden="true">
-          <path d="M2.5 4.5h4M9.5 4.5h4M2.5 8h7M12.5 8h1M2.5 11.5h2M7.5 11.5h6" />
-          <circle cx="8" cy="4.5" r="1.5" />
-          <circle cx="11" cy="8" r="1.5" />
-          <circle cx="6" cy="11.5" r="1.5" />
+        {/* 톱니바퀴 그림이에요. */}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden="true">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+          <circle cx="12" cy="12" r="3" />
         </svg>
       </button>
       {/* 사이드바 오른쪽 아래의 버그 신고 버튼이에요. 서버가 신고를 받을 때만 보여줘요. */}

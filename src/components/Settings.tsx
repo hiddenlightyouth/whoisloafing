@@ -90,20 +90,20 @@ export function Settings() {
               ))}
             </div>
           </Row>
-          <Row label="지렁이 표시" note="새 분석 화면의 배경에 기여도 그래프와 지렁이를 보여줘요.">
+          <Row label="역동적인 시작 화면">
             <Switch
               on={backdrop}
-              label="새 분석 화면에서 지렁이 표시"
+              label="역동적인 시작 화면"
               onChange={(next) => {
                 track('app_backdrop_change', { on: next })
                 setAppBackdrop(next)
               }}
             />
           </Row>
-          <Row label="단축키 힌트 표시" note="Option을 누르지 않아도 버튼 옆에 단축키를 늘 보여줘요.">
+          <Row label="단축키 항상 표시" note="단축키가 사용 가능한 메뉴에 어떤 단축키를 사용하는지 항상 표시합니다.">
             <Switch
               on={hints}
-              label="단축키 힌트 표시"
+              label="단축키 항상 표시"
               onChange={(next) => {
                 track('app_shortcut_hints_change', { on: next })
                 setShortcutHintsPinned(next)
@@ -115,10 +115,10 @@ export function Settings() {
         {/* 화면 공유를 알아채는 것은 앱 1.2부터라, 그보다 낮은 앱에서는 보여주지 않아요. */}
         {appAtLeast('1.2') && (
           <Section title="개인정보 보호">
-            <Row label="화면 공유 중 가리기" note="화면 공유나 녹화가 감지되면 화면을 가리고, 가림 해제를 눌러야 다시 보여줘요.">
+            <Row label="화면 녹화 감지 시 가리기" note="macOS에서 화면 녹화가 감지되면 해제 시까지 화면을 가립니다.">
               <Switch
                 on={shield}
-                label="화면 공유 중에는 화면 가리기"
+                label="화면 녹화 감지 시 가리기"
                 onChange={(next) => {
                   track('app_shield_change', { on: next })
                   setAppShield(next)
