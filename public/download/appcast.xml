@@ -3,12 +3,12 @@
   <channel>
     <title>WhoIsLoafing</title>
     <item>
-      <title>1.1</title>
-      <pubDate>Mon, 12 Oct 2026 11:50:07 +0000</pubDate>
-      <sparkle:version>2</sparkle:version>
-      <sparkle:shortVersionString>1.1</sparkle:shortVersionString>
+      <title>1.2</title>
+      <pubDate>Mon, 12 Oct 2026 17:04:30 +0000</pubDate>
+      <sparkle:version>3</sparkle:version>
+      <sparkle:shortVersionString>1.2</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>27.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://whoisloafing.hidly.dev/download/WhoIsLoafing-1.1.zip" type="application/octet-stream" sparkle:edSignature="p01YrTt1+UoTQKj4j8C3af0TACZFiFI7VWabY1mQUSSmiuv53HCLYQVCrs/i4XZDyC7cFtvQ6hvMy6pA+e/7AQ==" length="1111339" />
+      <enclosure url="https://whoisloafing.hidly.dev/download/WhoIsLoafing-1.2.zip" type="application/octet-stream" sparkle:edSignature="Nv67M9fbFMH1ZNXWMGLiNCY4YFt6976mZaGir9MNl8M1+/EEtk/lsI4p2BPbwSWoNsU+ko7jwdAmeGxoLCbdBA==" length="1114922" />
     </item>
   </channel>
 </rss>
