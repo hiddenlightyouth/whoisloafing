@@ -1,12 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react'
 import { track } from '../lib/analytics'
 import { canPinChats, deleteChat, pinChat, reorderPinned, unshareChat } from '../lib/api'
-import { appAtLeast, appVersion, postToApp, type AppTheme } from '../lib/app'
 import { fetchMyChats, signOut, useAuth, type ChatSummary, type Me } from '../lib/auth'
 import { openBugReport, useFeedback } from '../lib/feedback'
 import { formatWhen } from '../lib/format'
-import { setAppBackdrop, setAppShield, setAppTheme, useAppSettings } from '../lib/theme'
-import { setShortcutHintsPinned, useShortcutHintsPinned } from '../lib/shortcuts'
 import { showToast } from '../lib/toast'
 import { copyChatLink, DeleteDialog } from './History'
 import { Kbd } from './Shortcuts'
@@ -16,7 +13,7 @@ interface Props {
   /** 지금 열려 있는 채팅. 목록에서 강조해요. */
   activeChatId: string | null
   /** 지금 보고 있는 화면. 아래쪽 링크를 강조해요. */
-  page: 'deep' | 'articles' | 'me' | 'admin' | null
+  page: 'deep' | 'articles' | 'me' | 'settings' | 'admin' | null
   /** 값이 바뀌면 목록을 다시 받아요. */
   refreshKey: string
   onNew: () => void
@@ -29,6 +26,8 @@ interface Props {
   onChatChanged: (id: string, change: 'unshared' | 'deleted') => void
   onArticles: () => void
   onMe: () => void
+  /** 앱의 설정 화면을 열어요. */
+  onSettings: () => void
   /** 관리자 화면을 열어요. 관리자 계정일 때만 넘기고, 아니면 메뉴에 보여주지 않아요. */
   onAdmin?: () => void
 }
@@ -182,7 +181,7 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
 }
 
 /** 앱 화면 왼쪽의 사이드바예요. 새 분석, 내 작업 목록과 관리, 아티클과 내 정보로 가는 링크가 있어요. */
-export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onOpenChat, onDeepRepo, onChatChanged, onArticles, onMe, onAdmin }: Props) {
+export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onOpenChat, onDeepRepo, onChatChanged, onArticles, onMe, onSettings, onAdmin }: Props) {
   const { me } = useAuth()
   const [chats, setChats] = useState<ChatSummary[] | null>(null)
   const [nextPage, setNextPage] = useState<number | null>(null)
@@ -368,31 +367,23 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onOp
         )}
       </nav>
 
-      <AccountMenu me={me} page={page} onArticles={onArticles} onMe={onMe} onAdmin={onAdmin} />
+      <AccountMenu me={me} page={page} onArticles={onArticles} onMe={onMe} onSettings={onSettings} onAdmin={onAdmin} />
 
       {deleting && <DeleteDialog chat={deleting} working={working} onCancel={cancelDelete} onConfirm={() => void remove(deleting)} />}
     </aside>
   )
 }
 
-const THEMES: [AppTheme, string][] = [
-  ['system', '시스템'],
-  ['light', '라이트'],
-  ['dark', '다크'],
-]
-
 const menuRow = 'flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-[13.5px] text-gray-800 transition-colors hover:bg-gray-100'
 const menuIcon = 'size-4 shrink-0 text-gray-500'
 
 /**
- * 사이드바 맨 아래의 계정 버튼이에요. 누르면 위로 메뉴가 펼쳐져서 내 정보, 아티클, 화면 설정, 업데이트 확인, 로그아웃을 한곳에서 골라요.
+ * 사이드바 맨 아래의 계정 버튼이에요. 누르면 위로 메뉴가 펼쳐져서 내 정보, 설정, 아티클, 관리자 화면으로 가거나 로그아웃해요.
  * 바깥을 누르거나 Esc를 누르면 닫혀요.
  */
-function AccountMenu({ me, page, onArticles, onMe, onAdmin }: { me: Me | null; page: Props['page']; onArticles: () => void; onMe: () => void; onAdmin?: () => void }) {
+function AccountMenu({ me, page, onArticles, onMe, onSettings, onAdmin }: { me: Me | null; page: Props['page']; onArticles: () => void; onMe: () => void; onSettings: () => void; onAdmin?: () => void }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const { theme, backdrop, shield } = useAppSettings()
-  const hintsPinned = useShortcutHintsPinned()
   const { ready: canReport } = useFeedback()
   const name = me?.name || '내 정보'
 
@@ -430,6 +421,15 @@ function AccountMenu({ me, page, onArticles, onMe, onAdmin }: { me: Me | null; p
             </svg>
             내 정보
           </button>
+          <button type="button" role="menuitem" onClick={go(onSettings)} className={menuRow}>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" className={menuIcon} aria-hidden="true">
+              <path d="M2.5 4.5h4M9.5 4.5h4M2.5 8h7M12.5 8h1M2.5 11.5h2M7.5 11.5h6" />
+              <circle cx="8" cy="4.5" r="1.5" />
+              <circle cx="11" cy="8" r="1.5" />
+              <circle cx="6" cy="11.5" r="1.5" />
+            </svg>
+            설정
+          </button>
           <button type="button" role="menuitem" onClick={go(onArticles)} className={menuRow}>
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className={menuIcon} aria-hidden="true">
               <path d="M3.5 2.5h6l3 3v8h-9z" />
@@ -448,106 +448,6 @@ function AccountMenu({ me, page, onArticles, onMe, onAdmin }: { me: Me | null; p
 
           <div className="my-1.5 border-t border-gray-100" />
 
-          <div className="flex h-10 items-center justify-between gap-3 px-2.5">
-            <span className="text-[13.5px] text-gray-800">화면 모드</span>
-            <div role="radiogroup" aria-label="화면 모드" className="inline-flex rounded-lg bg-gray-100 p-0.5">
-              {THEMES.map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={theme === value}
-                  onClick={() => {
-                    track('app_theme_change', { theme: value, from: 'menu' })
-                    setAppTheme(value)
-                  }}
-                  className={`h-7 rounded-md px-2.5 text-[12.5px] font-medium transition-colors ${theme === value ? 'bg-white text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="flex h-10 items-center justify-between gap-3 px-2.5">
-            <span className="text-[13.5px] text-gray-800">지렁이 표시</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={backdrop}
-              aria-label="새 분석 화면에서 지렁이 표시"
-              onClick={() => {
-                track('app_backdrop_change', { on: !backdrop, from: 'menu' })
-                setAppBackdrop(!backdrop)
-              }}
-              className={`flex h-6 w-10 items-center rounded-full p-0.5 transition-colors ${backdrop ? 'bg-brand' : 'bg-gray-200'}`}
-            >
-              {/* 손잡이는 다크 모드에서도 흰색이라 색 토큰을 쓰지 않아요. */}
-              <span style={{ background: '#fff' }} className={`size-5 rounded-full transition-transform ${backdrop ? 'translate-x-4' : ''}`} />
-            </button>
-          </div>
-
-          <div className="flex h-10 items-center justify-between gap-3 px-2.5">
-            <span className="text-[13.5px] text-gray-800">단축키 힌트 표시</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={hintsPinned}
-              aria-label="단축키 힌트 표시"
-              onClick={() => {
-                track('app_shortcut_hints_change', { on: !hintsPinned })
-                setShortcutHintsPinned(!hintsPinned)
-              }}
-              className={`flex h-6 w-10 items-center rounded-full p-0.5 transition-colors ${hintsPinned ? 'bg-brand' : 'bg-gray-200'}`}
-            >
-              <span style={{ background: '#fff' }} className={`size-5 rounded-full transition-transform ${hintsPinned ? 'translate-x-4' : ''}`} />
-            </button>
-          </div>
-
-          {/* 화면 공유를 알아채는 것은 앱 1.2부터라, 그보다 낮은 앱에서는 보여주지 않아요. */}
-          {appAtLeast('1.2') && (
-            <div className="flex h-10 items-center justify-between gap-3 px-2.5">
-              <span className="text-[13.5px] text-gray-800">화면 공유 중 가리기</span>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={shield}
-                aria-label="화면 공유 중에는 화면 가리기"
-                onClick={() => {
-                  track('app_shield_change', { on: !shield })
-                  setAppShield(!shield)
-                }}
-                className={`flex h-6 w-10 items-center rounded-full p-0.5 transition-colors ${shield ? 'bg-brand' : 'bg-gray-200'}`}
-              >
-                <span style={{ background: '#fff' }} className={`size-5 rounded-full transition-transform ${shield ? 'translate-x-4' : ''}`} />
-              </button>
-            </div>
-          )}
-
-          <div className="my-1.5 border-t border-gray-100" />
-
-          {/* 예전 앱은 업데이트 확인 요청을 받지 못해서, 버전만 보여줘요. */}
-          {appAtLeast('1.1') ? (
-            <button
-              type="button"
-              role="menuitem"
-              onClick={go(() => {
-                track('app_update_check', { from: 'menu' })
-                postToApp({ type: 'update' })
-              })}
-              className={menuRow}
-            >
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className={menuIcon} aria-hidden="true">
-                <path d="M13 8a5 5 0 1 1-1.5-3.570M13 3v2.5h-2.5" />
-              </svg>
-              <span className="flex-1">업데이트 확인</span>
-              <span className="text-[12px] text-gray-400 tabular-nums">{appVersion}</span>
-            </button>
-          ) : (
-            <p className="flex h-9 items-center justify-between px-2.5 text-[13.5px] text-gray-500">
-              버전
-              <span className="text-[12px] text-gray-400 tabular-nums">{appVersion}</span>
-            </p>
-          )}
           <button
             type="button"
             role="menuitem"
@@ -573,7 +473,7 @@ function AccountMenu({ me, page, onArticles, onMe, onAdmin }: { me: Me | null; p
           if (!open) track('app_menu_open')
           setOpen((value) => !value)
         }}
-        className={`flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 text-left transition-colors ${tone(open || page === 'me' || page === 'articles' || page === 'admin')}`}
+        className={`flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 text-left transition-colors ${tone(open || page === 'me' || page === 'settings' || page === 'articles' || page === 'admin')}`}
       >
         {/* 프로필 사진 대신 이름의 첫 글자를 동그라미에 넣어요. */}
         <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[13px] font-semibold text-brand-hover">

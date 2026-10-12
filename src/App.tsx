@@ -53,6 +53,10 @@ function deepFromPath(): { repo: string | null } | null {
   return match ? { repo: match[1] ? `${match[1]}/${match[2]}` : null } : null
 }
 
+const SETTINGS_PATH = /^\/settings\/?$/
+
+const settingsFromPath = () => SETTINGS_PATH.test(window.location.pathname)
+
 const ADMIN_PATH = /^\/admin(?:\/(users|chats|feedback|ai))?\/?$/
 
 /** 관리자 화면 주소면 보고 있는 탭을 돌려줘요. */
@@ -74,6 +78,9 @@ const Explore = lazy(() => import('./components/Explore').then((module) => ({ de
 
 // 심층 분석 대시보드는 앱에서만 쓰는 화면이라, 열 때만 받아요.
 const Deep = lazy(() => import('./components/Deep').then((module) => ({ default: module.Deep })))
+
+// 설정 화면은 앱에서만 쓰는 화면이라, 열 때만 받아요.
+const Settings = lazy(() => import('./components/Settings').then((module) => ({ default: module.Settings })))
 
 // 관리자 화면은 앱에서 관리자 계정만 쓰는 화면이라, 열 때만 받아요.
 const Admin = lazy(() => import('./components/Admin').then((module) => ({ default: module.Admin })))
@@ -141,6 +148,8 @@ export default function App() {
   const [exploreReady, setExploreReady] = useState<boolean | null>(null)
   /** 앱의 심층 분석 화면을 보고 있는지. repo가 null이면 레포를 고르는 화면이에요. */
   const [deepPage, setDeepPage] = useState(() => (isApp ? deepFromPath() : null))
+  /** 앱의 설정 화면을 보고 있는지 */
+  const [settingsPage, setSettingsPage] = useState(() => isApp && settingsFromPath())
   /** 서버에 관리자 API가 있는지. 없으면 관리자 화면에서 AI 사용량만 보여줘요. */
   const [adminApi, setAdminApi] = useState(false)
   /** 앱의 관리자 화면에서 보고 있는 탭. 관리자 화면이 아니면 null이에요. */
@@ -211,6 +220,17 @@ export default function App() {
       setChat(null)
       setOpening(false)
       trackPageView('deep', { repo: nextDeep.repo ?? undefined })
+      return
+    }
+    // 설정 화면은 앱에서만 써요. 브라우저에서 이 주소로 들어오면 메인 화면으로 보내요.
+    const nextSettings = settingsFromPath()
+    if (nextSettings && !isApp) window.history.replaceState(null, '', '/')
+    setSettingsPage(isApp && nextSettings)
+    if (nextSettings && isApp) {
+      reset()
+      setChat(null)
+      setOpening(false)
+      trackPageView('settings')
       return
     }
     // 관리자 화면도 앱에서만 써요. 권한은 서버가 확인하고, 관리자가 아니면 화면이 안내만 보여줘요.
@@ -326,6 +346,7 @@ export default function App() {
     setAppLogin(false)
     setDeepPage(null)
     setAdminPage(null)
+      setSettingsPage(false)
     if (window.location.pathname !== '/') window.history.pushState(null, '', '/')
     trackPageView('home')
   }, [account, article, chat, messages.length, reset])
@@ -341,6 +362,7 @@ export default function App() {
       setAppLogin(false)
       setDeepPage(null)
       setAdminPage(null)
+      setSettingsPage(false)
       setAbout(false)
       setArticle({ slug })
       window.history.pushState(null, '', slug ? `/articles/${slug}` : '/articles')
@@ -370,6 +392,7 @@ export default function App() {
       setAppLogin(false)
       setDeepPage(null)
       setAdminPage(null)
+      setSettingsPage(false)
       setAbout(false)
       setAccount(page)
       if (replace) window.history.replaceState(null, '', `/${page}`)
@@ -390,6 +413,14 @@ export default function App() {
     },
     [abandon, openFromLocation],
   )
+
+  /** 앱의 설정 화면을 열어요. */
+  const openSettings = useCallback(() => {
+    loginReturn.current = null
+    abandon()
+    window.history.pushState(null, '', '/settings')
+    void openFromLocation()
+  }, [abandon, openFromLocation])
 
   /** 앱의 관리자 화면을 열어요. 탭마다 주소가 달라서 뒤로 가기로 앞의 탭에 돌아가요. */
   const openAdmin = useCallback(
@@ -605,7 +636,7 @@ export default function App() {
       <Header
         app={isApp}
         onHome={handleHome}
-        home={messages.length === 0 && !article && !account && !about && !appLogin && !deepPage && !adminPage && !opening && !missing}
+        home={messages.length === 0 && !article && !account && !about && !appLogin && !deepPage && !adminPage && !settingsPage && !opening && !missing}
         inChat={messages.length > 0 && !readOnly && !account}
         storage={storage}
         busy={busy}
@@ -646,6 +677,10 @@ export default function App() {
       ) : deepPage ? (
         <Suspense fallback={<main className="flex-1" />}>
           <Deep repo={deepPage.repo} onOpen={openDeep} onNew={goHome} refreshKey={chatsVersion} />
+        </Suspense>
+      ) : settingsPage ? (
+        <Suspense fallback={<main className="flex-1" />}>
+          <Settings />
         </Suspense>
       ) : adminPage ? (
         <Suspense fallback={<main className="flex-1" />}>
@@ -751,8 +786,8 @@ export default function App() {
       {sidebarOpen && (
         <Suspense fallback={<aside data-app-drag className="w-64 shrink-0 border-r border-gray-200 bg-gray-50" />}>
           <AppSidebar
-            activeChatId={account || article || deepPage || adminPage ? null : chatIdFromPath()}
-            page={deepPage ? 'deep' : adminPage ? 'admin' : account === 'me' ? 'me' : article ? 'articles' : null}
+            activeChatId={account || article || deepPage || adminPage || settingsPage ? null : chatIdFromPath()}
+            page={deepPage ? 'deep' : adminPage ? 'admin' : settingsPage ? 'settings' : account === 'me' ? 'me' : article ? 'articles' : null}
             onDeep={deep ? () => openDeep(null) : undefined}
             onDeepRepo={
               deep
@@ -762,11 +797,12 @@ export default function App() {
                   }
                 : undefined
             }
+            onSettings={openSettings}
             onAdmin={isAdmin(me) ? () => openAdmin() : undefined}
             refreshKey={`${busy}:${account ?? ''}:${deepPage ? 'deep' : ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`}
             onNew={handleHome}
             onOpenChat={(id) => {
-              if (id === chatId.current && !account && !article && !deepPage && !adminPage) return
+              if (id === chatId.current && !account && !article && !deepPage && !adminPage && !settingsPage) return
               track('history_chat_open', { from: 'sidebar' })
               // 돌던 분석은 서버가 끝까지 마쳐서 저장하니, 기다리지 않고 바로 다른 채팅을 열어요.
               abandon()
