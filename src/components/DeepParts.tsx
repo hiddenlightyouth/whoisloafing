@@ -110,10 +110,12 @@ export function MapMenu({ label, value, active = false, groups, onOpen, icon }: 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false)
     }
-    document.addEventListener('pointerdown', onPointerDown)
+    // 맵은 끌어서 옮기는 동작과 겹치지 않게 메뉴 줄의 누름을 바깥으로 흘려보내지 않아요.
+    // 그래서 흘러나오기 전에(캡처 단계에서) 먼저 받아야, 옆의 다른 메뉴를 눌렀을 때도 이 메뉴가 닫혀요.
+    document.addEventListener('pointerdown', onPointerDown, true)
     document.addEventListener('keydown', onKeyDown)
     return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('pointerdown', onPointerDown, true)
       document.removeEventListener('keydown', onKeyDown)
     }
   }, [open])

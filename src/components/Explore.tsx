@@ -27,6 +27,8 @@ export function Explore({ onPick }: Props) {
   const [kind, setKind] = useState<ExploreKind>('popular')
   const [lists, setLists] = useState<Partial<Record<ExploreKind, ExploreRepo[] | 'failed'>>>({})
   const list = lists[kind]
+  /** 눌러서 분석할지 물어보고 있는 레포 */
+  const [asking, setAsking] = useState<ExploreRepo | null>(null)
 
   useEffect(() => {
     if (list !== undefined) return
@@ -89,8 +91,8 @@ export function Explore({ onPick }: Props) {
                 <button
                   type="button"
                   onClick={() => {
-                    track('explore_repo_select', { repo: item.repo, kind })
-                    onPick(item.repo)
+                    track('explore_repo_open', { repo: item.repo, kind })
+                    setAsking(item)
                   }}
                   className="flex h-[168px] w-full flex-col rounded-2xl border border-gray-200 bg-white p-4 text-left transition-colors hover:border-brand"
                 >
@@ -112,6 +114,67 @@ export function Explore({ onPick }: Props) {
           })}
         </ul>
       )}
+
+      {asking && (
+        <ConfirmDialog
+          repo={asking}
+          onCancel={() => setAsking(null)}
+          onConfirm={() => {
+            track('explore_repo_select', { repo: asking.repo, kind })
+            onPick(asking.repo)
+          }}
+        />
+      )}
     </main>
+  )
+}
+
+const quiet = 'h-9 rounded-full px-3.5 text-[13px] font-medium text-gray-600 transition-colors hover:text-gray-900'
+const primary = 'h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover'
+
+/** 카드를 누르면 바로 분석하지 않고, 어떤 레포인지 보여주면서 한 번 물어봐요. 바깥을 누르거나 Esc를 누르면 닫혀요. */
+function ConfirmDialog({ repo, onCancel, onConfirm }: { repo: ExploreRepo; onCancel: () => void; onConfirm: () => void }) {
+  const [owner, name] = repo.repo.split('/')
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onCancel()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onCancel])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) onCancel()
+      }}
+    >
+      <div role="alertdialog" aria-modal="true" aria-labelledby="explore-confirm-title" className="w-full max-w-sm animate-rise rounded-2xl border border-gray-200 bg-white p-5">
+        <h2 id="explore-confirm-title" className="text-[15px] font-semibold text-gray-900">
+          이 프로젝트를 분석할까요?
+        </h2>
+        <div className="mt-3.5 flex items-center gap-3">
+          <Avatar owner={owner} />
+          <div className="min-w-0">
+            <p className="truncate text-[14.5px] font-semibold text-gray-900">{name}</p>
+            <p className="truncate text-[12px] text-gray-400">{owner}</p>
+          </div>
+        </div>
+        {repo.description && <p className="mt-3 text-[13px] leading-relaxed text-gray-600">{repo.description}</p>}
+        <p className="mt-2 text-[12px] text-gray-400 tabular-nums">
+          {repo.language ? `${repo.language}, ` : ''}스타 {formatStars(repo.stars)}개
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={onCancel} className={quiet}>
+            취소
+          </button>
+          <button type="button" autoFocus onClick={onConfirm} className={primary}>
+            분석하기
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
