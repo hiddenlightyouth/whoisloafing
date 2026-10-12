@@ -7,7 +7,7 @@ import { AppNudge } from './components/AppNudge'
 import { Hero } from './components/Hero'
 import { LeaveDialog } from './components/LeaveDialog'
 import { LoginNudge } from './components/LoginNudge'
-import { ShortcutHelp, ShortcutTip } from './components/Shortcuts'
+import { ShortcutHelp } from './components/Shortcuts'
 import { Toast } from './components/Toast'
 import { useAnalysis } from './hooks/useAnalysis'
 import { initAnalytics, repoLabel, track, trackPageView } from './lib/analytics'
@@ -593,7 +593,6 @@ export default function App() {
         <LeaveDialog home={leaveTo === 'home'} onStay={handleStay} onLeave={handleLeave} onLogin={storage && tokens === null && !account ? handleLeaveLogin : undefined} />
       )}
       {helpOpen && <ShortcutHelp onClose={() => setHelpOpen(false)} />}
-      {isApp && <ShortcutTip />}
       <Toast />
     </div>
   )

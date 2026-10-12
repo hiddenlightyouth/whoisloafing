@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { isApp } from '../lib/app'
 import { SHORTCUT_GROUPS, useShortcutHints } from '../lib/shortcuts'
 
@@ -12,7 +12,7 @@ interface KbdProps {
 }
 
 /**
- * 단축키의 키 하나를 자판 모양으로 보여줘요. 평소에는 숨겨 두고, Option을 누르고 있는 동안에만 보여요.
+ * 단축키의 키 하나를 자판 모양으로 보여줘요. 평소에는 숨겨 두고, Option을 누르고 있는 동안이나 설정에서 단축키 힌트 표시를 켜 뒀을 때만 보여요.
  * 줄 안에 넣은 것은 자리를 미리 차지하고 있어서, 나타나도 옆의 글자가 밀리지 않아요.
  */
 export function Kbd({ children, className = '', always = false, corner = false }: KbdProps) {
@@ -72,7 +72,7 @@ export function ShortcutHelp({ onClose }: { onClose: () => void }) {
         <h2 id="shortcut-help-title" className="text-[15px] font-semibold text-gray-900">
           단축키
         </h2>
-        <p className="mt-1 text-[12.5px] leading-relaxed text-gray-500">글자를 입력하는 중이 아닐 때, 키 하나만 누르면 돼요. Option을 누르고 있으면 화면의 버튼 옆에 키가 보여요.</p>
+        <p className="mt-1 text-[12.5px] leading-relaxed text-gray-500">글자를 입력하는 중이 아닐 때, 키 하나만 누르면 돼요. Option을 누르고 있으면 화면의 버튼 옆에 키가 보여요. 계정 메뉴의 단축키 힌트 표시를 켜면 늘 보여요.</p>
 
         {groups.map((group) => (
           <section key={group.title} className="mt-5">
@@ -95,40 +95,5 @@ export function ShortcutHelp({ onClose }: { onClose: () => void }) {
         ))}
       </div>
     </div>
-  )
-}
-
-/** 안내를 이만큼 보여준 뒤에 알아서 사라져요. */
-const TIP_MS = 6000
-
-/**
- * 앱을 켰을 때 오른쪽 아래 구석에 잠깐 뜨는 안내예요. 다크 모드에서도 같은 검은 바탕이라 색 토큰을 쓰지 않아요. Option을 누르면 단축키가 보인다는 것을 알려줘요.
- * 몇 초 뒤에 사라지고, Option을 눌러 보면 바로 사라져요. 앱을 열거나 새로 고칠 때마다 다시 떠요.
- */
-export function ShortcutTip() {
-  const held = useShortcutHints()
-  const [shown, setShown] = useState(true)
-
-  useEffect(() => {
-    if (!shown) return
-    const timer = window.setTimeout(() => setShown(false), TIP_MS)
-    return () => window.clearTimeout(timer)
-  }, [shown])
-
-  useEffect(() => {
-    if (held) setShown(false)
-  }, [held])
-
-  if (!shown) return null
-  return (
-    <p
-      role="status"
-      className="pointer-events-none fixed right-3 bottom-3 z-40 flex animate-rise items-center gap-1.5 rounded-md bg-black/90 px-2 py-1 text-[11.5px] font-medium text-white"
-      style={{ animationDelay: '800ms' }}
-    >
-      {/* Mac 자판의 Option 키에 그려진 기호예요. */}
-      <span className="rounded-[4px] border border-white/30 px-1 py-px text-[10.5px] leading-none">⌥ option</span>
-      을 눌러 단축키 표시
-    </p>
   )
 }

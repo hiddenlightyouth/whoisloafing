@@ -5,7 +5,7 @@ import { appAtLeast, appVersion, postToApp, type AppTheme } from '../lib/app'
 import { fetchMyChats, signOut, useAuth, type ChatSummary, type Me } from '../lib/auth'
 import { formatWhen } from '../lib/format'
 import { setAppBackdrop, setAppTheme, useAppSettings } from '../lib/theme'
-import { openShortcutHelp } from '../lib/shortcuts'
+import { openShortcutHelp, setShortcutHintsPinned, useShortcutHintsPinned } from '../lib/shortcuts'
 import { showToast } from '../lib/toast'
 import { copyChatLink, DeleteDialog } from './History'
 import { Kbd } from './Shortcuts'
@@ -333,6 +333,7 @@ function AccountMenu({ me, page, onArticles, onMe }: { me: Me | null; page: Prop
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const { theme, backdrop } = useAppSettings()
+  const hintsPinned = useShortcutHintsPinned()
   const name = me?.name || '내 정보'
 
   useEffect(() => {
@@ -414,6 +415,23 @@ function AccountMenu({ me, page, onArticles, onMe }: { me: Me | null; page: Prop
             >
               {/* 손잡이는 다크 모드에서도 흰색이라 색 토큰을 쓰지 않아요. */}
               <span style={{ background: '#fff' }} className={`size-5 rounded-full transition-transform ${backdrop ? 'translate-x-4' : ''}`} />
+            </button>
+          </div>
+
+          <div className="flex h-10 items-center justify-between gap-3 px-2.5">
+            <span className="text-[13.5px] text-gray-800">단축키 힌트 표시</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={hintsPinned}
+              aria-label="단축키 힌트 표시"
+              onClick={() => {
+                track('app_shortcut_hints_change', { on: !hintsPinned })
+                setShortcutHintsPinned(!hintsPinned)
+              }}
+              className={`flex h-6 w-10 items-center rounded-full p-0.5 transition-colors ${hintsPinned ? 'bg-brand' : 'bg-gray-200'}`}
+            >
+              <span style={{ background: '#fff' }} className={`size-5 rounded-full transition-transform ${hintsPinned ? 'translate-x-4' : ''}`} />
             </button>
           </div>
 

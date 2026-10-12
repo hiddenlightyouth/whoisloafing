@@ -34,36 +34,70 @@ export function useShortcuts(keys: ShortcutMap, enabled = true) {
   }, [enabled])
 }
 
-let hintsShown = false
+const PINNED_KEY = 'whoisloafing:shortcut-hints'
+
+function readPinned(): boolean {
+  try {
+    return localStorage.getItem(PINNED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+/** held는 Option을 누르고 있는지, pinned는 설정에서 늘 보이게 켜 뒀는지예요. */
+let hints = { held: false, pinned: typeof window !== 'undefined' && readPinned() }
 const hintListeners = new Set<() => void>()
 
-function setHints(next: boolean) {
-  if (hintsShown === next) return
-  hintsShown = next
+function setHints(next: Partial<typeof hints>) {
+  const merged = { ...hints, ...next }
+  if (merged.held === hints.held && merged.pinned === hints.pinned) return
+  hints = merged
   hintListeners.forEach((listener) => listener())
 }
 
 if (typeof window !== 'undefined') {
   window.addEventListener('keydown', (event) => {
-    if (event.key === 'Alt') setHints(true)
+    if (event.key === 'Alt') setHints({ held: true })
   })
   window.addEventListener('keyup', (event) => {
-    if (event.key === 'Alt') setHints(false)
+    if (event.key === 'Alt') setHints({ held: false })
   })
   // 다른 창으로 넘어가면 키를 뗀 것을 알 수 없어서, 그때는 숨겨요.
-  window.addEventListener('blur', () => setHints(false))
+  window.addEventListener('blur', () => setHints({ held: false }))
 }
 
-/** Option(Alt)을 누르고 있는 동안 true예요. 이때만 버튼 옆에 단축키를 보여줘요. */
+const subscribeHints = (listener: () => void) => {
+  hintListeners.add(listener)
+  return () => hintListeners.delete(listener)
+}
+
+/** 버튼 옆에 단축키를 보여줄지예요. Option(Alt)을 누르고 있는 동안이나, 설정에서 단축키 힌트 표시를 켜 뒀을 때 true예요. */
 export function useShortcutHints(): boolean {
   return useSyncExternalStore(
-    (listener) => {
-      hintListeners.add(listener)
-      return () => hintListeners.delete(listener)
-    },
-    () => hintsShown,
+    subscribeHints,
+    () => hints.held || hints.pinned,
     () => false,
   )
+}
+
+/** 설정의 단축키 힌트 표시가 켜져 있는지예요. */
+export function useShortcutHintsPinned(): boolean {
+  return useSyncExternalStore(
+    subscribeHints,
+    () => hints.pinned,
+    () => false,
+  )
+}
+
+/** 단축키 힌트를 늘 보이게 할지 정하고, 다음에 열었을 때도 그대로 두게 저장해요. */
+export function setShortcutHintsPinned(pinned: boolean) {
+  setHints({ pinned })
+  try {
+    if (pinned) localStorage.setItem(PINNED_KEY, '1')
+    else localStorage.removeItem(PINNED_KEY)
+  } catch {
+    return
+  }
 }
 
 const HELP_EVENT = 'whoisloafing:shortcut-help'
