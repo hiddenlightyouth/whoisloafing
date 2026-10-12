@@ -162,14 +162,14 @@ export function Header({
                       <span className="block text-[11.5px] text-gray-400">{MAC_SUPPORT}</span>
                     </span>
                   </a>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => soon('windows')}
-                    className="block w-full rounded-xl px-3 py-2 pl-[38px] text-left text-[13px] font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                  >
-                    Windows
-                  </button>
+                  {/* 아직 받을 수 없어서 누를 수 없게 흐리게 둬요. */}
+                  <div role="menuitem" aria-disabled="true" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-gray-400">
+                    <WindowsLogo />
+                    <span>
+                      <span className="block text-[13px] font-medium">Windows</span>
+                      <span className="block text-[11.5px]">준비 중</span>
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
@@ -315,13 +315,13 @@ export function Header({
                     <span className="block text-[12px] text-gray-400">{MAC_SUPPORT}</span>
                   </span>
                 </a>
-                <button
-                  type="button"
-                  onClick={() => soon('windows')}
-                  className="block w-full py-2.5 pl-[26px] text-left text-[15px] text-gray-600 transition-colors hover:text-gray-900"
-                >
-                  Windows
-                </button>
+                <div aria-disabled="true" className="flex items-center gap-2.5 py-2.5 text-gray-400">
+                  <WindowsLogo />
+                  <span>
+                    <span className="block text-[15px]">Windows</span>
+                    <span className="block text-[12px]">준비 중</span>
+                  </span>
+                </div>
               </div>
             )}
 
@@ -346,6 +346,14 @@ export function Header({
 /** macOS 앱 설치 파일. 앱 레포에서 만든 DMG를 `public/download`에 넣어 둬요. 새 버전도 같은 이름으로 덮어써서 주소가 바뀌지 않아요. */
 const MAC_DOWNLOAD = '/download/WhoIsLoafing.dmg'
 const MAC_SUPPORT = 'Apple Silicon 전용'
+
+function WindowsLogo() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="size-4 shrink-0" aria-hidden="true">
+      <path d="M2 2h9.5v9.5H2zM12.5 2H22v9.5h-9.5zM2 12.5h9.5V22H2zM12.5 12.5H22V22h-9.5z" />
+    </svg>
+  )
+}
 
 function AppleLogo() {
   return (
