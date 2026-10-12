@@ -4,7 +4,7 @@ import { closeBugReport, sendFeedback } from '../lib/feedback'
 import { showToast } from '../lib/toast'
 
 const field =
-  'w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[16px] leading-relaxed text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-brand sm:text-[13.5px]'
+  'w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[16px] leading-relaxed text-gray-900 outline-none placeholder:text-gray-400 sm:text-[13.5px]'
 const choice = 'h-9 flex-1 rounded-full border text-[13px] font-medium transition-colors'
 
 /**
@@ -91,7 +91,7 @@ export function FeedbackPrompt({ chatId, onClose }: { chatId: string | null; onC
   )
 }
 
-/** 버그를 신고하는 창이에요. 무엇이 문제였는지 적어서 보내요. 보고 있던 화면의 주소가 함께 가요. */
+/** 버그를 신고하는 창이에요. 무엇이 문제였는지 적어서 보내요. 보고 있던 화면의 주소와 채팅 ID가 함께 가요. */
 export function BugReport({ chatId }: { chatId: string | null }) {
   const [comment, setComment] = useState('')
   const [sending, setSending] = useState(false)
@@ -134,14 +134,14 @@ export function BugReport({ chatId }: { chatId: string | null }) {
         <h2 id="bug-report-title" className="text-[15px] font-semibold text-gray-900">
           버그 신고
         </h2>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">무엇을 하다가 어떤 문제가 생겼는지 알려주세요. 보고 있던 화면의 주소와 기기 종류가 함께 전송돼요.</p>
+        <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">이 보고서에는 귀하의 설명과 현재 세션 기록이 포함됩니다. 관련 문제를 디버그하고 WhoIsLoafing을 개선하기 위해 이 정보를 사용할 수 있습니다.</p>
         <textarea
           ref={inputRef}
           value={comment}
           onChange={(event) => setComment(event.target.value)}
           rows={5}
           maxLength={2000}
-          placeholder="예: 레포 링크를 넣고 분석을 눌렀는데 말풍선이 나오지 않아요."
+          placeholder="문제를 설명해 주세요"
           aria-label="문제 설명"
           className={`${field} mt-3.5`}
         />
