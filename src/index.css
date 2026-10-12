@@ -402,15 +402,6 @@
   }
 }
 
-/* 소개 화면은 한 장씩 걸리듯 넘어가서 스크롤 막대를 두지 않아요. 오른쪽의 점이 어디쯤인지 알려줘요. */
-.about-scroll {
-  scrollbar-width: none;
-}
-
-.about-scroll::-webkit-scrollbar {
-  display: none;
-}
-
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
