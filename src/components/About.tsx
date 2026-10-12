@@ -26,7 +26,7 @@ const APP_ONLY = '앱 전용'
 
 /**
  * 소개하는 기능이에요. 웹과 앱을 나누지 않고 한 줄에 두 개씩 이어서 보여주고, 앱에서만 되는 것에는 태그를 달아요.
- * 서비스에 실제로 있는 기능만 적어요. 그림은 공개 레포(vitejs/vite)를 앱의 다크 모드에서 분석한 실제 화면이에요.
+ * 서비스에 실제로 있는 기능만 적어요. 그림은 공개 레포(vitejs/vite)를 앱에서 분석한 실제 화면이에요.
  */
 const FEATURES: Feature[] = [
   { title: '프로젝트 요약', body: 'README와 코드를 읽고 정리한 한 문장 소개와 기술 스택', shot: 'intro', alt: '레포 소개 문장과 기술 스택, 기본 정보가 말풍선으로 나온 화면' },
@@ -34,11 +34,9 @@ const FEATURES: Feature[] = [
   { title: '담당 기능 분석', body: '커밋 내용으로 정리한 참여자별 담당 기능과 코드 스타일', shot: 'features', alt: '참여자가 맡은 기능이 번호 목록으로 정리된 화면' },
   { title: '활동 시간 분석', body: '시간대별 커밋 수와 참여자별 활동 시간 히트맵', shot: 'hours', alt: '시간대별 커밋 수 그래프와 참여자별 활동 시간 히트맵 화면' },
   { title: '협업 방식 분석', body: '브랜치, 커밋, PR 규칙을 정리한 팀 규칙 문서와 복사', shot: 'teamwork', alt: '우리 팀에 적용하는 순서와 팀 규칙 문서 복사하기 버튼이 있는 화면' },
-  { title: '저장과 공유', body: '내 작업에 모아 두고 링크 하나로 공유', shot: 'save', alt: '내 작업 목록과 채팅 공유 확인 창이 떠 있는 화면', tag: '로그인 필요' },
   { title: '프로젝트 구조 분석', body: '폴더와 역할을 마인드맵처럼 둘러보는 구조 맵', shot: 'structure', alt: '폴더가 가지처럼 뻗은 프로젝트 구조 맵 화면', tag: APP_ONLY },
   { title: 'CI/CD 파이프라인 구조 분석', body: '워크플로의 작동 조건과 작업이 도는 순서', shot: 'pipeline', alt: '워크플로의 작동 조건과 작업 순서가 카드로 나온 화면', tag: APP_ONLY },
   { title: 'Issues, PR Template', body: '템플릿 양식과 원문, 라벨을 한 화면에', shot: 'forms', alt: '이슈 템플릿의 양식과 원문이 나란히 나온 화면', tag: APP_ONLY },
-  { title: '인기있는 레포 둘러보기', body: 'GitHub에서 인기 있는 공개 레포를 골라 바로 분석', shot: 'explore', alt: '인기 있는 레포 카드가 늘어선 탐색 화면', tag: APP_ONLY },
 ]
 
 /** 스크린샷을 찍은 창의 가로 폭(px). 창 버튼의 크기와 자리를 이 폭에 맞춰 그려요. */
@@ -75,7 +73,7 @@ function Shot({ feature }: { feature: Feature }) {
 }
 
 /**
- * 서비스를 소개하는 화면이에요. 이 화면만 바탕이 새까매요.
+ * 서비스를 소개하는 화면이에요.
  * 위에 로고와 한마디, 시작하는 버튼을 두고, 아래에 기능을 한 줄에 두 개씩 실제 화면과 함께 늘어놓아요.
  */
 export function About({ onHome }: Props) {
