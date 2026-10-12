@@ -4,8 +4,6 @@ import { appAtLeast, appVersion, postToApp, type AppTheme } from '../lib/app'
 import { setShortcutHintsPinned, useShortcutHintsPinned } from '../lib/shortcuts'
 import { setAppBackdrop, setAppShield, setAppTheme, useAppSettings } from '../lib/theme'
 
-const SITE_TITLE = 'WhoIsLoafing'
-
 const THEME_OPTIONS: [AppTheme, string][] = [
   ['system', '시스템 설정'],
   ['light', '라이트'],
@@ -14,9 +12,9 @@ const THEME_OPTIONS: [AppTheme, string][] = [
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="mt-12">
-      <h2 className="text-[17px] font-semibold text-gray-900">{title}</h2>
-      <dl className="mt-4 divide-y divide-gray-100 border-y border-gray-100 text-[14px]">{children}</dl>
+    <section className="mt-7 first:mt-0">
+      <h3 className="text-[12.5px] font-medium text-gray-400">{title}</h3>
+      <dl className="mt-2 divide-y divide-gray-100 border-y border-gray-100 text-[14px]">{children}</dl>
     </section>
   )
 }
@@ -51,24 +49,41 @@ function Switch({ on, label, onChange }: { on: boolean; label: string; onChange:
 }
 
 /**
- * 앱의 설정 화면이에요. 앱이 어떻게 보이고 움직일지 정하는 것만 모아 둬요.
+ * 앱의 설정 창이에요. 보던 화면 위에 떠서, 앱이 어떻게 보이고 움직일지 정하는 것만 모아 둬요.
  * 이름, 이메일, 로그인한 기기처럼 계정에 딸린 것은 내 정보 화면에 있어요.
+ * 바깥을 누르거나 Esc를 누르면 닫혀요. 바꾼 값은 바로 적용돼서 저장 버튼은 없어요.
  */
-export function Settings() {
+export function Settings({ onClose }: { onClose: () => void }) {
   const { theme, backdrop, shield } = useAppSettings()
   const hints = useShortcutHintsPinned()
 
   useEffect(() => {
-    document.title = `설정 | ${SITE_TITLE}`
-    return () => {
-      document.title = SITE_TITLE
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
     }
-  }, [])
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
 
   return (
-    <main className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-2xl px-5 pt-24 pb-20 sm:pt-28">
-        <h1 className="text-[24px] font-semibold leading-snug text-gray-900 sm:text-[30px]">설정</h1>
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
+      onPointerDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <div role="dialog" aria-modal="true" aria-labelledby="settings-title" className="flex max-h-[85dvh] w-full max-w-lg animate-rise flex-col rounded-2xl border border-gray-200 bg-white">
+        <div className="flex shrink-0 items-center justify-between px-6 pt-5 pb-4">
+          <h2 id="settings-title" className="text-[17px] font-semibold text-gray-900">
+            설정
+          </h2>
+          <button type="button" aria-label="닫기" onClick={onClose} className="-mr-2 flex size-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-4" aria-hidden="true">
+              <path d="M4 4l8 8M12 4l-8 8" />
+            </svg>
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
 
         <Section title="화면">
           <Row label="화면 모드">
@@ -148,7 +163,8 @@ export function Settings() {
             </span>
           </Row>
         </Section>
+        </div>
       </div>
-    </main>
+    </div>
   )
 }

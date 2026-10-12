@@ -13,7 +13,7 @@ interface Props {
   /** 지금 열려 있는 채팅. 목록에서 강조해요. */
   activeChatId: string | null
   /** 지금 보고 있는 화면. 아래쪽 링크를 강조해요. */
-  page: 'deep' | 'articles' | 'me' | 'settings' | 'admin' | null
+  page: 'deep' | 'articles' | 'me' | 'admin' | null
   /** 값이 바뀌면 목록을 다시 받아요. */
   refreshKey: string
   onNew: () => void
@@ -26,8 +26,10 @@ interface Props {
   onChatChanged: (id: string, change: 'unshared' | 'deleted') => void
   onArticles: () => void
   onMe: () => void
-  /** 앱의 설정 화면을 열어요. */
+  /** 앱의 설정 창을 띄워요. */
   onSettings: () => void
+  /** 설정 창이 떠 있는지. 떠 있는 동안 설정 버튼을 켜진 것으로 보여줘요. */
+  settingsOpen: boolean
   /** 관리자 화면을 열어요. 관리자 계정일 때만 넘기고, 아니면 메뉴에 보여주지 않아요. */
   onAdmin?: () => void
 }
@@ -181,7 +183,7 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
 }
 
 /** 앱 화면 왼쪽의 사이드바예요. 새 분석, 내 작업 목록과 관리, 아티클과 내 정보로 가는 링크가 있어요. */
-export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onOpenChat, onDeepRepo, onChatChanged, onArticles, onMe, onSettings, onAdmin }: Props) {
+export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onOpenChat, onDeepRepo, onChatChanged, onArticles, onMe, onSettings, settingsOpen, onAdmin }: Props) {
   const { me } = useAuth()
   const [chats, setChats] = useState<ChatSummary[] | null>(null)
   const [nextPage, setNextPage] = useState<number | null>(null)
@@ -367,7 +369,7 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onOp
         )}
       </nav>
 
-      <AccountMenu me={me} page={page} onArticles={onArticles} onMe={onMe} onSettings={onSettings} onAdmin={onAdmin} />
+      <AccountMenu me={me} page={page} onArticles={onArticles} onMe={onMe} onSettings={onSettings} settingsOpen={settingsOpen} onAdmin={onAdmin} />
 
       {deleting && <DeleteDialog chat={deleting} working={working} onCancel={cancelDelete} onConfirm={() => void remove(deleting)} />}
     </aside>
@@ -381,7 +383,7 @@ const menuIcon = 'size-4 shrink-0 text-gray-500'
  * 사이드바 맨 아래의 계정 버튼이에요. 누르면 위로 메뉴가 펼쳐져서 내 정보, 아티클, 관리자 화면으로 가거나 로그아웃해요. 오른쪽에는 설정과 버그 신고 버튼이 있어요.
  * 바깥을 누르거나 Esc를 누르면 닫혀요.
  */
-function AccountMenu({ me, page, onArticles, onMe, onSettings, onAdmin }: { me: Me | null; page: Props['page']; onArticles: () => void; onMe: () => void; onSettings: () => void; onAdmin?: () => void }) {
+function AccountMenu({ me, page, onArticles, onMe, onSettings, settingsOpen, onAdmin }: { me: Me | null; page: Props['page']; onArticles: () => void; onMe: () => void; onSettings: () => void; settingsOpen: boolean; onAdmin?: () => void }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const { ready: canReport } = useFeedback()
@@ -477,14 +479,15 @@ function AccountMenu({ me, page, onArticles, onMe, onSettings, onAdmin }: { me: 
           <path d="M5 6.5L8 3.5l3 3M5 9.5l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      {/* 설정 화면으로 가는 버튼이에요. 버그 신고 버튼 왼쪽에 둬요. */}
+      {/* 설정 창을 띄우는 버튼이에요. 버그 신고 버튼 왼쪽에 둬요. */}
       <button
         type="button"
         aria-label="설정"
         title="설정"
-        aria-current={page === 'settings' ? 'page' : undefined}
+        aria-haspopup="dialog"
+        aria-expanded={settingsOpen}
         onClick={onSettings}
-        className={`flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-gray-200/50 hover:text-gray-700 ${page === 'settings' ? 'bg-gray-200/70 text-gray-900' : 'text-gray-400'}`}
+        className={`flex size-9 shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-gray-200/50 hover:text-gray-700 ${settingsOpen ? 'bg-gray-200/70 text-gray-900' : 'text-gray-400'}`}
       >
         {/* 톱니바퀴 그림이에요. */}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden="true">
