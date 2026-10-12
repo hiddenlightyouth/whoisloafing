@@ -138,6 +138,8 @@ export interface DeepReport {
   labels?: RepoLabel[]
   /** 분석한 시점의 레포 상태(마지막 푸시 시각). 재분석을 요청할 때 돌려보내서, 그 뒤로 바뀐 것이 있는지 서버가 판단해요. */
   revision?: string
+  /** 이 결과를 분석한 시각 (ISO 형식). 예전 서버는 보내지 않아서, 그때는 화면이 받은 시각을 대신 적어 둬요. */
+  analyzedAt?: string
   /** 재분석을 요청했는데 그 뒤로 푸시가 없으면 true. 이때는 다른 내용 없이 와요. */
   unchanged?: boolean
   /** 탭이 아니라 구조 맵의 참여자별 보기에서 따로 받아요. */

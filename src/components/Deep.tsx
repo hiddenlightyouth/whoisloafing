@@ -4,7 +4,7 @@ import { track } from '../lib/analytics'
 import { useAnalysis } from '../hooks/useAnalysis'
 import { fetchChat, fetchDeepReport } from '../lib/api'
 import { fetchMyChats } from '../lib/auth'
-import { formatWhen } from '../lib/format'
+import { formatDateTime, formatWhen } from '../lib/format'
 import { showToast } from '../lib/toast'
 import { Chat } from './Chat'
 import { MapMenu, toolButton } from './DeepParts'
@@ -249,6 +249,7 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
       return
     }
     if ('report' in result) {
+      result.report.analyzedAt ??= new Date().toISOString()
       writeSaved(repo, target, result.report)
       // 구조가 바뀌었으면 참여자가 고친 폴더도 다시 받아야 해서, 받아 둔 것을 지워요.
       if (kept && target === 'structure') clearPeople(repo)
@@ -264,7 +265,8 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
 
   const [owner, name] = repo.split('/')
   // 받아 온 탭은 옅은 회색 바탕이 여백 없이 탭 아래를 가득 채워요.
-  const bleed = current !== undefined && current !== 'loading' && 'report' in current
+  const bleed = !current || current === 'loading' || 'report' in current
+  const analyzedAt = current && current !== 'loading' && 'report' in current ? formatDateTime(current.report.analyzedAt) : ''
 
   return (
     <main className="flex min-h-0 flex-1">
@@ -324,13 +326,17 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
         ))}
         {/* 저장해 둔 결과를 보고 있을 때만, 레포가 바뀌었으면 새로 받을 수 있게 해요. */}
         {current && current !== 'loading' && 'report' in current && (
-          <button
-            type="button"
-            onClick={() => void analyze(section, true)}
-            className="mb-1.5 ml-auto h-8 self-end rounded-lg px-3 text-[13px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-          >
-            재분석 요청
-          </button>
+          <div className="mb-1.5 ml-auto flex items-center gap-1 self-end">
+            {/* 탭마다 따로 분석하니, 지금 보는 탭을 마지막으로 분석한 때를 알려줘요. */}
+            {analyzedAt && <span className="text-[12.5px] text-gray-400 tabular-nums">마지막 분석 {analyzedAt}</span>}
+            <button
+              type="button"
+              onClick={() => void analyze(section, true)}
+              className="h-8 rounded-lg px-3 text-[13px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+            >
+              재분석 요청
+            </button>
+          </div>
         )}
       </div>
 
@@ -343,7 +349,7 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
         }
       >
         {!current || current === 'loading' ? (
-          <Loading />
+          <Loading section={section} />
         ) : 'error' in current ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <p className="text-[14px] leading-relaxed text-gray-600">{current.error}</p>
@@ -481,21 +487,117 @@ function Report({ report, name }: { report: DeepReport; name: string }) {
   )
 }
 
-function Loading() {
-  return (
-    <>
-      <span className="sr-only">분석하고 있어요.</span>
-      <div className="shrink-0 space-y-2.5 xl:w-80" aria-hidden>
-        <Bone className="h-4 w-full" />
-        <Bone className="h-4 w-11/12" />
-        <Bone className="h-4 w-2/3" />
-        <div className="grid grid-cols-2 gap-2 pt-3">
-          {[0, 1, 2, 3].map((item) => (
-            <div key={item} className="h-[68px] rounded-xl bg-gray-100 motion-safe:animate-pulse" />
-          ))}
+const card = 'rounded-xl border border-gray-200 bg-white p-5'
+/** 옅은 회색 바탕 위에 올라가는 뼈대라 한 단계 진한 회색을 써요. */
+const shade = 'rounded-lg bg-gray-200/70 motion-safe:animate-pulse'
+
+/** 맵의 칸 하나만 한 뼈대. 처음 보이는 크기(70%)에 맞췄어요. */
+function Node({ left, top }: { left: number; top: number }) {
+  return <div className={`absolute h-[35px] w-[146px] ${shade}`} style={{ left, top }} />
+}
+
+/**
+ * 탭을 받는 동안 보여주는 뼈대예요. 받은 뒤의 화면과 같은 자리에 같은 크기로 둬서, 내용이 들어올 때 화면이 덜 흔들려요.
+ * 프로젝트 구조는 가지가 뻗은 맵, CI/CD는 작동 조건과 작업 카드와 원문, Issues와 Pull requests는 양식과 원문 카드 모양이에요.
+ */
+function Loading({ section }: { section: DeepSection }) {
+  if (section === 'structure') {
+    return (
+      <div className="relative min-h-0 flex-1 overflow-hidden bg-gray-50" aria-busy="true">
+        <span className="sr-only">분석하고 있어요.</span>
+        <div aria-hidden>
+          <div className="absolute top-4 left-4 flex gap-2">
+            <div className={`h-9 w-[72px] ${shade}`} />
+            <div className={`h-9 w-[88px] ${shade}`} />
+          </div>
+          <div className="absolute top-1/2 left-8">
+            <Node left={0} top={-18} />
+            {[-132, -88, -44, 0, 44, 88].map((top) => (
+              <Node key={top} left={196} top={top} />
+            ))}
+            {[-154, -110, -66].map((top) => (
+              <Node key={top} left={392} top={top} />
+            ))}
+            {[-22, 22].map((top) => (
+              <Node key={top} left={392} top={top} />
+            ))}
+          </div>
+          <div className={`absolute right-4 bottom-4 h-10 w-[218px] ${shade}`} />
         </div>
       </div>
-      <div className="min-h-[420px] flex-1 rounded-2xl bg-gray-100 motion-safe:animate-pulse" aria-hidden />
-    </>
+    )
+  }
+
+  if (section === 'pipeline') {
+    return (
+      <div className="min-h-0 flex-1 overflow-hidden bg-gray-50 p-4" aria-busy="true">
+        <span className="sr-only">분석하고 있어요.</span>
+        <div className="space-y-4" aria-hidden>
+          <div className="flex items-center gap-2">
+            <div className={`h-4 w-14 ${shade}`} />
+            <div className={`h-7 w-32 ${shade}`} />
+            <div className={`h-7 w-16 ${shade}`} />
+            <div className={`h-7 w-20 ${shade}`} />
+          </div>
+          <div className="flex gap-6">
+            {[5, 7, 3].map((steps, column) => (
+              <div key={column} className={`flex-1 ${card}`}>
+                <div className="flex items-center gap-2.5">
+                  <Bone className="size-6" />
+                  <Bone className="h-4 w-2/5" />
+                </div>
+                <Bone className="mt-3 h-3 w-1/4" />
+                <div className="mt-5 space-y-4">
+                  {Array.from({ length: steps }, (_, step) => (
+                    <div key={step}>
+                      <Bone className="h-3.5 w-3/5" />
+                      <Bone className="mt-1.5 h-3 w-2/5" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className={card}>
+            <div className="flex items-center justify-between">
+              <Bone className="h-3.5 w-52" />
+              <Bone className="h-9 w-14 rounded-lg" />
+            </div>
+            <div className="mt-3 h-64 rounded-lg bg-gray-50 motion-safe:animate-pulse" />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-0 flex-1 overflow-hidden bg-gray-50 p-4" aria-busy="true">
+      <span className="sr-only">분석하고 있어요.</span>
+      <div className="space-y-4" aria-hidden>
+        {[0, 1].map((row) => (
+          <div key={row} className="grid gap-4 lg:grid-cols-2">
+            <div className={card}>
+              <Bone className="h-4 w-1/3" />
+              <Bone className="mt-2 h-3.5 w-1/2" />
+              <div className="mt-6 space-y-5">
+                {[0, 1, 2].map((field) => (
+                  <div key={field}>
+                    <Bone className="h-3.5 w-1/4" />
+                    <div className="mt-2 h-20 rounded-lg bg-gray-100 motion-safe:animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className={card}>
+              <div className="flex items-center justify-between">
+                <Bone className="h-3.5 w-52" />
+                <Bone className="h-9 w-14 rounded-lg" />
+              </div>
+              <div className="mt-3 h-[360px] rounded-lg bg-gray-50 motion-safe:animate-pulse" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
