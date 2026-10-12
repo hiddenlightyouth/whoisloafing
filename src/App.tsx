@@ -109,6 +109,8 @@ export default function App() {
   const [deep, setDeep] = useState(false)
   /** 앱의 심층 분석 화면을 보고 있는지. repo가 null이면 레포를 고르는 화면이에요. */
   const [deepPage, setDeepPage] = useState(() => (isApp ? deepFromPath() : null))
+  /** 사이드바에서 채팅을 지우거나 공유를 바꾸면 올라가요. 심층 분석이 내 작업을 다시 받게 해요. */
+  const [chatsVersion, setChatsVersion] = useState(0)
   /** 지금 보고 있는 채팅의 상태. mine은 이 브라우저에서 만든 채팅인지, shared는 공유됐는지예요. */
   const [chat, setChat] = useState<{ mine: boolean; shared: boolean } | null>(null)
   const [opening, setOpening] = useState(() => chatIdFromPath() !== null)
@@ -511,7 +513,7 @@ export default function App() {
         </Suspense>
       ) : deepPage ? (
         <Suspense fallback={<main className="flex-1" />}>
-          <Deep repo={deepPage.repo} onOpen={openDeep} onNew={goHome} onOpenChat={openChat} />
+          <Deep repo={deepPage.repo} onOpen={openDeep} onNew={goHome} refreshKey={chatsVersion} />
         </Suspense>
       ) : article ? (
         <Suspense fallback={<main className="flex-1" />}>
@@ -604,6 +606,7 @@ export default function App() {
               openChat(id)
             }}
             onChatChanged={(id, change) => {
+              setChatsVersion((value) => value + 1)
               if (id !== chatId.current) return
               if (change === 'unshared') setChat({ mine: true, shared: false })
               else {

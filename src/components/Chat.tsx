@@ -19,6 +19,8 @@ interface Props {
   /** 오류 말풍선의 다른 레포 분석하기. 잃을 작업이 없어서 확인 없이 바로 메인 화면으로 가요. */
   onNewRepo: () => void
   onSend: (request: AnalyzeRequest, userText?: string) => void
+  /** 심층 분석 옆의 좁은 칸에 넣을 때 true. 헤더 자리와 좌우 여백을 줄이고, 질문 메뉴를 방울 대신 말풍선으로 보여줘요. */
+  compact?: boolean
 }
 
 /** 맨 아래에서 이만큼 안쪽이면 아래에 붙어 있는 것으로 봐요. */
@@ -32,7 +34,7 @@ const FOCUS_MIN_OPACITY = 0.3
 /** 이만큼 스크롤되면 흐림 효과가 온전히 적용돼요. */
 const FOCUS_RAMP_PX = 240
 
-export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHome, onNewRepo }: Props) {
+export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHome, onNewRepo, compact = false }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
   const lastScrollTop = useRef(0)
@@ -130,11 +132,11 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
           ref={scrollRef}
           onScroll={handleScroll}
           // 앱에서는 채팅을 왼쪽에 붙이고, 넓은 창에서는 오른쪽 아래 질문 메뉴가 펼쳐질 자리를 비워서 서로 겹치지 않게 해요.
-          className={`h-full overflow-y-auto pt-14 ${isApp ? 'px-6 md:pl-10 xl:pr-[348px]' : 'px-4 sm:px-6'}`}
+          className={`h-full overflow-y-auto ${compact ? 'px-4' : `pt-14 ${isApp ? 'px-6 md:pl-10 xl:pr-[348px]' : 'px-4 sm:px-6'}`}`}
         >
           <div
             ref={contentRef}
-            className={`flex max-w-2xl flex-col gap-2.5 ${isApp ? 'mr-auto' : 'mx-auto'} pt-6 pb-[max(2.5rem,env(safe-area-inset-bottom))]`}
+            className={`flex flex-col gap-2.5 ${compact ? 'pt-4 pb-8' : `max-w-2xl ${isApp ? 'mr-auto' : 'mx-auto'} pt-6 pb-[max(2.5rem,env(safe-area-inset-bottom))]`}`}
             aria-live="polite"
           >
             {messages.map((message, index) => (
@@ -142,7 +144,7 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
               <div
                 key={message.id}
                 data-focus
-                className={`transition-opacity duration-200 ease-out ${isMenu(message) ? 'md:hidden' : ''}`}
+                className={`transition-opacity duration-200 ease-out ${isMenu(message) && !compact ? 'md:hidden' : ''}`}
               >
                 <Bubble
                   message={message}
@@ -189,7 +191,7 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
           </div>
         </div>
 
-        {menu && menuActive && (
+        {menu && menuActive && !compact && (
           <div className="absolute right-6 bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-10 hidden animate-rise md:block">
             {menuOpen ? (
               <div className="absolute right-0 bottom-[calc(100%+0.75rem)] max-h-[calc(100dvh-11rem)] w-[300px] overflow-y-auto">
