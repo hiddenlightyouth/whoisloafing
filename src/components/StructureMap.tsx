@@ -133,6 +133,45 @@ function savedDirection(): Direction {
   }
 }
 
+/** 사용자가 칸을 끌어서 옮긴 거리. 폴더 경로마다 따로 적어 둬요. */
+type Moves = Record<string, { x: number; y: number }>
+
+const MOVES_PREFIX = 'whoisloafing:deep-map-moves:'
+
+/** 옮겨 둔 배치는 레포와 방향마다 이 기기에 저장해요. 다음에 열어도 그대로 보여요. */
+function readMoves(repo: string, direction: Direction): Moves {
+  try {
+    return (JSON.parse(localStorage.getItem(`${MOVES_PREFIX}${repo.toLowerCase()}:${direction}`) ?? '{}') as Moves) ?? {}
+  } catch {
+    return {}
+  }
+}
+
+function writeMoves(repo: string, direction: Direction, moves: Moves) {
+  try {
+    const key = `${MOVES_PREFIX}${repo.toLowerCase()}:${direction}`
+    if (Object.keys(moves).length === 0) localStorage.removeItem(key)
+    else localStorage.setItem(key, JSON.stringify(moves))
+  } catch {
+    // 저장하지 못해도 이번 화면에서는 그대로 보여요.
+  }
+}
+
+/** 자동으로 잡은 자리에 사용자가 옮긴 거리를 더해요. 폴더를 옮기면 그 아래 가지도 같이 따라가요. */
+function applyMoves(placed: Placed[], moves: Moves): Placed[] {
+  const shifted = new Map<Placed, Placed>()
+  const total = new Map<Placed, { x: number; y: number }>()
+  return placed.map((item) => {
+    const own = moves[item.node.path]
+    const above = item.parent ? total.get(item.parent)! : { x: 0, y: 0 }
+    const sum = { x: above.x + (own?.x ?? 0), y: above.y + (own?.y ?? 0) }
+    total.set(item, sum)
+    const next: Placed = { ...item, x: item.x + sum.x, y: item.y + sum.y, parent: item.parent ? shifted.get(item.parent)! : null }
+    shifted.set(item, next)
+    return next
+  })
+}
+
 /**
  * 펼쳐 둔 폴더만 나무 모양으로 자리를 잡아요. 가로로 뻗을 때는 깊이가 오른쪽으로, 형제가 아래로 늘어서고,
  * 세로로 뻗을 때는 깊이가 아래로, 형제가 옆으로 늘어서요. 부모는 자식들의 가운데에 와요.
@@ -171,7 +210,8 @@ function layout(root: StructureNode, open: Set<string>, nodeH: number, direction
 /**
  * 프로젝트 구조를 마인드맵처럼 둘러보는 화면이에요.
  * 레포에서 최상위 폴더로, 폴더에서 하위 폴더로 가지가 뻗어요. 보기 메뉴에서 오른쪽으로 뻗을지 아래로 뻗을지 골라요. 폴더를 누르면 가지가 펼쳐지고 접혀요.
- * 빈 곳을 끌거나 두 손가락으로 밀면 맵이 움직이고, 두 손가락을 벌리거나 아래 버튼을 누르면 커지고 작아져요.
+ * 빈 곳을 끌거나 두 손가락으로 밀면 맵이 움직이고, 두 손가락을 벌리거나 오른쪽 위의 버튼을 누르면 커지고 작아져요.
+ * 칸을 끌면 그 칸과 아래 가지를 마음대로 옮길 수 있고, 배치 되돌리기로 원래 자리에 돌려놔요.
  */
 export function StructureMap({ name, repo, root }: Props) {
   const [open, setOpen] = useState<Set<string>>(() => sourceFolders(root))
@@ -181,6 +221,8 @@ export function StructureMap({ name, repo, root }: Props) {
   const [view, setView] = useState({ x: 24, y: 24, k: 1 })
   const frameRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null)
+  /** 끌고 있는 칸. 칸을 누른 채로 움직이면 맵이 아니라 그 칸이 움직여요. */
+  const nodeDrag = useRef<{ path: string; x: number; y: number; moved: boolean } | null>(null)
   /** 방금 끌어서 옮겼으면, 손을 뗄 때 따라오는 클릭을 한 번 무시해요. */
   const suppressClick = useRef(false)
   /** 폴더를 펼치거나 접을 때, 누른 칸이 화면에서 제자리에 있도록 기억해 두는 값 */
@@ -232,12 +274,17 @@ export function StructureMap({ name, repo, root }: Props) {
     }
     root.children.forEach(visit)
     if (added.size === open.size) return
-    anchor.current = { key: placed[0].node.path, x: placed[0].x, y: placed[0].y }
+    anchor.current = { key: base[0].node.path, x: base[0].x, y: base[0].y }
     setMode(null)
     setOpen(added)
   }
 
-  const placed = useMemo(() => layout(root, open, nodeH, direction), [root, open, nodeH, direction])
+  /** 사용자가 끌어서 옮긴 칸들. 방향마다 따로 기억해요. */
+  const [moves, setMoves] = useState<Moves>(() => readMoves(repo, savedDirection()))
+  const arranged = Object.keys(moves).length > 0
+  // 자동으로 잡은 자리예요. 펼치고 접을 때 누른 칸을 제자리에 두는 계산은 이 자리로 해요.
+  const base = useMemo(() => layout(root, open, nodeH, direction), [root, open, nodeH, direction])
+  const placed = useMemo(() => applyMoves(base, moves), [base, moves])
   const keyOf = (item: Placed) => item.node.path
   const width = Math.max(...placed.map((item) => item.x)) + NODE_W
   const height = Math.max(...placed.map((item) => item.y)) + nodeH
@@ -291,12 +338,21 @@ export function StructureMap({ name, repo, root }: Props) {
     track('deep_map_direction', { repo, direction: next })
     refit.current = true
     setDirection(next)
+    setMoves(readMoves(repo, next))
     try {
       if (next === 'vertical') localStorage.setItem(DIRECTION_KEY, 'vertical')
       else localStorage.removeItem(DIRECTION_KEY)
     } catch {
       return
     }
+  }
+
+  /** 끌어서 옮긴 칸을 모두 원래 자리로 돌려놔요. */
+  function resetMoves() {
+    track('deep_map_reset', { repo })
+    refit.current = true
+    setMoves({})
+    writeMoves(repo, direction, {})
   }
 
   function toggleRoles() {
@@ -316,9 +372,9 @@ export function StructureMap({ name, repo, root }: Props) {
     const kept = anchor.current
     if (!kept) return
     anchor.current = null
-    const now = placed.find((item) => keyOf(item) === kept.key)
+    const now = base.find((item) => keyOf(item) === kept.key)
     if (now && (now.x !== kept.x || now.y !== kept.y)) setView((prev) => ({ ...prev, x: prev.x + (kept.x - now.x) * prev.k, y: prev.y + (kept.y - now.y) * prev.k }))
-  }, [placed])
+  }, [base])
 
   const zoomAt = useCallback((factor: number, originX: number, originY: number) => {
     setView((prev) => {
@@ -351,6 +407,20 @@ export function StructureMap({ name, repo, root }: Props) {
   }
 
   function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const held = nodeDrag.current
+    if (held) {
+      const dx = event.clientX - held.x
+      const dy = event.clientY - held.y
+      if (!held.moved && Math.hypot(dx, dy) < DRAG_PX) return
+      if (!held.moved) event.currentTarget.setPointerCapture(event.pointerId)
+      nodeDrag.current = { ...held, x: event.clientX, y: event.clientY, moved: true }
+      // 화면에서 움직인 만큼을 맵의 배율로 나눠서, 확대해 둔 상태에서도 손가락을 그대로 따라오게 해요.
+      setMoves((prev) => {
+        const now = prev[held.path] ?? { x: 0, y: 0 }
+        return { ...prev, [held.path]: { x: now.x + dx / view.k, y: now.y + dy / view.k } }
+      })
+      return
+    }
     const state = drag.current
     if (!state) return
     const dx = event.clientX - state.x
@@ -364,7 +434,8 @@ export function StructureMap({ name, repo, root }: Props) {
   function toggle(item: Placed) {
     setSelected(item.node.path)
     if (item.depth === 0 || item.node.children.length === 0) return
-    anchor.current = { key: keyOf(item), x: item.x, y: item.y }
+    const auto = base.find((other) => keyOf(other) === keyOf(item)) ?? item
+    anchor.current = { key: keyOf(item), x: auto.x, y: auto.y }
     setMode(null)
     setOpen((prev) => {
       const next = new Set(prev)
@@ -406,11 +477,19 @@ export function StructureMap({ name, repo, root }: Props) {
       onPointerMove={onPointerMove}
       onPointerUp={() => {
         // 끌어서 옮긴 직후의 클릭은 칸을 누른 것으로 치지 않아요.
-        suppressClick.current = drag.current?.moved === true
+        suppressClick.current = drag.current?.moved === true || nodeDrag.current?.moved === true
+        if (nodeDrag.current?.moved) {
+          track('deep_map_move', { repo })
+          writeMoves(repo, direction, moves)
+        }
+        nodeDrag.current = null
         drag.current = null
         if (suppressClick.current) window.setTimeout(() => (suppressClick.current = false), 0)
       }}
-      onPointerCancel={() => (drag.current = null)}
+      onPointerCancel={() => {
+        drag.current = null
+        nodeDrag.current = null
+      }}
       onClick={(event) => {
         // 칸이나 버튼이 아닌 빈 곳을 누르면 골라 둔 폴더의 설명을 닫아요.
         if (!suppressClick.current && !(event.target as HTMLElement).closest('button, aside')) setSelected(null)
@@ -457,6 +536,12 @@ export function StructureMap({ name, repo, root }: Props) {
               type="button"
               style={{ ...style, ...tint, opacity: touched === 0 ? 0.4 : undefined }}
               aria-expanded={expandable ? expanded : undefined}
+              onPointerDown={(event) => {
+                // 칸을 누른 채로 끌면 맵 대신 이 칸이 움직여요. 뿌리 칸을 끌면 맵 전체가 따라와요.
+                if (event.button !== 0) return
+                event.stopPropagation()
+                nodeDrag.current = { path: node.path, x: event.clientX, y: event.clientY, moved: false }
+              }}
               onClick={() => {
                 if (!suppressClick.current) toggle(item)
               }}
@@ -595,6 +680,12 @@ export function StructureMap({ name, repo, root }: Props) {
             <rect x="2" y="10.5" width="4" height="4" rx="1" />
             <rect x="10" y="10.5" width="4" height="4" rx="1" />
             <path d="M8 5.5V8M4 10.5V9a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v1.5" />
+          </svg>
+        </button>
+        {/* 끌어서 옮긴 칸이 있을 때만 눌러요. 모두 원래 자리로 돌려놔요. */}
+        <button type="button" aria-label="배치 되돌리기" title="배치 되돌리기" disabled={!arranged} onClick={resetMoves} className={`${control} disabled:text-gray-300 disabled:hover:bg-transparent`}>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="size-3.5" aria-hidden="true">
+            <path d="M3 8a5 5 0 1 0 1.5-3.57M3 3v2.5h2.5" />
           </svg>
         </button>
         <span aria-hidden className="mx-1 h-5 w-px bg-gray-200" />
