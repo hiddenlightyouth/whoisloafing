@@ -137,11 +137,12 @@ export function ShortcutTip() {
   return (
     <p
       role="status"
-      className="pointer-events-none fixed right-4 bottom-16 z-40 flex animate-rise items-center gap-2 rounded-lg bg-gray-900/90 px-3 py-2 text-[12.5px] font-medium text-white"
+      className="pointer-events-none fixed right-4 bottom-16 z-40 flex animate-rise items-center gap-1.5 rounded-md bg-gray-900/90 px-2 py-1 text-[11.5px] font-medium text-white"
       style={{ animationDelay: '800ms' }}
     >
-      <span className="rounded-[5px] border border-white/30 px-1.5 py-0.5 text-[11px] leading-none">Option</span>
-      누르고 있으면 단축키가 보여요
+      {/* Mac 자판의 Option 키에 그려진 기호예요. */}
+      <span className="rounded-[4px] border border-white/30 px-1 py-px text-[10.5px] leading-none">⌥ option</span>
+      을 눌러 단축키 표시
     </p>
   )
 }
