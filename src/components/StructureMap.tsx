@@ -19,6 +19,9 @@ const NODE_H = 50
 const NODE_H_COMPACT = 34
 const COL_GAP = 72
 const ROW_GAP = 10
+/** 세로로 뻗을 때 위아래 단 사이와, 옆으로 나란한 칸 사이의 간격 */
+const LEVEL_GAP = 64
+const SIDE_GAP = 14
 const MIN_ZOOM = 0.3
 const MAX_ZOOM = 1.6
 const READABLE_ZOOM = 0.7
@@ -117,22 +120,47 @@ function rolesHidden(): boolean {
   }
 }
 
-/** 펼쳐 둔 폴더만 가로로 뻗는 나무로 자리를 잡아요. 부모는 자식들의 가운데 높이에 와요. */
-function layout(root: StructureNode, open: Set<string>, nodeH: number): Placed[] {
+/** 가지가 뻗는 방향. 가로는 왼쪽에서 오른쪽으로, 세로는 위에서 아래로 뻗어요. */
+type Direction = 'horizontal' | 'vertical'
+
+const DIRECTION_KEY = 'whoisloafing:deep-map-direction'
+
+function savedDirection(): Direction {
+  try {
+    return localStorage.getItem(DIRECTION_KEY) === 'vertical' ? 'vertical' : 'horizontal'
+  } catch {
+    return 'horizontal'
+  }
+}
+
+/**
+ * 펼쳐 둔 폴더만 나무 모양으로 자리를 잡아요. 가로로 뻗을 때는 깊이가 오른쪽으로, 형제가 아래로 늘어서고,
+ * 세로로 뻗을 때는 깊이가 아래로, 형제가 옆으로 늘어서요. 부모는 자식들의 가운데에 와요.
+ */
+function layout(root: StructureNode, open: Set<string>, nodeH: number, direction: Direction): Placed[] {
   const placed: Placed[] = []
+  const vertical = direction === 'vertical'
+  // along은 깊이가 늘어나는 쪽, across는 형제가 늘어서는 쪽이에요.
+  const alongStep = vertical ? nodeH + LEVEL_GAP : NODE_W + COL_GAP
+  const acrossStep = vertical ? NODE_W + SIDE_GAP : nodeH + ROW_GAP
   let cursor = 0
 
   function place(node: StructureNode, depth: number, parent: Placed | null): Placed {
-    const item: Placed = { node, x: depth * (NODE_W + COL_GAP), y: 0, depth, parent }
+    const item: Placed = { node, x: 0, y: 0, depth, parent }
     placed.push(item)
     const expanded = depth === 0 || open.has(node.path)
     const children = expanded ? node.children.map((child) => place(child, depth + 1, item)) : []
+    let across: number
     if (children.length === 0) {
-      item.y = cursor
-      cursor += nodeH + ROW_GAP
+      across = cursor
+      cursor += acrossStep
     } else {
-      item.y = (children[0].y + children[children.length - 1].y) / 2
+      const first = children[0]
+      const last = children[children.length - 1]
+      across = vertical ? (first.x + last.x) / 2 : (first.y + last.y) / 2
     }
+    item.x = vertical ? across : depth * alongStep
+    item.y = vertical ? depth * alongStep : across
     return item
   }
 
@@ -142,7 +170,7 @@ function layout(root: StructureNode, open: Set<string>, nodeH: number): Placed[]
 
 /**
  * 프로젝트 구조를 마인드맵처럼 둘러보는 화면이에요.
- * 레포에서 최상위 폴더로, 폴더에서 하위 폴더로 가지가 오른쪽으로 뻗어요. 폴더를 누르면 가지가 펼쳐지고 접혀요.
+ * 레포에서 최상위 폴더로, 폴더에서 하위 폴더로 가지가 뻗어요. 보기 메뉴에서 오른쪽으로 뻗을지 아래로 뻗을지 골라요. 폴더를 누르면 가지가 펼쳐지고 접혀요.
  * 빈 곳을 끌거나 두 손가락으로 밀면 맵이 움직이고, 두 손가락을 벌리거나 아래 버튼을 누르면 커지고 작아져요.
  */
 export function StructureMap({ name, repo, root }: Props) {
@@ -156,7 +184,10 @@ export function StructureMap({ name, repo, root }: Props) {
   /** 방금 끌어서 옮겼으면, 손을 뗄 때 따라오는 클릭을 한 번 무시해요. */
   const suppressClick = useRef(false)
   /** 폴더를 펼치거나 접을 때, 누른 칸이 화면에서 제자리에 있도록 기억해 두는 값 */
-  const anchor = useRef<{ key: string; y: number } | null>(null)
+  const anchor = useRef<{ key: string; x: number; y: number } | null>(null)
+  /** 가지가 뻗는 방향. 다음에 열어도 그대로 둬요. */
+  const [direction, setDirection] = useState<Direction>(savedDirection)
+  const vertical = direction === 'vertical'
 
   /** 폴더 이름 아래의 설명을 보여줄지. 숨기면 칸이 낮아져서 한 화면에 더 많이 들어와요. */
   const [roles, setRoles] = useState(() => !rolesHidden())
@@ -201,17 +232,18 @@ export function StructureMap({ name, repo, root }: Props) {
     }
     root.children.forEach(visit)
     if (added.size === open.size) return
-    anchor.current = { key: '', y: placed[0].y }
+    anchor.current = { key: placed[0].node.path, x: placed[0].x, y: placed[0].y }
     setMode(null)
     setOpen(added)
   }
 
-  const placed = useMemo(() => layout(root, open, nodeH), [root, open, nodeH])
+  const placed = useMemo(() => layout(root, open, nodeH, direction), [root, open, nodeH, direction])
   const keyOf = (item: Placed) => item.node.path
   const width = Math.max(...placed.map((item) => item.x)) + NODE_W
   const height = Math.max(...placed.map((item) => item.y)) + nodeH
 
   /** 맵 전체가 화면에 들어오게 맞춰요. 작은 맵을 억지로 키우지는 않아요. */
+  const rootX = placed[0].x
   const rootY = placed[0].y
   const fit = useCallback(
     (floor = MIN_ZOOM) => {
@@ -219,11 +251,17 @@ export function StructureMap({ name, repo, root }: Props) {
       if (!frame) return
       const pad = 32
       const k = Math.min(1, Math.max(floor, Math.min((frame.clientWidth - pad * 2) / width, (frame.clientHeight - pad * 2) / height)))
-      // 다 들어오지 않을 만큼 크면, 가지가 시작되는 뿌리 칸이 화면 가운데 높이에 오게 해요.
+      // 다 들어오지 않을 만큼 크면, 가지가 시작되는 뿌리 칸이 화면 가운데에 오게 해요. 가로로 뻗을 때는 가운데 높이에, 세로로 뻗을 때는 가운데 폭에 둬요.
+      if (vertical) {
+        const fits = width * k <= frame.clientWidth - pad * 2
+        // 위쪽에는 메뉴 버튼이 떠 있어서 그만큼 더 띄워요.
+        setView({ k, x: fits ? (frame.clientWidth - width * k) / 2 : frame.clientWidth / 2 - (rootX + NODE_W / 2) * k, y: pad + 44 })
+        return
+      }
       const fits = height * k <= frame.clientHeight - pad * 2
       setView({ k, x: pad, y: fits ? (frame.clientHeight - height * k) / 2 : frame.clientHeight / 2 - (rootY + nodeH / 2) * k })
     },
-    [width, height, rootY, nodeH],
+    [width, height, rootX, rootY, nodeH, vertical],
   )
 
   // 처음 그릴 때 한 번만 화면에 맞춰요. 그 뒤로는 보던 자리를 그대로 둬요.
@@ -248,6 +286,19 @@ export function StructureMap({ name, repo, root }: Props) {
     setOpen(next)
   }
 
+  function changeDirection(next: Direction) {
+    if (next === direction) return
+    track('deep_map_direction', { repo, direction: next })
+    refit.current = true
+    setDirection(next)
+    try {
+      if (next === 'vertical') localStorage.setItem(DIRECTION_KEY, 'vertical')
+      else localStorage.removeItem(DIRECTION_KEY)
+    } catch {
+      return
+    }
+  }
+
   function toggleRoles() {
     const next = !roles
     refit.current = true
@@ -260,13 +311,13 @@ export function StructureMap({ name, repo, root }: Props) {
     }
   }
 
-  // 펼치거나 접으면 다른 칸들의 높이가 바뀌어요. 누른 칸은 화면에서 움직이지 않게 맵을 그만큼 옮겨요.
+  // 펼치거나 접으면 다른 칸들의 자리가 바뀌어요. 누른 칸은 화면에서 움직이지 않게 맵을 그만큼 옮겨요.
   useLayoutEffect(() => {
     const kept = anchor.current
     if (!kept) return
     anchor.current = null
     const now = placed.find((item) => keyOf(item) === kept.key)
-    if (now && now.y !== kept.y) setView((prev) => ({ ...prev, y: prev.y + (kept.y - now.y) * prev.k }))
+    if (now && (now.x !== kept.x || now.y !== kept.y)) setView((prev) => ({ ...prev, x: prev.x + (kept.x - now.x) * prev.k, y: prev.y + (kept.y - now.y) * prev.k }))
   }, [placed])
 
   const zoomAt = useCallback((factor: number, originX: number, originY: number) => {
@@ -313,7 +364,7 @@ export function StructureMap({ name, repo, root }: Props) {
   function toggle(item: Placed) {
     setSelected(item.node.path)
     if (item.depth === 0 || item.node.children.length === 0) return
-    anchor.current = { key: keyOf(item), y: item.y }
+    anchor.current = { key: keyOf(item), x: item.x, y: item.y }
     setMode(null)
     setOpen((prev) => {
       const next = new Set(prev)
@@ -345,6 +396,7 @@ export function StructureMap({ name, repo, root }: Props) {
     KeyE: () => showFolders(allFolders(root), 'all'),
     KeyW: () => showFolders(new Set(), 'none'),
     KeyH: toggleRoles,
+    KeyV: () => changeDirection(vertical ? 'horizontal' : 'vertical'),
   })
 
   return (
@@ -370,6 +422,14 @@ export function StructureMap({ name, repo, root }: Props) {
         <svg width={width} height={height} className="absolute top-0 left-0 overflow-visible text-gray-300" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
           {placed.map((item) => {
             if (!item.parent) return null
+            if (vertical) {
+              // 부모 칸의 아래 가운데에서 자식 칸의 위 가운데로 이어요.
+              const fromX = item.parent.x + NODE_W / 2
+              const fromY = item.parent.y + nodeH
+              const toX = item.x + NODE_W / 2
+              const mid = (fromY + item.y) / 2
+              return <path key={keyOf(item)} d={`M${fromX} ${fromY} C${fromX} ${mid}, ${toX} ${mid}, ${toX} ${item.y}`} />
+            }
             const fromX = item.parent.x + NODE_W
             const fromY = item.parent.y + nodeH / 2
             const toY = item.y + nodeH / 2
@@ -422,7 +482,7 @@ export function StructureMap({ name, repo, root }: Props) {
                     {touched !== null ? `${count(touched)}번` : count(node.files)}
                   </span>
                   {expandable && (
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className={`size-3 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden="true">
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className={`size-3 text-gray-400 transition-transform ${vertical ? (expanded ? '-rotate-90' : 'rotate-90') : expanded ? 'rotate-180' : ''}`} aria-hidden="true">
                       <path d="M6 3.5L10.5 8 6 12.5" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   )}
@@ -475,6 +535,13 @@ export function StructureMap({ name, repo, root }: Props) {
                 { label: '소스 폴더만 펼치기', shortcut: 'S', checked: mode === 'source', onSelect: () => showFolders(sourceFolders(root), 'source') },
                 { label: '모두 펼치기', shortcut: 'E', checked: mode === 'all', onSelect: () => showFolders(allFolders(root), 'all') },
                 { label: '모두 접기', shortcut: 'W', checked: mode === 'none', onSelect: () => showFolders(new Set(), 'none') },
+              ],
+            },
+            {
+              title: '방향',
+              items: [
+                { label: '가로로 뻗기', shortcut: 'V', checked: !vertical, onSelect: () => changeDirection('horizontal') },
+                { label: '세로로 뻗기', shortcut: 'V', checked: vertical, onSelect: () => changeDirection('vertical') },
               ],
             },
             { title: '표시', items: [{ label: '폴더 설명', shortcut: 'H', checked: roles, onSelect: toggleRoles }] },
