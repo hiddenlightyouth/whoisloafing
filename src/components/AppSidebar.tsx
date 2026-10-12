@@ -553,8 +553,12 @@ function AccountMenu({ me, page, onArticles, onMe, onAdmin }: { me: Me | null; p
           if (!open) track('app_menu_open')
           setOpen((value) => !value)
         }}
-        className={`flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-xl px-3 text-left transition-colors ${tone(open || page === 'me' || page === 'articles' || page === 'admin')}`}
+        className={`flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 text-left transition-colors ${tone(open || page === 'me' || page === 'articles' || page === 'admin')}`}
       >
+        {/* 프로필 사진 대신 이름의 첫 글자를 동그라미에 넣어요. */}
+        <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[13px] font-semibold text-brand-hover">
+          {[...(me?.name?.trim() || '?')][0].toUpperCase()}
+        </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13.5px] font-semibold text-gray-900">{name}</span>
           {me?.email && <span className="block truncate text-[11.5px] text-gray-400">{me.email}</span>}
