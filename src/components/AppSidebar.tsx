@@ -5,7 +5,7 @@ import { appAtLeast, appVersion, postToApp, type AppTheme } from '../lib/app'
 import { fetchMyChats, signOut, useAuth, type ChatSummary, type Me } from '../lib/auth'
 import { formatWhen } from '../lib/format'
 import { setAppBackdrop, setAppTheme, useAppSettings } from '../lib/theme'
-import { openShortcutHelp, setShortcutHintsPinned, useShortcutHintsPinned } from '../lib/shortcuts'
+import { setShortcutHintsPinned, useShortcutHintsPinned } from '../lib/shortcuts'
 import { showToast } from '../lib/toast'
 import { copyChatLink, DeleteDialog } from './History'
 import { Kbd } from './Shortcuts'
@@ -460,14 +460,6 @@ function AccountMenu({ me, page, onArticles, onMe }: { me: Me | null; page: Prop
               <span className="text-[12px] text-gray-400 tabular-nums">{appVersion}</span>
             </p>
           )}
-          <button type="button" role="menuitem" onClick={go(openShortcutHelp)} className={menuRow}>
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" className={menuIcon} aria-hidden="true">
-              <rect x="1.5" y="4" width="13" height="8" rx="2" />
-              <path d="M4.5 7h.01M7 7h.01M9.5 7h.01M12 7h.01M5 9.5h6" />
-            </svg>
-            <span className="flex-1">단축키</span>
-            <Kbd>?</Kbd>
-          </button>
           <button
             type="button"
             role="menuitem"
