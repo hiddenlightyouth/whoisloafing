@@ -479,7 +479,7 @@ export function StructureMap({ name, repo, root }: Props) {
                     { label: '전체', checked: person === null, onSelect: () => pickPerson(null) },
                     ...people.map((item) => ({
                       label: item.name,
-                      hint: `커밋 ${count(item.commits)}`,
+                      hint: `${count(item.commits)}개의 커밋`,
                       checked: item.id === personId,
                       onSelect: () => pickPerson(item),
                     })),

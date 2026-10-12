@@ -28,8 +28,8 @@ interface Props {
 const SECTION_LABELS: Record<DeepSection, string> = {
   structure: '프로젝트 구조',
   pipeline: 'CI/CD',
-  issues: '이슈 템플릿과 라벨',
-  pulls: 'PR 템플릿',
+  issues: 'Issues',
+  pulls: 'Pull requests',
 }
 
 type Loaded = 'loading' | { report: DeepReport } | { error: string }
@@ -301,7 +301,7 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
             onClick={() => void analyze(section, true)}
             className="mb-1.5 ml-auto h-8 self-end rounded-lg px-3 text-[13px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
           >
-            다시 분석하기
+            재분석 요청
           </button>
         )}
       </div>
