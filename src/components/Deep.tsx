@@ -314,13 +314,13 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
               track('deep_chat_toggle', { repo, open: !chatOpen })
               setChatOpen((value) => !value)
             }}
-            className={`${toolButton} ${chatOpen ? 'border-brand text-brand-hover hover:border-brand hover:text-brand-hover' : ''}`}
+            className={`relative ${toolButton} ${chatOpen ? 'border-brand text-brand-hover hover:border-brand hover:text-brand-hover' : ''}`}
           >
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
               <path d="M2.5 4.5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H7l-3 2.5V11.5h-.5a1 1 0 0 1-1-1z" />
             </svg>
             채팅
-            <Kbd>C</Kbd>
+            <Kbd corner>C</Kbd>
           </button>
         )}
       </div>
@@ -336,12 +336,12 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
               track('deep_section_view', { section: item })
               setSection(item)
             }}
-            className={`-mb-px h-10 border-b-2 px-3 text-[13.5px] font-medium transition-colors ${
+            className={`relative -mb-px h-10 border-b-2 px-3 text-[13.5px] font-medium transition-colors ${
               item === section ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'
             }`}
           >
             {SECTION_LABELS[item]}
-            <Kbd className="ml-1.5">{String(DEEP_SECTIONS.indexOf(item) + 1)}</Kbd>
+            <Kbd corner>{String(DEEP_SECTIONS.indexOf(item) + 1)}</Kbd>
           </button>
         ))}
         {/* 저장해 둔 결과를 보고 있을 때만, 레포가 바뀌었으면 새로 받을 수 있게 해요. */}
@@ -352,10 +352,10 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
             <button
               type="button"
               onClick={() => void analyze(section, true)}
-              className="flex h-8 items-center rounded-lg px-3 text-[13px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              className="relative flex h-8 items-center rounded-lg px-3 text-[13px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
             >
               재분석 요청
-              <Kbd className="ml-1.5">R</Kbd>
+              <Kbd corner>R</Kbd>
             </button>
           </div>
         )}

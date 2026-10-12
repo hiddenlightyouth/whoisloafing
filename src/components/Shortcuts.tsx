@@ -1,12 +1,30 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { isApp } from '../lib/app'
-import { SHORTCUT_GROUPS } from '../lib/shortcuts'
+import { SHORTCUT_GROUPS, useShortcutHints } from '../lib/shortcuts'
 
-/** 단축키의 키 하나를 자판 모양으로 보여줘요. 버튼과 메뉴 옆에 붙여서 어떤 키를 누르면 되는지 알려줘요. */
-export function Kbd({ children, className = '' }: { children: string; className?: string }) {
+interface KbdProps {
+  children: string
+  className?: string
+  /** 안내 창처럼 Option을 누르지 않아도 늘 보여줄 때 true */
+  always?: boolean
+  /** 버튼의 오른쪽 위 모서리에 얹어서 보여줘요. 버튼의 크기가 바뀌지 않아요. 버튼에 `relative`가 있어야 해요. */
+  corner?: boolean
+}
+
+/**
+ * 단축키의 키 하나를 자판 모양으로 보여줘요. 평소에는 숨겨 두고, Option을 누르고 있는 동안에만 보여요.
+ * 줄 안에 넣은 것은 자리를 미리 차지하고 있어서, 나타나도 옆의 글자가 밀리지 않아요.
+ */
+export function Kbd({ children, className = '', always = false, corner = false }: KbdProps) {
+  const held = useShortcutHints()
+  const shown = always || held
+  if (corner && !shown) return null
   return (
     <kbd
-      className={`inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-[5px] border border-gray-200 bg-white px-1 font-sans text-[11px] leading-none font-medium text-gray-500 ${className}`}
+      aria-hidden={!shown}
+      className={`inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-[5px] border border-gray-200 bg-white px-1 font-sans text-[11px] leading-none font-medium text-gray-500 ${
+        corner ? 'absolute -top-1.5 -right-1.5 z-10' : ''
+      } ${shown ? '' : 'invisible'} ${className}`}
     >
       {children}
     </kbd>
@@ -54,7 +72,7 @@ export function ShortcutHelp({ onClose }: { onClose: () => void }) {
         <h2 id="shortcut-help-title" className="text-[15px] font-semibold text-gray-900">
           단축키
         </h2>
-        <p className="mt-1 text-[12.5px] leading-relaxed text-gray-500">글자를 입력하는 중이 아닐 때, 키 하나만 누르면 돼요.</p>
+        <p className="mt-1 text-[12.5px] leading-relaxed text-gray-500">글자를 입력하는 중이 아닐 때, 키 하나만 누르면 돼요. Option을 누르고 있으면 화면의 버튼 옆에 키가 보여요.</p>
 
         {groups.map((group) => (
           <section key={group.title} className="mt-5">
@@ -65,7 +83,9 @@ export function ShortcutHelp({ onClose }: { onClose: () => void }) {
                   <dt className="text-[13.5px] text-gray-800">{item.label}</dt>
                   <dd className="flex shrink-0 items-center gap-1">
                     {item.keys.map((key) => (
-                      <Kbd key={key}>{key}</Kbd>
+                      <Kbd key={key} always>
+                        {key}
+                      </Kbd>
                     ))}
                   </dd>
                 </div>
@@ -75,5 +95,53 @@ export function ShortcutHelp({ onClose }: { onClose: () => void }) {
         ))}
       </div>
     </div>
+  )
+}
+
+const TIP_SEEN_KEY = 'whoisloafing:shortcut-tip-shown'
+/** 안내를 이만큼 보여준 뒤에 알아서 사라져요. */
+const TIP_MS = 6000
+
+function tipShownThisLaunch(): boolean {
+  try {
+    return sessionStorage.getItem(TIP_SEEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * 앱을 켰을 때 오른쪽 아래 구석(맵의 확대 버튼 위)에 잠깐 뜨는 안내예요. Option을 누르면 단축키가 보인다는 것을 알려줘요.
+ * 몇 초 뒤에 사라지고, Option을 눌러 보면 바로 사라져요. 앱을 켤 때마다 한 번만 떠서, 새로 고쳐도 다시 뜨지 않아요.
+ */
+export function ShortcutTip() {
+  const held = useShortcutHints()
+  const [shown, setShown] = useState(() => !tipShownThisLaunch())
+
+  useEffect(() => {
+    if (!shown) return
+    try {
+      sessionStorage.setItem(TIP_SEEN_KEY, '1')
+    } catch {
+      // 저장하지 못해도 안내는 그대로 보여줘요.
+    }
+    const timer = window.setTimeout(() => setShown(false), TIP_MS)
+    return () => window.clearTimeout(timer)
+  }, [shown])
+
+  useEffect(() => {
+    if (held) setShown(false)
+  }, [held])
+
+  if (!shown) return null
+  return (
+    <p
+      role="status"
+      className="pointer-events-none fixed right-4 bottom-16 z-40 flex animate-rise items-center gap-2 rounded-lg bg-gray-900/90 px-3 py-2 text-[12.5px] font-medium text-white"
+      style={{ animationDelay: '800ms' }}
+    >
+      <span className="rounded-[5px] border border-white/30 px-1.5 py-0.5 text-[11px] leading-none">Option</span>
+      누르고 있으면 단축키가 보여요
+    </p>
   )
 }
