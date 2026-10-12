@@ -537,14 +537,19 @@ export function StructureMap({ name, repo, root }: Props) {
                 { label: '모두 접기', shortcut: 'W', checked: mode === 'none', onSelect: () => showFolders(new Set(), 'none') },
               ],
             },
+            { title: '표시', items: [{ label: '폴더 설명', shortcut: 'H', checked: roles, onSelect: toggleRoles }] },
+          ]}
+        />
+        <MapMenu
+          label="방향"
+          value={vertical ? '세로' : '가로'}
+          groups={[
             {
-              title: '방향',
               items: [
                 { label: '가로로 뻗기', shortcut: 'V', checked: !vertical, onSelect: () => changeDirection('horizontal') },
                 { label: '세로로 뻗기', shortcut: 'V', checked: vertical, onSelect: () => changeDirection('vertical') },
               ],
             },
-            { title: '표시', items: [{ label: '폴더 설명', shortcut: 'H', checked: roles, onSelect: toggleRoles }] },
           ]}
         />
         <MapMenu
