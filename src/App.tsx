@@ -66,6 +66,9 @@ const AppGate = lazy(() => import('./components/AppGate').then((module) => ({ de
 const AppSidebar = lazy(() => import('./components/AppSidebar').then((module) => ({ default: module.AppSidebar })))
 const AppLogin = lazy(() => import('./components/AppLogin').then((module) => ({ default: module.AppLogin })))
 
+// 화면 공유 중에 화면을 가리는 막은 앱에서만 써요.
+const CaptureShield = lazy(() => import('./components/CaptureShield').then((module) => ({ default: module.CaptureShield })))
+
 // 탐색 목록은 앱의 새 분석 화면에서만 쓰여서, 그때만 받아요.
 const Explore = lazy(() => import('./components/Explore').then((module) => ({ default: module.Explore })))
 
@@ -592,6 +595,7 @@ export default function App() {
     return (
       <Suspense fallback={<div data-app-drag className="h-dvh bg-white" />}>
         <AppGate />
+        <CaptureShield />
       </Suspense>
     )
   }
@@ -785,6 +789,9 @@ export default function App() {
         </Suspense>
       )}
       {screen}
+      <Suspense fallback={null}>
+        <CaptureShield />
+      </Suspense>
     </div>
   )
 }

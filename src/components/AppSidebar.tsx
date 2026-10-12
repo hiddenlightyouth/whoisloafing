@@ -5,7 +5,7 @@ import { appAtLeast, appVersion, postToApp, type AppTheme } from '../lib/app'
 import { fetchMyChats, signOut, useAuth, type ChatSummary, type Me } from '../lib/auth'
 import { openBugReport, useFeedback } from '../lib/feedback'
 import { formatWhen } from '../lib/format'
-import { setAppBackdrop, setAppTheme, useAppSettings } from '../lib/theme'
+import { setAppBackdrop, setAppShield, setAppTheme, useAppSettings } from '../lib/theme'
 import { setShortcutHintsPinned, useShortcutHintsPinned } from '../lib/shortcuts'
 import { showToast } from '../lib/toast'
 import { copyChatLink, DeleteDialog } from './History'
@@ -391,7 +391,7 @@ const menuIcon = 'size-4 shrink-0 text-gray-500'
 function AccountMenu({ me, page, onArticles, onMe, onAdmin }: { me: Me | null; page: Props['page']; onArticles: () => void; onMe: () => void; onAdmin?: () => void }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
-  const { theme, backdrop } = useAppSettings()
+  const { theme, backdrop, shield } = useAppSettings()
   const hintsPinned = useShortcutHintsPinned()
   const { ready: canReport } = useFeedback()
   const name = me?.name || '내 정보'
@@ -502,6 +502,26 @@ function AccountMenu({ me, page, onArticles, onMe, onAdmin }: { me: Me | null; p
               <span style={{ background: '#fff' }} className={`size-5 rounded-full transition-transform ${hintsPinned ? 'translate-x-4' : ''}`} />
             </button>
           </div>
+
+          {/* 화면 공유를 알아채는 것은 앱 1.2부터라, 그보다 낮은 앱에서는 보여주지 않아요. */}
+          {appAtLeast('1.2') && (
+            <div className="flex h-10 items-center justify-between gap-3 px-2.5">
+              <span className="text-[13.5px] text-gray-800">화면 공유 중 가리기</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={shield}
+                aria-label="화면 공유 중에는 화면 가리기"
+                onClick={() => {
+                  track('app_shield_change', { on: !shield })
+                  setAppShield(!shield)
+                }}
+                className={`flex h-6 w-10 items-center rounded-full p-0.5 transition-colors ${shield ? 'bg-brand' : 'bg-gray-200'}`}
+              >
+                <span style={{ background: '#fff' }} className={`size-5 rounded-full transition-transform ${shield ? 'translate-x-4' : ''}`} />
+              </button>
+            </div>
+          )}
 
           <div className="my-1.5 border-t border-gray-100" />
 

@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react'
+
 /** macOS 앱의 웹뷰는 User-Agent 끝에 WhoIsLoafingApp/버전을 붙여요. 앱 안에서 열렸을 때만 앱 화면을 보여줘요. */
 export const isApp = typeof navigator !== 'undefined' && /WhoIsLoafingApp\//.test(navigator.userAgent)
 
@@ -39,8 +41,42 @@ export interface AppLoginDetail {
 /** 앱의 화면 모드. system은 macOS 설정을 따라가요. */
 export type AppTheme = 'system' | 'light' | 'dark'
 
-/** update는 새 버전이 있는지 확인하는 창을 띄워요(앱 1.1부터). login은 기본 브라우저로 로그인 화면을 열고, drag와 zoom은 창을 옮기거나 키우고, theme과 backdrop은 고른 화면 설정을 앱에 알려요. */
-type AppMessage = { type: 'login' } | { type: 'drag' } | { type: 'zoom' } | { type: 'theme'; theme: AppTheme } | { type: 'backdrop'; on: boolean } | { type: 'update' }
+/** update는 새 버전이 있는지 확인하는 창을 띄워요(앱 1.1부터). login은 기본 브라우저로 로그인 화면을 열고, drag와 zoom은 창을 옮기거나 키우고, theme과 backdrop, shield(앱 1.2부터)는 고른 설정을 앱에 알려요. */
+type AppMessage =
+  | { type: 'login' }
+  | { type: 'drag' }
+  | { type: 'zoom' }
+  | { type: 'theme'; theme: AppTheme }
+  | { type: 'backdrop'; on: boolean }
+  | { type: 'shield'; on: boolean }
+  | { type: 'update' }
+
+/** 화면 공유나 녹화가 시작되거나 끝나면 앱이 웹뷰에 보내는 이벤트예요(앱 1.2부터). */
+const APP_CAPTURE_EVENT = 'whoisloafing:app-capture'
+
+/** 지금 화면이 공유되거나 녹화되고 있는지. 화면을 가리는 막이 뜨기 전에 온 알림도 놓치지 않게 여기서 받아 둬요. */
+let captured = false
+const captureListeners = new Set<() => void>()
+
+if (isApp) {
+  window.addEventListener(APP_CAPTURE_EVENT, (event) => {
+    const next = (event as CustomEvent<{ active?: boolean }>).detail?.active === true
+    if (next === captured) return
+    captured = next
+    captureListeners.forEach((listener) => listener())
+  })
+}
+
+export function useAppCaptured(): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      captureListeners.add(listener)
+      return () => captureListeners.delete(listener)
+    },
+    () => captured,
+    () => false,
+  )
+}
 
 interface AppBridge {
   webkit?: { messageHandlers?: { whoisloafing?: { postMessage: (message: AppMessage) => void } } }
