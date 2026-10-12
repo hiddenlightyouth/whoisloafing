@@ -282,6 +282,11 @@ export function StructureMap({ name, repo, root }: Props) {
   /** 사용자가 끌어서 옮긴 칸들. 방향마다 따로 기억해요. */
   const [moves, setMoves] = useState<Moves>(() => readMoves(repo, savedDirection()))
   const arranged = Object.keys(moves).length > 0
+  /** 칸을 옮기기 전의 배치들. Command Z로 하나씩 되돌리고, Shift를 같이 누르면 다시 돌려놔요. */
+  const undoStack = useRef<Moves[]>([])
+  const redoStack = useRef<Moves[]>([])
+  /** 끌기 시작했을 때의 배치. 손을 뗄 때 되돌리기 기록에 넣어요. */
+  const beforeDrag = useRef<Moves | null>(null)
   // 자동으로 잡은 자리예요. 펼치고 접을 때 누른 칸을 제자리에 두는 계산은 이 자리로 해요.
   const base = useMemo(() => layout(root, open, nodeH, direction), [root, open, nodeH, direction])
   const placed = useMemo(() => applyMoves(base, moves), [base, moves])
@@ -339,6 +344,9 @@ export function StructureMap({ name, repo, root }: Props) {
     refit.current = true
     setDirection(next)
     setMoves(readMoves(repo, next))
+    // 방향마다 배치가 따로라서, 되돌리기 기록도 새로 시작해요.
+    undoStack.current = []
+    redoStack.current = []
     try {
       if (next === 'vertical') localStorage.setItem(DIRECTION_KEY, 'vertical')
       else localStorage.removeItem(DIRECTION_KEY)
@@ -350,10 +358,39 @@ export function StructureMap({ name, repo, root }: Props) {
   /** 끌어서 옮긴 칸을 모두 원래 자리로 돌려놔요. */
   function resetMoves() {
     track('deep_map_reset', { repo })
+    undoStack.current.push(moves)
+    redoStack.current = []
     refit.current = true
     setMoves({})
     writeMoves(repo, direction, {})
   }
+
+  /** 칸을 옮기거나 배치를 되돌린 것을 한 단계 무르거나(undo), 무른 것을 다시 해요(redo). */
+  function stepMoves(kind: 'undo' | 'redo') {
+    const from = kind === 'undo' ? undoStack.current : redoStack.current
+    const to = kind === 'undo' ? redoStack.current : undoStack.current
+    const target = from.pop()
+    if (!target) return
+    to.push(moves)
+    track('deep_map_undo', { repo, kind })
+    setMoves(target)
+    writeMoves(repo, direction, target)
+  }
+
+  // Command Z(Windows는 Ctrl Z)로 옮긴 칸을 되돌려요. 글자를 입력하는 중이나 확인 창이 떠 있을 때는 받지 않아요.
+  const step = useRef(stepMoves)
+  step.current = stepMoves
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey || event.code !== 'KeyZ') return
+      if (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable="true"]')) return
+      if (document.querySelector('[aria-modal="true"]')) return
+      event.preventDefault()
+      step.current(event.shiftKey ? 'redo' : 'undo')
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   function toggleRoles() {
     const next = !roles
@@ -412,7 +449,10 @@ export function StructureMap({ name, repo, root }: Props) {
       const dx = event.clientX - held.x
       const dy = event.clientY - held.y
       if (!held.moved && Math.hypot(dx, dy) < DRAG_PX) return
-      if (!held.moved) event.currentTarget.setPointerCapture(event.pointerId)
+      if (!held.moved) {
+        event.currentTarget.setPointerCapture(event.pointerId)
+        beforeDrag.current = moves
+      }
       nodeDrag.current = { ...held, x: event.clientX, y: event.clientY, moved: true }
       // 화면에서 움직인 만큼을 맵의 배율로 나눠서, 확대해 둔 상태에서도 손가락을 그대로 따라오게 해요.
       setMoves((prev) => {
@@ -481,6 +521,9 @@ export function StructureMap({ name, repo, root }: Props) {
         if (nodeDrag.current?.moved) {
           track('deep_map_move', { repo })
           writeMoves(repo, direction, moves)
+          if (beforeDrag.current) undoStack.current.push(beforeDrag.current)
+          redoStack.current = []
+          beforeDrag.current = null
         }
         nodeDrag.current = null
         drag.current = null
@@ -656,10 +699,10 @@ export function StructureMap({ name, repo, root }: Props) {
           type="button"
           aria-label="가로로 뻗기"
           aria-pressed={!vertical}
-          title="가로로 뻗기 (V)"
           onClick={() => changeDirection('horizontal')}
           className={`${control} ${vertical ? '' : chosen}`}
         >
+          <Tip text="가로로 뻗기" keys="V" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
             <rect x="1.5" y="6" width="4" height="4" rx="1" />
             <rect x="10.5" y="2" width="4" height="4" rx="1" />
@@ -671,10 +714,10 @@ export function StructureMap({ name, repo, root }: Props) {
           type="button"
           aria-label="세로로 뻗기"
           aria-pressed={vertical}
-          title="세로로 뻗기 (V)"
           onClick={() => changeDirection('vertical')}
           className={`${control} ${vertical ? chosen : ''}`}
         >
+          <Tip text="세로로 뻗기" keys="V" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
             <rect x="6" y="1.5" width="4" height="4" rx="1" />
             <rect x="2" y="10.5" width="4" height="4" rx="1" />
@@ -683,25 +726,35 @@ export function StructureMap({ name, repo, root }: Props) {
           </svg>
         </button>
         {/* 끌어서 옮긴 칸이 있을 때만 눌러요. 모두 원래 자리로 돌려놔요. */}
-        <button type="button" aria-label="배치 되돌리기" title="배치 되돌리기" disabled={!arranged} onClick={resetMoves} className={`${control} disabled:text-gray-300 disabled:hover:bg-transparent`}>
+        <button
+          type="button"
+          aria-label="배치 되돌리기"
+          disabled={!arranged}
+          onClick={resetMoves}
+          className={`${controlBase} text-red-500 hover:text-red-600 disabled:text-gray-300 disabled:hover:bg-transparent`}
+        >
+          <Tip text="배치 되돌리기" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="size-3.5" aria-hidden="true">
             <path d="M3 8a5 5 0 1 0 1.5-3.57M3 3v2.5h2.5" />
           </svg>
         </button>
         <span aria-hidden className="mx-1 h-5 w-px bg-gray-200" />
-        <button type="button" aria-label="작게" title="축소 (-)" onClick={() => zoomBy(1 / 1.25)} className={control}>
+        <button type="button" aria-label="작게" onClick={() => zoomBy(1 / 1.25)} className={control}>
+          <Tip text="축소" keys="-" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
             <path d="M3.5 8h9" />
           </svg>
         </button>
         <span className="w-11 text-center text-[12.5px] text-gray-500 tabular-nums">{Math.round(view.k * 100)}%</span>
-        <button type="button" aria-label="크게" title="확대 (+)" onClick={() => zoomBy(1.25)} className={control}>
+        <button type="button" aria-label="크게" onClick={() => zoomBy(1.25)} className={control}>
+          <Tip text="확대" keys="+" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
             <path d="M3.5 8h9M8 3.5v9" />
           </svg>
         </button>
         {/* 네 모서리가 바깥으로 벌어진 그림이에요. 맵 전체를 화면에 맞춰요. */}
-        <button type="button" aria-label="한눈에 보기" title="한눈에 보기 (0)" onClick={() => fit()} className={control}>
+        <button type="button" aria-label="한눈에 보기" onClick={() => fit()} className={control}>
+          <Tip text="한눈에 보기" keys="0" end />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="size-3.5" aria-hidden="true">
             <path d="M6 2.5H2.5V6M10 2.5h3.5V6M6 13.5H2.5V10M10 13.5h3.5V10" />
           </svg>
@@ -711,6 +764,26 @@ export function StructureMap({ name, repo, root }: Props) {
   )
 }
 
-const control = 'flex size-8 items-center justify-center rounded-md text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900'
+/** 오른쪽 위 아이콘 버튼의 모양. 색은 따로 붙여요. */
+const controlBase = 'group relative flex size-8 items-center justify-center rounded-md transition-colors hover:bg-gray-100'
+const control = `${controlBase} text-gray-600 hover:text-gray-900`
+
+/**
+ * 아이콘 버튼에 마우스를 올리거나 키보드로 고르면 바로 아래에 뜨는 설명이에요. 단축키가 있으면 옆에 같이 적어요.
+ * 맨 오른쪽 버튼은 설명이 화면 밖으로 나가지 않게 오른쪽 끝에 맞춰요(end).
+ */
+function Tip({ text, keys, end = false }: { text: string; keys?: string; end?: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={`pointer-events-none absolute top-full z-10 mt-2 flex items-center gap-1.5 rounded-md bg-gray-900/90 px-2 py-1 text-[11.5px] font-medium whitespace-nowrap text-white opacity-0 transition-opacity delay-150 group-hover:opacity-100 group-focus-visible:opacity-100 ${
+        end ? 'right-0' : 'left-1/2 -translate-x-1/2'
+      }`}
+    >
+      {text}
+      {keys && <span className="rounded-[4px] border border-white/30 px-1 text-[10.5px] leading-[1.4]">{keys}</span>}
+    </span>
+  )
+}
 /** 지금 고른 방향의 버튼 */
 const chosen = 'bg-gray-100 text-gray-900'
