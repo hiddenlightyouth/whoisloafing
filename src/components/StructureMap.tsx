@@ -584,8 +584,11 @@ export function StructureMap({ name, repo, root }: Props) {
             <path d="M3.5 8h9M8 3.5v9" />
           </svg>
         </button>
-        <button type="button" title="한눈에 보기 (0)" onClick={() => fit()} className="h-8 rounded-md px-2.5 text-[13px] font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900">
-          한눈에 보기
+        {/* 네 모서리가 바깥으로 벌어진 그림이에요. 맵 전체를 화면에 맞춰요. */}
+        <button type="button" aria-label="한눈에 보기" title="한눈에 보기 (0)" onClick={() => fit()} className={control}>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="size-3.5" aria-hidden="true">
+            <path d="M6 2.5H2.5V6M10 2.5h3.5V6M6 13.5H2.5V10M10 13.5h3.5V10" />
+          </svg>
         </button>
       </div>
     </div>
