@@ -50,8 +50,7 @@ const AppGate = lazy(() => import('./components/AppGate').then((module) => ({ de
 const AppSidebar = lazy(() => import('./components/AppSidebar').then((module) => ({ default: module.AppSidebar })))
 const AppLogin = lazy(() => import('./components/AppLogin').then((module) => ({ default: module.AppLogin })))
 
-const EXPLORE_PATH = /^\/explore\/?$/
-
+// 탐색 목록은 앱의 새 분석 화면에서만 쓰여서, 그때만 받아요.
 const Explore = lazy(() => import('./components/Explore').then((module) => ({ default: module.Explore })))
 
 // 심층 분석 대시보드는 앱에서만 쓰는 화면이라, 열 때만 받아요.
@@ -113,9 +112,8 @@ export default function App() {
   const [storage, setStorage] = useState(false)
   /** 서버에 심층 분석 API가 있는지. 있을 때만 앱의 사이드바에 심층 분석을 보여줘요. */
   const [deep, setDeep] = useState(false)
-  /** 서버에 탐색 API가 있는지와, 앱의 탐색 화면을 보고 있는지 */
+  /** 서버에 탐색 API가 있는지. 있을 때만 앱의 새 분석 화면 아래에 인기 레포를 보여줘요. */
   const [exploreReady, setExploreReady] = useState(false)
-  const [explore, setExplore] = useState(() => isApp && EXPLORE_PATH.test(window.location.pathname))
   /** 앱의 심층 분석 화면을 보고 있는지. repo가 null이면 레포를 고르는 화면이에요. */
   const [deepPage, setDeepPage] = useState(() => (isApp ? deepFromPath() : null))
   /** 사이드바에서 채팅을 지우거나 공유를 바꾸면 올라가요. 심층 분석이 내 작업을 다시 받게 해요. */
@@ -159,18 +157,6 @@ export default function App() {
       return
     }
     // 심층 분석은 앱에서만 써요. 브라우저에서 이 주소로 들어오면 메인 화면으로 보내요.
-    // 탐색도 앱에서만 써요.
-    const nextExplore = EXPLORE_PATH.test(window.location.pathname)
-    if (nextExplore && !isApp) window.history.replaceState(null, '', '/')
-    setExplore(isApp && nextExplore)
-    if (nextExplore && isApp) {
-      setDeepPage(null)
-      reset()
-      setChat(null)
-      setOpening(false)
-      trackPageView('explore')
-      return
-    }
     const nextDeep = deepFromPath()
     if (nextDeep && !isApp) window.history.replaceState(null, '', '/')
     setDeepPage(isApp ? nextDeep : null)
@@ -277,7 +263,6 @@ export default function App() {
     setAccount(null)
     setAppLogin(false)
     setDeepPage(null)
-    setExplore(false)
     if (window.location.pathname !== '/') window.history.pushState(null, '', '/')
     trackPageView('home')
   }, [account, article, chat, messages.length, reset])
@@ -292,8 +277,7 @@ export default function App() {
       setAccount(null)
       setAppLogin(false)
       setDeepPage(null)
-      setExplore(false)
-      setArticle({ slug })
+        setArticle({ slug })
       window.history.pushState(null, '', slug ? `/articles/${slug}` : '/articles')
       trackPageView(slug ? 'article' : 'articles', { slug: slug ?? undefined })
     },
@@ -313,8 +297,7 @@ export default function App() {
       setArticle(null)
       setAppLogin(false)
       setDeepPage(null)
-      setExplore(false)
-      setAccount(page)
+        setAccount(page)
       if (replace) window.history.replaceState(null, '', `/${page}`)
       else window.history.pushState(null, '', `/${page}`)
       trackPageView(page)
@@ -333,14 +316,6 @@ export default function App() {
     },
     [abandon, openFromLocation],
   )
-
-  /** 앱의 탐색 화면을 열어요. */
-  const openExplore = useCallback(() => {
-    loginReturn.current = null
-    abandon()
-    window.history.pushState(null, '', '/explore')
-    void openFromLocation()
-  }, [abandon, openFromLocation])
 
   const openChat = useCallback(
     (id: string, replace = false) => {
@@ -517,7 +492,6 @@ export default function App() {
       KeyA: () => leaveFor('articles'),
       Slash: () => document.querySelector<HTMLInputElement>('input[aria-label="GitHub 레포 링크"]')?.focus(),
       KeyD: isApp && deep ? () => openDeep(null) : undefined,
-      KeyT: isApp && exploreReady ? openExplore : undefined,
       KeyB: isApp ? () => toggleSidebar(!sidebarOpen) : undefined,
     },
     !(isApp && tokens === null) && !appLogin,
@@ -561,15 +535,6 @@ export default function App() {
         <Suspense fallback={<main className="flex-1" />}>
           <AppLogin onCancel={goHome} />
         </Suspense>
-      ) : explore ? (
-        <Suspense fallback={<main className="flex-1" />}>
-          <Explore
-            onPick={(repo) => {
-              setExplore(false)
-              handleSubmit(`https://github.com/${repo}`)
-            }}
-          />
-        </Suspense>
       ) : deepPage ? (
         <Suspense fallback={<main className="flex-1" />}>
           <Deep repo={deepPage.repo} onOpen={openDeep} onNew={goHome} refreshKey={chatsVersion} />
@@ -610,7 +575,16 @@ export default function App() {
           </button>
         </main>
       ) : messages.length === 0 ? (
-        <Hero onSubmit={handleSubmit} />
+        <Hero
+          onSubmit={handleSubmit}
+          below={
+            isApp && exploreReady ? (
+              <Suspense fallback={null}>
+                <Explore onPick={(repo) => handleSubmit(`https://github.com/${repo}`)} />
+              </Suspense>
+            ) : undefined
+          }
+        />
       ) : (
         <Chat
           messages={messages}
@@ -653,14 +627,13 @@ export default function App() {
       {sidebarOpen && (
         <Suspense fallback={<aside data-app-drag className="w-64 shrink-0 border-r border-gray-200 bg-gray-50" />}>
           <AppSidebar
-            activeChatId={account || article || deepPage || explore ? null : chatIdFromPath()}
-            page={explore ? 'explore' : deepPage ? 'deep' : account === 'me' ? 'me' : article ? 'articles' : null}
+            activeChatId={account || article || deepPage ? null : chatIdFromPath()}
+            page={deepPage ? 'deep' : account === 'me' ? 'me' : article ? 'articles' : null}
             onDeep={deep ? () => openDeep(null) : undefined}
-            onExplore={exploreReady ? openExplore : undefined}
-            refreshKey={`${busy}:${account ?? ''}:${deepPage ? 'deep' : ''}:${explore}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`}
+            refreshKey={`${busy}:${account ?? ''}:${deepPage ? 'deep' : ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`}
             onNew={handleHome}
             onOpenChat={(id) => {
-              if (id === chatId.current && !account && !article && !deepPage && !explore) return
+              if (id === chatId.current && !account && !article && !deepPage) return
               track('history_chat_open', { from: 'sidebar' })
               // 돌던 분석은 서버가 끝까지 마쳐서 저장하니, 기다리지 않고 바로 다른 채팅을 열어요.
               abandon()

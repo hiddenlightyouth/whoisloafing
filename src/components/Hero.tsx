@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { track } from '../lib/analytics'
 import { isApp } from '../lib/app'
 import { useAppSettings } from '../lib/theme'
@@ -28,8 +29,40 @@ function Title() {
   )
 }
 
-export function Hero({ onSubmit }: { onSubmit: (url: string) => void }) {
+interface Props {
+  onSubmit: (url: string) => void
+  /** 앱에서 입력창 아래에 이어 붙이는 내용(탐색 목록). 있으면 한가운데가 아니라 위쪽에 입력창을 두고, 아래로 스크롤해서 봐요. */
+  below?: ReactNode
+}
+
+export function Hero({ onSubmit, below }: Props) {
   const { backdrop } = useAppSettings()
+
+  if (below) {
+    return (
+      <main className="relative flex-1 overflow-hidden">
+        {backdrop && <ContributionBackdrop />}
+        <div className="relative h-full overflow-y-auto px-6 pb-10 md:px-10">
+          <div className="mx-auto w-full max-w-lg pt-[max(6rem,16vh)] pb-14">
+            <Title />
+            <p
+              className="mt-3 mb-7 animate-rise text-balance break-keep text-center text-[13px] leading-relaxed text-gray-500 sm:mb-8 sm:text-[14px]"
+              style={{ animationDelay: '250ms' }}
+            >
+              GitHub Repository 링크를 입력하거나, 아래에서 프로젝트를 골라 분석을 시작하세요
+            </p>
+            <div className="animate-rise" style={{ animationDelay: '350ms' }}>
+              <RepoInput onSubmit={onSubmit} />
+            </div>
+          </div>
+          <div className="animate-rise" style={{ animationDelay: '450ms' }}>
+            {below}
+          </div>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main className="relative flex flex-1 items-center justify-center overflow-hidden px-5">
       {/* 앱에서는 설정에서 켰을 때만 배경 그림을 보여줘요. 브라우저에서는 늘 보여요. */}

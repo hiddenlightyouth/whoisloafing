@@ -32,7 +32,7 @@ function Stars({ count }: { count: number }) {
 }
 
 /**
- * 앱의 탐색 화면이에요. 링크를 직접 적지 않아도, GitHub에서 인기 있는 공개 레포를 둘러보다가 눌러서 바로 분석을 시작해요.
+ * 앱의 새 분석 화면에서 입력창 아래에 붙는 탐색 목록이에요. 링크를 직접 적지 않아도, GitHub에서 인기 있는 공개 레포를 둘러보다가 눌러서 분석을 시작해요.
  * 목록은 종류마다 처음 볼 때 한 번만 받아요.
  */
 export function Explore({ onPick }: Props) {
@@ -54,9 +54,11 @@ export function Explore({ onPick }: Props) {
   }, [kind, list])
 
   return (
-    <main className="min-h-0 flex-1 overflow-y-auto px-6 pt-14 pb-10 md:px-10">
-      <div className="flex flex-wrap items-center justify-between gap-4 pt-6">
-        <h1 className="text-[22px] leading-snug font-semibold text-gray-900">탐색</h1>
+    <section aria-labelledby="explore-title">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h2 id="explore-title" className="text-[15px] font-semibold text-gray-900">
+          탐색
+        </h2>
         <div role="radiogroup" aria-label="목록 종류" className="inline-flex rounded-lg bg-gray-100 p-0.5">
           {KINDS.map(([value, label]) => (
             <button
@@ -77,14 +79,14 @@ export function Explore({ onPick }: Props) {
       </div>
 
       {list === undefined ? (
-        <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3" aria-busy="true">
+        <ul className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3" aria-busy="true">
           <li className="sr-only">불러오고 있어요.</li>
           {Array.from({ length: 12 }, (_, item) => (
             <li key={item} aria-hidden className="h-[168px] rounded-2xl bg-gray-100 motion-safe:animate-pulse" />
           ))}
         </ul>
       ) : list === 'failed' || list.length === 0 ? (
-        <div className="mt-16 flex flex-col items-center gap-4 text-center">
+        <div className="mt-10 flex flex-col items-center gap-4 text-center">
           <p className="text-[14px] leading-relaxed text-gray-600">목록을 불러오지 못했어요. 잠시 뒤에 다시 시도해 주세요.</p>
           <button
             type="button"
@@ -95,7 +97,7 @@ export function Explore({ onPick }: Props) {
           </button>
         </div>
       ) : (
-        <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
+        <ul className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3">
           {list.map((item) => {
             const [owner, name] = item.repo.split('/')
             return (
@@ -137,7 +139,7 @@ export function Explore({ onPick }: Props) {
           }}
         />
       )}
-    </main>
+    </section>
   )
 }
 
