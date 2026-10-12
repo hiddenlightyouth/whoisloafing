@@ -13,7 +13,7 @@ const PASSWORD_MIN = 8
 const PASSWORD_MAX = 64
 const NAME_MAX = 30
 
-export function Field({ label, ...input }: { label: string } & InputHTMLAttributes<HTMLInputElement>) {
+function Field({ label, ...input }: { label: string } & InputHTMLAttributes<HTMLInputElement>) {
   return (
     <label className="block">
       <span className="text-[13px] font-medium text-gray-600">{label}</span>

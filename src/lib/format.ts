@@ -8,7 +8,7 @@ export function parseServerTime(value: string | null | undefined): Date | null {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
-export function formatClock(date: Date): string {
+function formatClock(date: Date): string {
   return date.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' })
 }
 

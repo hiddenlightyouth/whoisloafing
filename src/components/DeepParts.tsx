@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { track } from '../lib/analytics'
 import { Kbd } from './Shortcuts'
 
@@ -6,7 +6,7 @@ import { Kbd } from './Shortcuts'
 export const tag = 'inline-flex h-7 max-w-full items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 text-[12.5px] text-gray-700'
 
 /** 원문을 클립보드에 복사하는 작은 버튼이에요. */
-export function CopyText({ text, kind }: { text: string; kind: string }) {
+function CopyText({ text, kind }: { text: string; kind: string }) {
   const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle')
 
   async function copy() {
@@ -61,7 +61,7 @@ export function Source({ path, content, kind, marks = {} }: { path: string; cont
   )
 }
 
-export interface MenuItem {
+interface MenuItem {
   label: string
   /** 오른쪽에 옅게 붙는 값 (커밋 수 등) */
   hint?: string
@@ -88,7 +88,7 @@ export const toolButton =
  * 버튼을 누르면 아래로 펼쳐지는 메뉴예요. 심층 분석의 보기 옵션, 참여자, 워크플로와 템플릿 고르기에 같이 써요.
  * 고른 항목에는 체크 표시가 붙고, 바깥을 누르거나 Esc를 누르면 닫혀요.
  */
-export function MapMenu({ label, value, active = false, groups, onOpen, icon }: {
+export function MapMenu({ label, value, active = false, groups, onOpen }: {
   /** 버튼에 적는 이름. 고른 값만 보여줘도 뜻이 통하면 넘기지 않아요. */
   label?: string
   /** 지금 고른 값. 있으면 버튼에 이름 옆으로 보여줘요. */
@@ -97,7 +97,6 @@ export function MapMenu({ label, value, active = false, groups, onOpen, icon }: 
   groups: MenuGroup[]
   /** 메뉴를 열 때 불러요. 내용을 그때 받아 올 때 써요. */
   onOpen?: () => void
-  icon?: ReactNode
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -132,7 +131,6 @@ export function MapMenu({ label, value, active = false, groups, onOpen, icon }: 
         }}
         className={`${toolButton} ${active ? 'border-brand text-brand-hover hover:border-brand hover:text-brand-hover' : ''}`}
       >
-        {icon}
         {label && <span className="text-gray-500">{label}</span>}
         {value && <span className="max-w-40 truncate">{value}</span>}
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className={`size-3 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true">

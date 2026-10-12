@@ -15,7 +15,7 @@ const PRIVATE_V4 = /^(?:127\.|10\.|192\.168\.|169\.254\.|172\.(?:1[6-9]|2\d|3[01
 const PRIVATE_V6 = /^(?:::1$|(?:0:){7}1$|f[cd][0-9a-f]{2}:|fe[89ab][0-9a-f]:)/i
 
 /** 집이나 회사 안에서만 쓰는 주소인지. 이런 주소는 위치를 알 수 없어서 묻지 않아요. */
-export function isPrivateIp(ip: string): boolean {
+function isPrivateIp(ip: string): boolean {
   const value = ip.replace(/^::ffff:/i, '')
   return PRIVATE_V4.test(value) || PRIVATE_V6.test(value)
 }
@@ -59,7 +59,7 @@ interface Lookup {
 /** 같은 주소를 화면 여러 곳에서 물어도 요청은 한 번만 보내요. */
 const pending = new Map<string, Promise<string | null>>()
 
-export function lookupIpPlace(ip: string): Promise<string | null> {
+function lookupIpPlace(ip: string): Promise<string | null> {
   if (isPrivateIp(ip)) return Promise.resolve(LOCAL_PLACE)
   const stored = readStored()[ip]
   if (stored) return Promise.resolve(stored)

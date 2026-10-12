@@ -131,7 +131,7 @@ export function useAuth(): AuthState {
   )
 }
 
-export function clearAuth() {
+function clearAuth() {
   if (state.tokens || state.me) setState({ tokens: null, me: null })
 }
 

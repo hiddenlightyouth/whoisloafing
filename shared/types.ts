@@ -201,7 +201,7 @@ export interface ChatSnapshot {
 
 export interface AnalyzeRequest {
   url: string
-  /** 저장할 채팅방의 ID. Supabase가 켜져 있을 때만 써요. */
+  /** 저장할 채팅방의 ID. 저장 기능이 켜져 있을 때만 써요. */
   chatId?: string
   /** 이 요청과 함께 화면에 올라간 사용자 말풍선의 글. 채팅을 저장할 때 같이 남겨요. */
   userText?: string

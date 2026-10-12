@@ -9,7 +9,7 @@ import { Kbd } from './Shortcuts'
 
 export type AdminTab = 'overview' | 'users' | 'chats' | 'ai'
 
-export const ADMIN_TABS: AdminTab[] = ['overview', 'users', 'chats', 'ai']
+const ADMIN_TABS: AdminTab[] = ['overview', 'users', 'chats', 'ai']
 
 const TAB_LABELS: Record<AdminTab, string> = {
   overview: '현황',

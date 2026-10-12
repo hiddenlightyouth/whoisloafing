@@ -121,7 +121,7 @@ type LeaveTarget = 'home' | 'articles' | AccountPage
 
 export default function App() {
   const { messages, busy, paused, send, resume, stop, abandon, reset, load, settle, chatId } = useAnalysis()
-  /** 서버에 채팅 저장 기능(Supabase)이 켜져 있는지 */
+  /** 서버에 채팅 저장 기능이 켜져 있는지 */
   const [storage, setStorage] = useState(false)
   /** 서버에 심층 분석 API가 있는지. 있을 때만 앱의 사이드바에 심층 분석을 보여줘요. */
   const [deep, setDeep] = useState(false)

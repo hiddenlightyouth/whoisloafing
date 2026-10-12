@@ -7,7 +7,7 @@ export interface ServerConfig {
   storage: boolean
   /** 서버에 심층 분석 API가 있는지. 예전 서버에는 없어서, 그때는 앱의 사이드바에서 심층 분석을 숨겨요. */
   deep: boolean
-  /** 서버에 탐색 API가 있는지. 없으면 앱의 사이드바에서 탐색을 숨겨요. */
+  /** 서버에 탐색 API가 있는지. 없으면 앱의 새 분석 화면 아래에 탐색 목록을 붙이지 않아요. */
   explore: boolean
   /** 서버에 관리자 API가 있는지. 없으면 앱의 관리자 화면에서 AI 사용량만 보여줘요. */
   admin: boolean

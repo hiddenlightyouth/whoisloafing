@@ -4,7 +4,7 @@ const OWNER_KEY_STORAGE = 'whoisloafing:owner'
  * 이 브라우저에서 만든 채팅을 알아보기 위한 무작위 값이에요. 로그인 정보나 토큰이 아니에요.
  * 서버는 이 값의 해시만 저장하고, 공유하기 전의 채팅은 같은 값을 가진 브라우저만 열 수 있어요.
  */
-export function ownerKey(): string {
+function ownerKey(): string {
   try {
     let key = localStorage.getItem(OWNER_KEY_STORAGE)
     if (!key) {
