@@ -247,6 +247,7 @@ macOS 앱(hiddenlightyouth/whoisloafing-app)은 이 서비스를 창 안의 웹�
 - 브라우저로 들어온 화면에는 `dark`가 붙지 않아서 늘 밝은 화면이에요.
 - 새 분석 화면에서 지렁이 표시: 앱의 새 분석 화면은 기본으로 배경 없이 깨끗하게 두고, 이 설정을 켰을 때만 기여도 그래프 배경과 지렁이를 보여줘요. 계속 움직이는 그림이라 자원을 써서 기본은 꺼 둬요. localStorage의 `whoisloafing:app-backdrop`에 둬요. 로그인 화면(`AppGate`)의 배경은 이 설정과 상관없이 늘 보여요.
 - 앱의 새 분석 화면은 제목이 "새 분석 시작하기", 설명이 "GitHub Repository 링크를 입력하여 프로젝트에 대해 분석을 시작하세요"예요. 브라우저의 메인 화면 문구는 그대로예요.
+- 같은 자리에 앱 버전도 보여줘요. 버전은 User-Agent의 `WhoIsLoafingApp/버전`에서 읽어요(`appVersion`). 앱이 1.1 이상이면 옆에 "업데이트 확인" 버튼이 나오고, 누르면 앱에 `update` 메시지를 보내서 앱이 새 버전 확인 창을 띄워요. 새로 생긴 앱 기능을 예전 앱에서 숨길 때는 `appAtLeast`를 써요.
 - 웹에서 바꾸면 앱에 `theme`, `backdrop` 메시지를 보내고, 앱에서 바꾸면 웹뷰에 `whoisloafing:app-settings` 이벤트가 와요. 앱은 화면을 다 불러올 때마다 자기 값을 한 번 보내 줘요.
 
 ### 브라우저로 앱 로그인
@@ -338,6 +339,7 @@ Claude 호출 기록은 백엔드 서버가 남기고, 관리자 API(`/api/v1/ai
 | `app_login_browser_click` | 앱의 로그인 화면에서 브라우저로 로그인을 눌렀을 때 | |
 | `app_login_approve`, `app_login_cancel` | 브라우저의 앱 로그인 화면에서 계속하기나 취소를 눌렀을 때 | `success` |
 | `app_theme_change`, `app_backdrop_change` | 앱의 내 정보에서 화면 모드나 지렁이 표시를 바꿨을 때 | `theme`, `on` |
+| `app_update_check` | 앱의 내 정보에서 업데이트 확인을 눌렀을 때 | |
 | `app_login` | 앱이 브라우저에서 받은 코드로 로그인을 시도했을 때 | `success` |
 
 ## 현재까지 구현된 기능

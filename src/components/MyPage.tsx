@@ -11,7 +11,7 @@ import {
   type DeviceSession,
   type LoginRecord,
 } from '../lib/auth'
-import { isApp, type AppTheme } from '../lib/app'
+import { appAtLeast, appVersion, isApp, postToApp, type AppTheme } from '../lib/app'
 import { formatDate, formatDateTime, parseServerTime } from '../lib/format'
 import { setAppBackdrop, setAppTheme, useAppSettings } from '../lib/theme'
 import { Bone } from './Skeleton'
@@ -268,6 +268,25 @@ export function MyPage({ onSignedOut }: Props) {
                     {/* 손잡이는 다크 모드에서도 흰색이라 색 토큰을 쓰지 않아요. */}
                     <span style={{ background: '#fff' }} className={`size-5 rounded-full transition-transform ${backdrop ? 'translate-x-4' : ''}`} />
                   </button>
+                </dd>
+              </div>
+              <div className="flex items-center justify-between gap-4 py-3">
+                <dt className="text-gray-500">앱 버전</dt>
+                <dd className="flex items-center gap-3">
+                  <span className="font-medium text-gray-900 tabular-nums">{appVersion}</span>
+                  {/* 예전 앱은 이 메시지를 받지 못해서, 받을 수 있는 버전에서만 버튼을 보여줘요. */}
+                  {appAtLeast('1.1') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        track('app_update_check')
+                        postToApp({ type: 'update' })
+                      }}
+                      className="h-8 rounded-full bg-gray-100 px-3.5 text-[13px] font-medium text-gray-700 transition-colors hover:text-brand"
+                    >
+                      업데이트 확인
+                    </button>
+                  )}
                 </dd>
               </div>
             </dl>

@@ -1,6 +1,21 @@
 /** macOS 앱의 웹뷰는 User-Agent 끝에 WhoIsLoafingApp/버전을 붙여요. 앱 안에서 열렸을 때만 앱 화면을 보여줘요. */
 export const isApp = typeof navigator !== 'undefined' && /WhoIsLoafingApp\//.test(navigator.userAgent)
 
+/** 앱의 버전 (예: 1.1). 앱 안이 아니면 null이에요. */
+export const appVersion = typeof navigator !== 'undefined' ? (/WhoIsLoafingApp\/([\d.]+)/.exec(navigator.userAgent)?.[1] ?? null) : null
+
+/** 앱이 이 버전 이상인지. 새로 생긴 앱 기능을 예전 앱에서 숨길 때 써요. */
+export function appAtLeast(minimum: string): boolean {
+  if (!appVersion) return false
+  const have = appVersion.split('.').map(Number)
+  const need = minimum.split('.').map(Number)
+  for (let index = 0; index < Math.max(have.length, need.length); index += 1) {
+    const diff = (have[index] ?? 0) - (need[index] ?? 0)
+    if (diff !== 0) return diff > 0
+  }
+  return true
+}
+
 /** macOS 앱 설치 파일. 앱 레포에서 만든 DMG를 `public/download`에 넣어 둬요. 새 버전도 같은 이름으로 덮어써서 주소가 바뀌지 않아요. */
 export const MAC_DOWNLOAD = '/download/WhoIsLoafing.dmg'
 export const MAC_SUPPORT = 'for Apple Silicon'
@@ -24,8 +39,8 @@ export interface AppLoginDetail {
 /** 앱의 화면 모드. system은 macOS 설정을 따라가요. */
 export type AppTheme = 'system' | 'light' | 'dark'
 
-/** login은 기본 브라우저로 로그인 화면을 열고, drag와 zoom은 창을 옮기거나 키우고, theme과 backdrop은 고른 화면 설정을 앱에 알려요. */
-type AppMessage = { type: 'login' } | { type: 'drag' } | { type: 'zoom' } | { type: 'theme'; theme: AppTheme } | { type: 'backdrop'; on: boolean }
+/** update는 새 버전이 있는지 확인하는 창을 띄워요(앱 1.1부터). login은 기본 브라우저로 로그인 화면을 열고, drag와 zoom은 창을 옮기거나 키우고, theme과 backdrop은 고른 화면 설정을 앱에 알려요. */
+type AppMessage = { type: 'login' } | { type: 'drag' } | { type: 'zoom' } | { type: 'theme'; theme: AppTheme } | { type: 'backdrop'; on: boolean } | { type: 'update' }
 
 interface AppBridge {
   webkit?: { messageHandlers?: { whoisloafing?: { postMessage: (message: AppMessage) => void } } }
