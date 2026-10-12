@@ -52,8 +52,6 @@ export function Header({
   const actionsRef = useRef<HTMLDivElement>(null)
 
   const [downloadOpen, setDownloadOpen] = useState(false)
-  /** 앱 다운로드를 한 번 열어 본 사람에게는 툴팁을 다시 띄우지 않아요. */
-  const [tipSeen, setTipSeen] = useState(appTipSeen)
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileDownloadOpen, setMobileDownloadOpen] = useState(false)
   const downloadRef = useRef<HTMLDivElement>(null)
@@ -144,23 +142,13 @@ export function Header({
                 type="button"
                 aria-haspopup="menu"
                 aria-expanded={downloadOpen}
-                onClick={() => {
-                  setDownloadOpen((open) => !open)
-                  if (!tipSeen) {
-                    setTipSeen(true)
-                    try {
-                      localStorage.setItem(APP_TIP_KEY, '1')
-                    } catch {
-                      return
-                    }
-                  }
-                }}
+                onClick={() => setDownloadOpen((open) => !open)}
                 className={`${quiet} inline-flex items-center gap-1 text-gray-600 hover:text-gray-900`}
               >
                 앱 다운로드
                 <Caret open={downloadOpen} />
               </button>
-              {MAC_DOWNLOAD_OPEN && home && !tipSeen && !downloadOpen && (
+              {MAC_DOWNLOAD_OPEN && home && !downloadOpen && (
                 <p
                   className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 animate-rise rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-medium whitespace-nowrap text-white"
                   style={{ animationDelay: '600ms' }}
@@ -401,16 +389,6 @@ export function Header({
   )
 }
 
-
-const APP_TIP_KEY = 'whoisloafing:app-tip-seen'
-
-function appTipSeen(): boolean {
-  try {
-    return localStorage.getItem(APP_TIP_KEY) === '1'
-  } catch {
-    return false
-  }
-}
 
 function WindowsLogo() {
   return (
