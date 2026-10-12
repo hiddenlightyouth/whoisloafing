@@ -50,6 +50,8 @@ export interface ExploreRepo {
   avatarUrl?: string
   /** 어느 동아리나 커뮤니티의 레포인지. clubs 목록에서만 와요. */
   club?: string
+  /** 마지막으로 푸시한 때. clubs 목록에서만 와요. */
+  pushedAt?: string
 }
 
 /** GitHub에서 인기 있는 공개 레포 목록을 받아요. 받지 못하면 null을 돌려줘요. */

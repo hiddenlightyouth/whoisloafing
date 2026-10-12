@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { track } from '../lib/analytics'
 import { fetchExplore, type ExploreKind, type ExploreRepo } from '../lib/api'
 import { Avatar } from './History'
@@ -25,8 +25,25 @@ const KINDS: ['popular' | 'rising', string][] = [
   ['rising', '요즘 뜨는'],
 ]
 
-/** 연합 동아리 & 커뮤니티에서 동아리를 고르지 않았을 때 보여주는 레포 수 */
-const ALL_CLUBS_SIZE = 36
+/** 동아리 레포를 늘어놓는 순서 */
+type Sort = 'stars' | 'recent' | 'name'
+
+const SORTS: [Sort, string][] = [
+  ['stars', '스타순'],
+  ['recent', '최근 업데이트순'],
+  ['name', '이름순'],
+]
+
+const repoName = (item: ExploreRepo) => item.repo.slice(item.repo.indexOf('/') + 1)
+
+const SORTERS: Record<Sort, (a: ExploreRepo, b: ExploreRepo) => number> = {
+  stars: (a, b) => b.stars - a.stars,
+  recent: (a, b) => (b.pushedAt ?? '').localeCompare(a.pushedAt ?? ''),
+  name: (a, b) => repoName(a).localeCompare(repoName(b), 'ko'),
+}
+
+/** 동아리 레포는 전부 받아 오니, 한 번에 이만큼만 그리고 더 보기로 이어서 보여줘요. */
+const PAGE_SIZE = 36
 
 const chip = (active: boolean) =>
   `h-8 shrink-0 rounded-lg border px-3 text-[13px] font-medium transition-colors ${active ? 'border-brand text-brand-hover' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-900'}`
@@ -57,18 +74,28 @@ export function Explore({ onPick, clubs: hasClubs = false }: Props) {
   const [category, setCategory] = useState<Category>('github')
   const [githubKind, setGithubKind] = useState<'popular' | 'rising'>('popular')
   const kind: ExploreKind = category === 'clubs' ? 'clubs' : githubKind
-  /** 고른 동아리. null이면 모든 동아리의 레포를 스타가 많은 순서로 보여줘요. */
+  /** 고른 동아리. null이면 모든 동아리의 레포를 한데 모아서 보여줘요. */
   const [club, setClub] = useState<string | null>(null)
+  const [sort, setSort] = useState<Sort>('stars')
+  /** 동아리 레포를 몇 개까지 그렸는지. 동아리나 순서를 바꾸면 처음으로 돌아가요. */
+  const [shown, setShown] = useState(PAGE_SIZE)
   const [lists, setLists] = useState<Partial<Record<ExploreKind, ExploreRepo[] | 'failed'>>>({})
   const loaded = lists[kind]
-  // 동아리 목록은 서버가 동아리 순서대로 한꺼번에 보내요. 고른 동아리만 추리거나, 고르지 않았으면 스타가 많은 순서로 섞어서 보여줘요.
-  const clubs = Array.isArray(lists.clubs) ? [...new Set(lists.clubs.map((item) => item.club ?? ''))].filter(Boolean) : []
-  const list =
-    kind !== 'clubs' || !Array.isArray(loaded)
-      ? loaded
-      : club
-        ? loaded.filter((item) => item.club === club)
-        : [...loaded].sort((a, b) => b.stars - a.stars).slice(0, ALL_CLUBS_SIZE)
+  // 동아리 레포는 서버가 전부 한꺼번에 보내요. 동아리 이름은 가나다순으로 늘어놓고, 고르기와 순서 바꾸기는 여기서 해요.
+  const clubs = useMemo(
+    () =>
+      Array.isArray(lists.clubs)
+        ? [...new Set(lists.clubs.map((item) => item.club ?? ''))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'ko'))
+        : [],
+    [lists.clubs],
+  )
+  const sorted = useMemo(
+    () =>
+      Array.isArray(lists.clubs) ? lists.clubs.filter((item) => !club || item.club === club).sort(SORTERS[sort]) : [],
+    [lists.clubs, club, sort],
+  )
+  const list = kind !== 'clubs' || !Array.isArray(loaded) ? loaded : sorted.slice(0, shown)
+  const more = kind === 'clubs' && Array.isArray(loaded) ? sorted.length - shown : 0
   /** 눌러서 분석할지 물어보고 있는 레포 */
   const [asking, setAsking] = useState<ExploreRepo | null>(null)
 
@@ -136,6 +163,7 @@ export function Explore({ onPick, clubs: hasClubs = false }: Props) {
                 onClick={() => {
                   track('explore_club_select', { club: name ?? 'all' })
                   setClub(name)
+                  setShown(PAGE_SIZE)
                 }}
                 className={chip(club === name)}
               >
@@ -143,6 +171,30 @@ export function Explore({ onPick, clubs: hasClubs = false }: Props) {
               </button>
             ))}
       </div>
+
+      {kind === 'clubs' && Array.isArray(loaded) && sorted.length > 0 && (
+        <div className="mt-5 flex items-center justify-between gap-3">
+          <p className="text-[13px] text-gray-500 tabular-nums">레포 {sorted.length.toLocaleString('ko-KR')}개</p>
+          <div role="radiogroup" aria-label="순서" className="flex items-center gap-3">
+            {SORTS.map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={sort === value}
+                onClick={() => {
+                  track('explore_sort_change', { sort: value })
+                  setSort(value)
+                  setShown(PAGE_SIZE)
+                }}
+                className={`text-[13px] font-medium transition-colors ${sort === value ? 'text-gray-900' : 'text-gray-400 hover:text-gray-700'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {list === undefined ? (
         <ExploreCardsSkeleton />
@@ -188,6 +240,18 @@ export function Explore({ onPick, clubs: hasClubs = false }: Props) {
             )
           })}
         </ul>
+      )}
+
+      {more > 0 && (
+        <div className="mt-5 text-center">
+          <button
+            type="button"
+            onClick={() => setShown((prev) => prev + PAGE_SIZE)}
+            className="h-9 rounded-full bg-gray-100 px-4 text-[13px] font-medium text-gray-700 transition-colors hover:text-brand"
+          >
+            더 보기
+          </button>
+        </div>
       )}
 
       {asking && (
