@@ -45,9 +45,8 @@ export function AppGate() {
           draggable={false}
           className="mx-auto h-[22px] w-auto animate-rise"
         />
-        <p className="mt-4 animate-rise break-keep text-[14px] leading-relaxed text-gray-500" style={{ animationDelay: '120ms' }}>
-          {waiting ? '브라우저에서 로그인을 마치면 앱으로 돌아와요.' : '로그인하고 우리 프로젝트의 MVP를 찾아보세요.'}
-        </p>
+        {/* 브라우저를 열어 둔 동안에만 한 줄로 알려줘요. 그 전에는 로고와 버튼만 둬요. */}
+        {waiting && <p className="mt-4 animate-rise break-keep text-[14px] leading-relaxed text-gray-500">브라우저 로그인 완료를 기다리는 중</p>}
 
         <div className="animate-rise" style={{ animationDelay: '240ms' }}>
           <button
@@ -56,7 +55,7 @@ export function AppGate() {
             onClick={openBrowser}
             className="mt-8 h-12 w-full rounded-full bg-brand text-[15px] font-semibold text-white transition-colors hover:bg-brand-hover disabled:bg-gray-200 disabled:text-gray-400"
           >
-            {working ? '처리 중' : waiting ? '브라우저 다시 열기' : '브라우저로 로그인'}
+            {working ? '처리 중' : waiting ? '로그인 페이지가 열리지 않았나요?' : '브라우저로 로그인'}
           </button>
         </div>
 
