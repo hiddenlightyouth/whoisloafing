@@ -19,6 +19,18 @@ function formatStars(stars: number): string {
   return stars.toLocaleString('ko-KR')
 }
 
+/** 스타 수는 글자 대신 GitHub처럼 별 그림과 숫자로 보여줘요. */
+function Stars({ count }: { count: number }) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1" aria-label={`별 ${count.toLocaleString('ko-KR')}개`}>
+      <svg viewBox="0 0 16 16" fill="currentColor" className="size-3" aria-hidden="true">
+        <path d="M8 1.2l2 4.3 4.7.6-3.5 3.2.9 4.7L8 11.7 3.9 14l.9-4.7L1.3 6.1 6 5.5z" />
+      </svg>
+      {formatStars(count)}
+    </span>
+  )
+}
+
 /**
  * 앱의 탐색 화면이에요. 링크를 직접 적지 않아도, GitHub에서 인기 있는 공개 레포를 둘러보다가 눌러서 바로 분석을 시작해요.
  * 목록은 종류마다 처음 볼 때 한 번만 받아요.
@@ -106,7 +118,7 @@ export function Explore({ onPick }: Props) {
                   <span className="mt-3 line-clamp-2 min-h-0 flex-1 text-[13px] leading-relaxed text-gray-600">{item.description ?? ''}</span>
                   <span className="mt-2 flex items-center justify-between gap-2 text-[12px] text-gray-400 tabular-nums">
                     <span className="min-w-0 truncate">{item.language ?? ''}</span>
-                    <span className="shrink-0">스타 {formatStars(item.stars)}개</span>
+                    <Stars count={item.stars} />
                   </span>
                 </button>
               </li>
@@ -163,8 +175,9 @@ function ConfirmDialog({ repo, onCancel, onConfirm }: { repo: ExploreRepo; onCan
           </div>
         </div>
         {repo.description && <p className="mt-3 text-[13px] leading-relaxed text-gray-600">{repo.description}</p>}
-        <p className="mt-2 text-[12px] text-gray-400 tabular-nums">
-          {repo.language ? `${repo.language}, ` : ''}스타 {formatStars(repo.stars)}개
+        <p className="mt-2 flex items-center gap-2.5 text-[12px] text-gray-400 tabular-nums">
+          {repo.language && <span>{repo.language}</span>}
+          <Stars count={repo.stars} />
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" onClick={onCancel} className={quiet}>
