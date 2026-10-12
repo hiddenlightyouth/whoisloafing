@@ -4,7 +4,7 @@ import { useAppCaptured } from '../lib/app'
 import { useAppSettings } from '../lib/theme'
 
 /**
- * 앱에서 화면 공유나 녹화가 감지되면 화면 전체를 흐리게 가려요. 사용자가 계속 보겠다고 누르면 그 공유가 끝날 때까지 풀어 두고,
+ * 앱에서 화면 공유나 녹화가 감지되면 화면 전체를 흐리게 가려요. 사용자가 가림 해제를 누르면 그 공유가 끝날 때까지 풀어 두고,
  * 공유가 끝났다가 다시 시작되면 다시 가려요. 화면을 한 장 찍는 캡처는 감지하지 않아요.
  * 계정 메뉴나 앱의 설정 창에서 끌 수 있어요.
  */
@@ -34,9 +34,9 @@ export function CaptureShield() {
           화면 녹화가 감지 됨
         </h2>
         <p className="mt-2.5 text-[14px] leading-relaxed break-keep text-gray-600">
-          macOS에서 화면 녹화가 감지되었어요.
+          녹화가 감지되어 화면을 일시적으로 가렸어요.
           <br />
-          개인정보보호에 유의하세요.
+          이 옵션은 설정에서 끄거나 켤 수 있습니다.
         </p>
         <button
           type="button"
@@ -47,9 +47,8 @@ export function CaptureShield() {
           }}
           className="mt-6 h-10 rounded-full bg-brand px-6 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover"
         >
-          계속 보기
+          가림 해제
         </button>
-        <p className="mt-4 text-[12.5px] text-gray-400">설정에서 이 옵션을 비활성화할 수 있습니다.</p>
       </div>
     </div>
   )
