@@ -7,12 +7,29 @@ import { ExploreCardsSkeleton } from './Skeleton'
 interface Props {
   /** 고른 레포(소유자/레포)로 새 분석을 시작해요. */
   onPick: (repo: string) => void
+  /** 서버에 연합 동아리와 커뮤니티 목록이 있는지. 없으면 갈래를 고르는 버튼 없이 GitHub 목록만 보여줘요. */
+  clubs?: boolean
 }
 
-const KINDS: [ExploreKind, string][] = [
+/** 탐색의 큰 갈래. GitHub는 GitHub 전체에서 인기 있는 레포, 동아리는 IT 연합 동아리와 커뮤니티가 만든 레포예요. */
+type Category = 'github' | 'clubs'
+
+const CATEGORIES: [Category, string][] = [
+  ['github', 'GitHub'],
+  ['clubs', '연합 동아리 & 커뮤니티'],
+]
+
+/** GitHub 갈래 안에서 고르는 목록 종류 */
+const KINDS: ['popular' | 'rising', string][] = [
   ['popular', '인기'],
   ['rising', '요즘 뜨는'],
 ]
+
+/** 연합 동아리 & 커뮤니티에서 동아리를 고르지 않았을 때 보여주는 레포 수 */
+const ALL_CLUBS_SIZE = 36
+
+const chip = (active: boolean) =>
+  `h-8 shrink-0 rounded-lg border px-3 text-[13px] font-medium transition-colors ${active ? 'border-brand text-brand-hover' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-900'}`
 
 /** 스타 수를 "12.3만"처럼 짧게 적어요. */
 function formatStars(stars: number): string {
@@ -33,18 +50,30 @@ function Stars({ count }: { count: number }) {
 }
 
 /**
- * 앱의 새 분석 화면에서 입력창 아래에 붙는 탐색 목록이에요. 링크를 직접 적지 않아도, GitHub에서 인기 있는 공개 레포를 둘러보다가 눌러서 분석을 시작해요.
- * 목록은 종류마다 처음 볼 때 한 번만 받아요.
+ * 앱의 새 분석 화면에서 입력창 아래에 붙는 탐색 목록이에요. 링크를 직접 적지 않아도, 공개 레포를 둘러보다가 눌러서 분석을 시작해요.
+ * GitHub에서 인기 있는 레포와, IT 연합 동아리와 커뮤니티가 만든 레포 두 갈래로 나눠서 보여줘요. 목록은 종류마다 처음 볼 때 한 번만 받아요.
  */
-export function Explore({ onPick }: Props) {
-  const [kind, setKind] = useState<ExploreKind>('popular')
+export function Explore({ onPick, clubs: hasClubs = false }: Props) {
+  const [category, setCategory] = useState<Category>('github')
+  const [githubKind, setGithubKind] = useState<'popular' | 'rising'>('popular')
+  const kind: ExploreKind = category === 'clubs' ? 'clubs' : githubKind
+  /** 고른 동아리. null이면 모든 동아리의 레포를 스타가 많은 순서로 보여줘요. */
+  const [club, setClub] = useState<string | null>(null)
   const [lists, setLists] = useState<Partial<Record<ExploreKind, ExploreRepo[] | 'failed'>>>({})
-  const list = lists[kind]
+  const loaded = lists[kind]
+  // 동아리 목록은 서버가 동아리 순서대로 한꺼번에 보내요. 고른 동아리만 추리거나, 고르지 않았으면 스타가 많은 순서로 섞어서 보여줘요.
+  const clubs = Array.isArray(lists.clubs) ? [...new Set(lists.clubs.map((item) => item.club ?? ''))].filter(Boolean) : []
+  const list =
+    kind !== 'clubs' || !Array.isArray(loaded)
+      ? loaded
+      : club
+        ? loaded.filter((item) => item.club === club)
+        : [...loaded].sort((a, b) => b.stars - a.stars).slice(0, ALL_CLUBS_SIZE)
   /** 눌러서 분석할지 물어보고 있는 레포 */
   const [asking, setAsking] = useState<ExploreRepo | null>(null)
 
   useEffect(() => {
-    if (list !== undefined) return
+    if (loaded !== undefined) return
     let stale = false
     void fetchExplore(kind).then((repos) => {
       if (!stale) setLists((prev) => ({ ...prev, [kind]: repos ?? 'failed' }))
@@ -52,7 +81,7 @@ export function Explore({ onPick }: Props) {
     return () => {
       stale = true
     }
-  }, [kind, list])
+  }, [kind, loaded])
 
   return (
     <section aria-labelledby="explore-title">
@@ -60,23 +89,59 @@ export function Explore({ onPick }: Props) {
         <h2 id="explore-title" className="text-[15px] font-semibold text-gray-900">
           탐색
         </h2>
-        <div role="radiogroup" aria-label="목록 종류" className="inline-flex rounded-lg bg-gray-100 p-0.5">
-          {KINDS.map(([value, label]) => (
+        <div role="radiogroup" aria-label="탐색 갈래" className={hasClubs ? 'inline-flex rounded-lg bg-gray-100 p-0.5' : 'hidden'}>
+          {CATEGORIES.map(([value, label]) => (
             <button
               key={value}
               type="button"
               role="radio"
-              aria-checked={kind === value}
+              aria-checked={category === value}
               onClick={() => {
-                track('explore_kind_change', { kind: value })
-                setKind(value)
+                if (category === value) return
+                track('explore_kind_change', { kind: value === 'clubs' ? 'clubs' : githubKind })
+                setCategory(value)
               }}
-              className={`h-8 rounded-md px-3.5 text-[13px] font-medium transition-colors ${kind === value ? 'bg-white text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
+              className={`h-8 rounded-md px-3.5 text-[13px] font-medium transition-colors ${category === value ? 'bg-white text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
             >
               {label}
             </button>
           ))}
         </div>
+      </div>
+
+      {/* 갈래 안에서 한 번 더 골라요. GitHub는 인기와 요즘 뜨는, 동아리는 전체와 동아리 이름이에요. */}
+      <div role="radiogroup" aria-label={category === 'clubs' ? '동아리' : '목록 종류'} className="mt-3 flex flex-wrap gap-1.5">
+        {category === 'github'
+          ? KINDS.map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={githubKind === value}
+                onClick={() => {
+                  track('explore_kind_change', { kind: value })
+                  setGithubKind(value)
+                }}
+                className={chip(githubKind === value)}
+              >
+                {label}
+              </button>
+            ))
+          : [null, ...clubs].map((name) => (
+              <button
+                key={name ?? ''}
+                type="button"
+                role="radio"
+                aria-checked={club === name}
+                onClick={() => {
+                  track('explore_club_select', { club: name ?? 'all' })
+                  setClub(name)
+                }}
+                className={chip(club === name)}
+              >
+                {name ?? '전체'}
+              </button>
+            ))}
       </div>
 
       {list === undefined ? (
@@ -110,7 +175,7 @@ export function Explore({ onPick }: Props) {
                     <Avatar owner={owner} />
                     <span className="min-w-0">
                       <span className="block truncate text-[14.5px] font-semibold text-gray-900">{name}</span>
-                      <span className="block truncate text-[12px] text-gray-400">{owner}</span>
+                      <span className="block truncate text-[12px] text-gray-400">{item.club ? `${item.club}, ${owner}` : owner}</span>
                     </span>
                   </span>
                   <span className="mt-3 line-clamp-2 min-h-0 flex-1 text-[13px] leading-relaxed text-gray-600">{item.description ?? ''}</span>

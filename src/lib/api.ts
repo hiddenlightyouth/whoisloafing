@@ -15,6 +15,8 @@ export interface ServerConfig {
   pin: boolean
   /** 서버가 평가와 버그 신고를 받는지. 없으면 평가를 묻지 않고 버그 신고 버튼도 숨겨요. */
   feedback: boolean
+  /** 서버의 탐색에 연합 동아리와 커뮤니티 목록이 있는지. 없으면 탐색을 갈래로 나누지 않고 GitHub 목록만 보여줘요. */
+  clubs: boolean
 }
 
 /** 서버가 어떤 기능을 지원하는지 물어봐요. */
@@ -28,13 +30,15 @@ export async function fetchConfig(): Promise<ServerConfig> {
       admin: result.ok && result.data?.admin === true,
       pin: result.ok && result.data?.pin === true,
       feedback: result.ok && result.data?.feedback === true,
+      clubs: result.ok && result.data?.clubs === true,
     }
   } catch {
-    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false }
+    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false, clubs: false }
   }
 }
 
-export type ExploreKind = 'popular' | 'rising'
+/** popular와 rising은 GitHub 전체에서 고른 레포, clubs는 IT 연합 동아리와 커뮤니티의 레포예요. */
+export type ExploreKind = 'popular' | 'rising' | 'clubs'
 
 /** 탐색 화면에 보여줄 레포 하나 */
 export interface ExploreRepo {
@@ -44,6 +48,8 @@ export interface ExploreRepo {
   language?: string
   stars: number
   avatarUrl?: string
+  /** 어느 동아리나 커뮤니티의 레포인지. clubs 목록에서만 와요. */
+  club?: string
 }
 
 /** GitHub에서 인기 있는 공개 레포 목록을 받아요. 받지 못하면 null을 돌려줘요. */

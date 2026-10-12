@@ -142,6 +142,7 @@ export default function App() {
   const [deep, setDeep] = useState(false)
   /** 서버에 탐색 API가 있는지. 있을 때만 앱의 새 분석 화면 아래에 인기 레포를 보여줘요. 아직 물어보는 중이면 null이에요. */
   const [exploreReady, setExploreReady] = useState<boolean | null>(null)
+  const [clubsReady, setClubsReady] = useState(false)
   /** 앱의 심층 분석 화면을 보고 있는지. repo가 null이면 레포를 고르는 화면이에요. */
   const [deepPage, setDeepPage] = useState(() => (isApp ? deepFromPath() : null))
   /** 앱의 설정 창이 떠 있는지 */
@@ -285,6 +286,7 @@ export default function App() {
       setStorage(config.storage)
       setDeep(config.deep)
       setExploreReady(config.explore)
+      setClubsReady(config.clubs)
       setAdminApi(config.admin)
       setFeedbackReady(config.feedback)
     })
@@ -709,7 +711,7 @@ export default function App() {
             // 탐색이 있는지 아직 모를 때도 뼈대로 자리를 잡아 둬서, 입력창이 가운데에 있다가 위로 튀어 오르지 않게 해요.
             !isApp || exploreReady === false ? undefined : exploreReady ? (
               <Suspense fallback={<ExploreSkeleton />}>
-                <Explore onPick={(repo) => handleSubmit(`https://github.com/${repo}`)} />
+                <Explore clubs={clubsReady} onPick={(repo) => handleSubmit(`https://github.com/${repo}`)} />
               </Suspense>
             ) : (
               <ExploreSkeleton />
