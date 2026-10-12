@@ -102,7 +102,7 @@ export function ShortcutHelp({ onClose }: { onClose: () => void }) {
 const TIP_MS = 6000
 
 /**
- * 앱을 켰을 때 오른쪽 아래 구석(맵의 확대 버튼 위)에 잠깐 뜨는 안내예요. Option을 누르면 단축키가 보인다는 것을 알려줘요.
+ * 앱을 켰을 때 오른쪽 아래 구석에 잠깐 뜨는 안내예요. 다크 모드에서도 같은 검은 바탕이라 색 토큰을 쓰지 않아요. Option을 누르면 단축키가 보인다는 것을 알려줘요.
  * 몇 초 뒤에 사라지고, Option을 눌러 보면 바로 사라져요. 앱을 열거나 새로 고칠 때마다 다시 떠요.
  */
 export function ShortcutTip() {
@@ -123,7 +123,7 @@ export function ShortcutTip() {
   return (
     <p
       role="status"
-      className="pointer-events-none fixed right-4 bottom-16 z-40 flex animate-rise items-center gap-1.5 rounded-md bg-gray-900/90 px-2 py-1 text-[11.5px] font-medium text-white"
+      className="pointer-events-none fixed right-3 bottom-3 z-40 flex animate-rise items-center gap-1.5 rounded-md bg-black/90 px-2 py-1 text-[11.5px] font-medium text-white"
       style={{ animationDelay: '800ms' }}
     >
       {/* Mac 자판의 Option 키에 그려진 기호예요. */}
