@@ -11,7 +11,7 @@ import { Toast } from './components/Toast'
 import { useAnalysis } from './hooks/useAnalysis'
 import { initAnalytics, repoLabel, track, trackPageView } from './lib/analytics'
 import { fetchChat, fetchConfig, shareChat } from './lib/api'
-import { isApp, isMac } from './lib/app'
+import { isApp, isMac, MAC_DOWNLOAD_OPEN } from './lib/app'
 import './lib/theme'
 import { claimChats, loadMe, useAuth } from './lib/auth'
 import { showToast } from './lib/toast'
@@ -389,7 +389,7 @@ export default function App() {
   }, [nudging, nudgeClosed])
   // 웹에서 채팅을 보는 Mac 사용자에게는 앱을 권해요. 로그인 안내 카드가 떠 있는 동안에는 자리를 양보해요.
   const appNudging =
-    !isApp && isMac && !account && !article && !opening && !missing && messages.some((message) => message.from === 'bot') && !(nudging && !nudgeClosed)
+    MAC_DOWNLOAD_OPEN && !isApp && isMac && !account && !article && !opening && !missing && messages.some((message) => message.from === 'bot') && !(nudging && !nudgeClosed)
 
   const go = useCallback(
     (target: LeaveTarget) => {

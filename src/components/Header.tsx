@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
 import { track } from '../lib/analytics'
-import { MAC_DOWNLOAD, MAC_SUPPORT } from '../lib/app'
+import { MAC_DOWNLOAD, MAC_DOWNLOAD_OPEN, MAC_SUPPORT } from '../lib/app'
 import { showToast } from '../lib/toast'
 import type { AccountPage } from './Account'
 import { Logo } from './Logo'
@@ -160,7 +160,7 @@ export function Header({
                 앱 다운로드
                 <Caret open={downloadOpen} />
               </button>
-              {home && !tipSeen && !downloadOpen && (
+              {MAC_DOWNLOAD_OPEN && home && !tipSeen && !downloadOpen && (
                 <p
                   className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 animate-rise rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-medium whitespace-nowrap text-white"
                   style={{ animationDelay: '600ms' }}
@@ -175,7 +175,17 @@ export function Header({
                   role="menu"
                   className="absolute top-full left-1/2 mt-2 w-52 -translate-x-1/2 animate-rise rounded-2xl border border-gray-200 bg-white/80 p-1.5 backdrop-blur-xl"
                 >
+                  {!MAC_DOWNLOAD_OPEN && (
+                    <div role="menuitem" aria-disabled="true" className="flex cursor-not-allowed items-center gap-2.5 rounded-xl px-3 py-2 text-gray-400">
+                      <AppleLogo />
+                      <span>
+                        <span className="block text-[13px] font-medium">macOS</span>
+                        <span className="block text-[11.5px]">준비 중</span>
+                      </span>
+                    </div>
+                  )}
                   <a
+                    hidden={!MAC_DOWNLOAD_OPEN}
                     href={MAC_DOWNLOAD}
                     download
                     role="menuitem"
@@ -347,7 +357,16 @@ export function Header({
             </button>
             {mobileDownloadOpen && (
               <div className="animate-rise pb-2 pl-3">
-                <a href={MAC_DOWNLOAD} download onClick={download} className="flex items-center gap-2.5 py-2.5 text-gray-600 transition-colors hover:text-gray-900">
+                {!MAC_DOWNLOAD_OPEN && (
+                  <div aria-disabled="true" className="flex cursor-not-allowed items-center gap-2.5 py-2.5 text-gray-400">
+                    <AppleLogo />
+                    <span>
+                      <span className="block text-[15px]">macOS</span>
+                      <span className="block text-[12px]">준비 중</span>
+                    </span>
+                  </div>
+                )}
+                <a hidden={!MAC_DOWNLOAD_OPEN} href={MAC_DOWNLOAD} download onClick={download} className="flex items-center gap-2.5 py-2.5 text-gray-600 transition-colors hover:text-gray-900">
                   <AppleLogo />
                   <span>
                     <span className="block text-[15px]">macOS</span>
