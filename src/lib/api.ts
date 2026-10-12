@@ -7,15 +7,39 @@ export interface ServerConfig {
   storage: boolean
   /** 서버에 심층 분석 API가 있는지. 예전 서버에는 없어서, 그때는 앱의 사이드바에서 심층 분석을 숨겨요. */
   deep: boolean
+  /** 서버에 탐색 API가 있는지. 없으면 앱의 사이드바에서 탐색을 숨겨요. */
+  explore: boolean
 }
 
 /** 서버가 어떤 기능을 지원하는지 물어봐요. */
 export async function fetchConfig(): Promise<ServerConfig> {
   try {
     const result = await readResult<Partial<ServerConfig>>(await fetch(apiUrl('/config')))
-    return { storage: result.ok && result.data?.storage === true, deep: result.ok && result.data?.deep === true }
+    return { storage: result.ok && result.data?.storage === true, deep: result.ok && result.data?.deep === true, explore: result.ok && result.data?.explore === true }
   } catch {
-    return { storage: false, deep: false }
+    return { storage: false, deep: false, explore: false }
+  }
+}
+
+export type ExploreKind = 'popular' | 'rising'
+
+/** 탐색 화면에 보여줄 레포 하나 */
+export interface ExploreRepo {
+  /** 소유자/레포 */
+  repo: string
+  description?: string
+  language?: string
+  stars: number
+  avatarUrl?: string
+}
+
+/** GitHub에서 인기 있는 공개 레포 목록을 받아요. 받지 못하면 null을 돌려줘요. */
+export async function fetchExplore(kind: ExploreKind): Promise<ExploreRepo[] | null> {
+  try {
+    const result = await authFetch<ExploreRepo[]>(`/explore?kind=${kind}`)
+    return result.ok ? result.data : null
+  } catch {
+    return null
   }
 }
 

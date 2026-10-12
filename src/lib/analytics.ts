@@ -49,12 +49,13 @@ const PAGE_TITLES = {
   history: 'WhoIsLoafing 내 작업',
   'app-login': 'WhoIsLoafing 앱 로그인',
   deep: 'WhoIsLoafing 심층 분석',
+  explore: 'WhoIsLoafing 탐색',
 }
 
 type Screen = keyof typeof PAGE_TITLES
 
 // 심층 분석도 레포 이름은 경로에 넣지 않고 따로 보내요.
-const ACCOUNT_SCREENS: Screen[] = ['login', 'signup', 'me', 'history', 'app-login', 'deep']
+const ACCOUNT_SCREENS: Screen[] = ['login', 'signup', 'me', 'history', 'app-login', 'deep', 'explore']
 
 /** 화면이 바뀔 때마다 불러요. 채팅 ID는 경로에 넣지 않고 따로 보내서 보고서의 경로가 흩어지지 않게 해요. */
 export function trackPageView(
