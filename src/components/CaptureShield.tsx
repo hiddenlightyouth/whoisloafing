@@ -31,9 +31,13 @@ export function CaptureShield() {
     <div data-app-drag role="alertdialog" aria-modal="true" aria-labelledby="capture-shield-title" className="fixed inset-0 z-50 flex items-center justify-center bg-white/70 px-6 backdrop-blur-2xl">
       <div className="w-full max-w-sm text-center">
         <h2 id="capture-shield-title" className="text-[20px] font-semibold text-gray-900">
-          화면이 공유되고 있어요
+          화면 녹화가 감지 됨
         </h2>
-        <p className="mt-2.5 text-[14px] leading-relaxed break-keep text-gray-600">화면 공유나 녹화가 감지돼서 내용을 가렸어요. 보여줘도 괜찮다면 계속 보기를 눌러 주세요.</p>
+        <p className="mt-2.5 text-[14px] leading-relaxed break-keep text-gray-600">
+          macOS에서 화면 녹화가 감지되었어요.
+          <br />
+          개인정보보호에 유의하세요.
+        </p>
         <button
           type="button"
           autoFocus
@@ -45,7 +49,7 @@ export function CaptureShield() {
         >
           계속 보기
         </button>
-        <p className="mt-4 text-[12.5px] text-gray-400">계정 메뉴의 화면 공유 중 가리기에서 끌 수 있어요.</p>
+        <p className="mt-4 text-[12.5px] text-gray-400">설정에서 이 옵션을 비활성화할 수 있습니다.</p>
       </div>
     </div>
   )
