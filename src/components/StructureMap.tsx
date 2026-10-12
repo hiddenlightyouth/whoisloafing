@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import type { StructureNode } from '../../shared/types'
+import type { FolderPerson, StructureNode } from '../../shared/types'
+import { track } from '../lib/analytics'
+import { fetchDeepReport } from '../lib/api'
 
 interface Props {
   /** 맵 한가운데서 가지가 뻗어 나가는 뿌리 칸에 적을 이름 (레포 이름) */
   name: string
+  /** 소유자/레포. 참여자별 보기를 받아 올 때 써요. */
+  repo: string
   root: StructureNode
 }
 
@@ -102,7 +106,7 @@ function layout(root: StructureNode, open: Set<string>, nodeH: number): Placed[]
  * 레포에서 최상위 폴더로, 폴더에서 하위 폴더로 가지가 오른쪽으로 뻗어요. 폴더를 누르면 가지가 펼쳐지고 접혀요.
  * 빈 곳을 끌거나 두 손가락으로 밀면 맵이 움직이고, 두 손가락을 벌리거나 아래 버튼을 누르면 커지고 작아져요.
  */
-export function StructureMap({ name, root }: Props) {
+export function StructureMap({ name, repo, root }: Props) {
   const [open, setOpen] = useState<Set<string>>(() => sourceFolders(root))
   const [selected, setSelected] = useState<string | null>(null)
   const [view, setView] = useState({ x: 24, y: 24, k: 1 })
@@ -118,6 +122,39 @@ export function StructureMap({ name, root }: Props) {
   const nodeH = roles ? NODE_H : NODE_H_COMPACT
   /** 펼친 폴더를 한꺼번에 바꾼 뒤에는 맵을 다시 화면에 맞춰요. */
   const refit = useRef(false)
+
+  /** 참여자별 보기. 메뉴를 처음 열 때 한 번 받아요. 커밋을 하나씩 읽어서 시간이 걸려요. */
+  const [people, setPeople] = useState<FolderPerson[] | 'loading' | { error: string } | null>(null)
+  const [peopleOpen, setPeopleOpen] = useState(false)
+  const [personId, setPersonId] = useState<string | null>(null)
+  const person = Array.isArray(people) ? (people.find((item) => item.id === personId) ?? null) : null
+  /** 고른 사람이 가장 많이 고친 최상위 폴더의 횟수. 색의 진하기를 정하는 기준이에요. */
+  const personMax = person ? Math.max(1, ...root.children.map((node) => person.folders[node.path] ?? 0)) : 1
+
+  async function openPeople() {
+    setPeopleOpen((value) => !value)
+    if (people !== null && people !== 'loading' && !('error' in people)) return
+    if (people === 'loading') return
+    setPeople('loading')
+    const result = await fetchDeepReport(repo, 'people')
+    setPeople('error' in result ? { error: result.error } : (result.report.people ?? []))
+  }
+
+  /** 한 사람을 고르면 그 사람이 고친 폴더가 다 보이게 펼쳐요. */
+  function pickPerson(next: FolderPerson | null) {
+    setPeopleOpen(false)
+    setPersonId(next?.id ?? null)
+    track('deep_person_select', { repo, picked: next !== null })
+    if (!next) return
+    const touched = new Set<string>()
+    const visit = (node: StructureNode) => {
+      if (node.children.length === 0 || !next.folders[node.path]) return
+      touched.add(node.path)
+      node.children.forEach(visit)
+    }
+    root.children.forEach(visit)
+    showFolders(touched)
+  }
 
   const placed = useMemo(() => layout(root, open, nodeH), [root, open, nodeH])
   const keyOf = (item: Placed) => item.node.path
@@ -283,11 +320,16 @@ export function StructureMap({ name, root }: Props) {
           const expanded = open.has(node.path)
           const active = selected === node.path && !isRoot
           const total = item.parent?.node.files ?? node.files
+          // 참여자별 보기에서는 고친 횟수가 많을수록 칸이 진해지고, 손대지 않은 폴더는 흐려져요.
+          const touched = person && !isRoot ? (person.folders[node.path] ?? 0) : null
+          const heat = touched ? Math.min(1, touched / personMax) : 0
+          const tint =
+            touched && !active ? { backgroundColor: `color-mix(in srgb, var(--color-brand) ${Math.round(8 + heat * 34)}%, var(--color-white))`, borderColor: 'var(--color-brand)' } : undefined
           return (
             <button
               key={keyOf(item)}
               type="button"
-              style={style}
+              style={{ ...style, ...tint, opacity: touched === 0 ? 0.4 : undefined }}
               aria-expanded={expandable ? expanded : undefined}
               onClick={() => {
                 if (!suppressClick.current) toggle(item)
@@ -310,7 +352,9 @@ export function StructureMap({ name, root }: Props) {
               </span>
               {!isRoot && (
                 <span className={`flex shrink-0 gap-1 ${roles ? 'flex-col items-end' : 'items-center'}`}>
-                  <span className="text-[11px] text-gray-500 tabular-nums">{count(node.files)}</span>
+                  <span className={`text-[11px] tabular-nums ${touched ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
+                    {touched !== null ? `${count(touched)}번` : count(node.files)}
+                  </span>
                   {expandable && (
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className={`size-3 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden="true">
                       <path d="M6 3.5L10.5 8 6 12.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -337,6 +381,11 @@ export function StructureMap({ name, root }: Props) {
           <p className="mt-2 text-[12px] text-gray-500 tabular-nums">
             파일 {count(focus.node.files)}개, 전체의 {Math.round((focus.node.files / Math.max(1, root.files)) * 100)}%
           </p>
+          {person && (
+            <p className="mt-1 text-[12px] text-gray-500 tabular-nums">
+              {person.name}님이 여기 파일을 {count(person.folders[focus.node.path] ?? 0)}번 고쳤어요
+            </p>
+          )}
           {focus.node.samples && (
             <div className="mt-2.5 flex flex-wrap gap-1">
               {focus.node.samples.map((file) => (
@@ -362,7 +411,52 @@ export function StructureMap({ name, root }: Props) {
         <button type="button" aria-pressed={roles} onClick={toggleRoles} className={option}>
           {roles ? '설명 숨기기' : '설명 표시'}
         </button>
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={peopleOpen}
+          onClick={() => void openPeople()}
+          className={`${option} ${person ? 'bg-brand-soft text-brand-hover' : ''}`}
+        >
+          {person ? `${person.name}님이 고친 폴더` : '참여자별 보기'}
+        </button>
       </div>
+
+      {peopleOpen && (
+        <div
+          role="menu"
+          onPointerDown={(event) => event.stopPropagation()}
+          className="absolute top-14 left-3 max-h-[60%] w-64 cursor-default overflow-y-auto rounded-2xl border border-gray-200 bg-white p-1.5"
+        >
+          {people === 'loading' || people === null ? (
+            <p className="px-3 py-2 text-[12.5px] leading-relaxed text-gray-500">커밋을 하나씩 읽고 있어요. 처음에는 조금 걸려요.</p>
+          ) : 'error' in people ? (
+            <p className="px-3 py-2 text-[12.5px] leading-relaxed text-gray-500">{people.error}</p>
+          ) : people.length === 0 ? (
+            <p className="px-3 py-2 text-[12.5px] text-gray-500">살펴볼 커밋이 없어요.</p>
+          ) : (
+            <>
+              {person && (
+                <button type="button" role="menuitem" onClick={() => pickPerson(null)} className={`${personItem} text-gray-500`}>
+                  전체 보기로 돌아가기
+                </button>
+              )}
+              {people.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => pickPerson(item)}
+                  className={`${personItem} ${item.id === personId ? 'bg-brand-soft text-brand-hover' : 'text-gray-700'}`}
+                >
+                  <span className="min-w-0 truncate">{item.name}</span>
+                  <span className="shrink-0 text-[11.5px] text-gray-400 tabular-nums">커밋 {count(item.commits)}개</span>
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+      )}
 
       <div onPointerDown={(event) => event.stopPropagation()} className="absolute right-3 bottom-3 flex cursor-default items-center gap-1 rounded-full border border-gray-200 bg-white p-1">
         <button type="button" aria-label="작게" onClick={() => zoomBy(1 / 1.25)} className={control}>
@@ -386,3 +480,4 @@ export function StructureMap({ name, root }: Props) {
 
 const control = 'flex size-7 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900'
 const option = 'h-7 rounded-full px-2.5 text-[12px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900'
+const personItem = 'flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-[13px] font-medium transition-colors hover:bg-gray-50'

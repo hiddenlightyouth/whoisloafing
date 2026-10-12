@@ -28,7 +28,7 @@ const DEEP_ERRORS: Record<string, string> = {
 }
 
 /** 심층 분석의 탭 하나를 받아요. 로그인해야 받을 수 있어요. 실패하면 화면에 보여줄 안내를 돌려줘요. */
-export async function fetchDeepReport(repo: string, section: DeepSection): Promise<{ report: DeepReport } | { error: string }> {
+export async function fetchDeepReport(repo: string, section: DeepSection | 'people'): Promise<{ report: DeepReport } | { error: string }> {
   try {
     const result = await authFetch<DeepReport>(`/deep/${section}?url=${encodeURIComponent(repo)}`)
     if (result.ok && result.data) return { report: result.data }

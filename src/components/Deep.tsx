@@ -336,7 +336,7 @@ function Report({ report, name }: { report: DeepReport; name: string }) {
   if (hasStructure && report.structure) {
     return (
       <div className="min-h-0 min-w-0 flex-1">
-        <StructureMap name={name} root={report.structure} />
+        <StructureMap name={name} repo={report.repo} root={report.structure} />
       </div>
     )
   }

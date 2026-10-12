@@ -108,6 +108,16 @@ export interface RepoLabel {
   count: number
 }
 
+/** 구조 맵에서 한 사람이 어느 폴더를 고쳤는지 보여줄 때 쓰는 값 */
+export interface FolderPerson {
+  id: string
+  name: string
+  avatarUrl?: string
+  commits: number
+  /** 폴더 경로와, 그 아래 파일을 고친 횟수 */
+  folders: Record<string, number>
+}
+
 /** 심층 분석 대시보드의 탭 */
 export const DEEP_SECTIONS = ['structure', 'pipeline', 'issues', 'pulls'] as const
 export type DeepSection = (typeof DEEP_SECTIONS)[number]
@@ -116,7 +126,7 @@ export type DeepSection = (typeof DEEP_SECTIONS)[number]
 export interface DeepReport {
   /** 소유자/레포 */
   repo: string
-  section: DeepSection
+  section: DeepSection | 'people'
   /** 맨 위에 보여주는 해설. 별표 두 개로 감싼 부분은 굵게 보여줘요. */
   summary: string
   facts: { label: string; value: string }[]
@@ -124,6 +134,8 @@ export interface DeepReport {
   workflows?: Workflow[]
   templates?: FormTemplate[]
   labels?: RepoLabel[]
+  /** 탭이 아니라 구조 맵의 참여자별 보기에서 따로 받아요. */
+  people?: FolderPerson[]
 }
 
 /** 기술 스택을 종류별로 묶은 것 */
