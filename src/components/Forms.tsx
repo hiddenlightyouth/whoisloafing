@@ -4,8 +4,7 @@ import { Source, tag } from './DeepParts'
 
 interface Props {
   kind: 'issue' | 'pull'
-  /** 보여줄 템플릿. 템플릿 없이 라벨만 있으면 넘기지 않아요. */
-  template?: FormTemplate
+  templates: FormTemplate[]
   labels?: RepoLabel[]
   /** 넓은 자리에 그릴 때 true. 양식 옆에 원문을 나란히 보여주고, 라벨도 설명과 함께 다 보여줘요. */
   large: boolean
@@ -18,11 +17,12 @@ const COMPACT_LABELS = 10
  * 이슈 템플릿이나 PR 템플릿을 원문 대신 실제로 글을 쓸 때 보이는 양식처럼 그려요.
  * 무엇을 적어야 하는지, 무엇이 필수인지, 어떤 라벨이 자동으로 붙는지가 한눈에 보여요.
  */
-export function Forms({ kind, template, labels = [], large }: Props) {
+export function Forms({ kind, templates, labels = [], large }: Props) {
   return (
     <div className="space-y-4">
-      {template && (
-        <div className={large ? 'lg:grid lg:grid-cols-2 lg:items-start lg:gap-4' : ''}>
+      {/* 템플릿은 고르게 하지 않고 한 번에 다 보여줘요. 왼쪽이 양식, 오른쪽이 원문이에요. */}
+      {templates.map((template) => (
+        <div key={template.path} className={large ? 'lg:grid lg:grid-cols-2 lg:items-start lg:gap-4' : ''}>
           <Preview template={template} kind={kind} labels={labels} scroll={!large} />
           {large ? (
             <div className="mt-4 rounded-xl border border-gray-200 bg-white p-5 lg:mt-0">
@@ -32,7 +32,7 @@ export function Forms({ kind, template, labels = [], large }: Props) {
             <p className="mt-2 font-mono text-[12px] tracking-normal break-all text-gray-400">{template.path}</p>
           )}
         </div>
-      )}
+      ))}
 
       {labels.length > 0 && (
         <div className="rounded-xl border border-gray-200 bg-white p-5">
@@ -71,7 +71,7 @@ function Preview({ template, kind, labels, scroll }: { template: FormTemplate; k
         <dl className="mt-6 space-y-3 border-t border-gray-100 pt-4">
           {template.labels.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
-              <dt className="mr-1 text-[13px] text-gray-500">자동으로 붙는 라벨</dt>
+              <dt className="mr-1 text-[13px] text-gray-500">이 라벨이 사용됨</dt>
               {template.labels.map((name) => (
                 <dd key={name}>
                   <LabelChip name={name} color={colorOf(name)} />
@@ -179,7 +179,7 @@ function Labels({ labels, large }: { labels: RepoLabel[]; large: boolean }) {
                 <LabelChip name={label.name} color={label.color} />
               </span>
               <span className="min-w-0 flex-1 truncate text-[13px] text-gray-500">{label.description ?? ''}</span>
-              <span className="shrink-0 text-[12.5px] text-gray-500 tabular-nums">이슈 {label.count.toLocaleString('ko-KR')}개</span>
+              <span className="shrink-0 text-[12.5px] text-gray-500 tabular-nums">{label.count.toLocaleString('ko-KR')}개의 이슈</span>
             </li>
           ))}
         </ul>

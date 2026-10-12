@@ -333,8 +333,6 @@ function Dashboard({ repo, onOpen, onOpenChat }: { repo: string; onOpen: (repo: 
  */
 function Report({ report, name }: { report: DeepReport; name: string }) {
   const [index, setIndex] = useState(0)
-  /** 해설과 숫자를 담은 요약 카드를 열어 뒀는지 */
-  const [summary, setSummary] = useState(false)
 
   if (report.section === 'structure' && report.structure) {
     return (
@@ -347,61 +345,38 @@ function Report({ report, name }: { report: DeepReport; name: string }) {
   const workflows = report.workflows ?? []
   const templates = report.templates ?? []
   const labels = report.labels ?? []
-  const choices = report.section === 'pipeline' ? workflows.map((item) => item.name) : templates.map((item) => item.name)
-  const picked = Math.min(index, Math.max(0, choices.length - 1))
-  const empty = workflows.length === 0 && templates.length === 0 && labels.length === 0
+  const picked = Math.min(index, Math.max(0, workflows.length - 1))
+  // 워크플로가 여러 개일 때만 고르는 메뉴를 띄워요. 메뉴가 없으면 그 자리를 비워 두지 않아요.
+  const menu = report.section === 'pipeline' && workflows.length > 1
+
+  if (workflows.length === 0 && templates.length === 0 && labels.length === 0) {
+    return (
+      <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center bg-gray-50 px-6">
+        <p className="max-w-md text-center text-[14px] leading-relaxed text-balance text-gray-600">
+          <RichText text={report.summary} />
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="relative min-h-0 min-w-0 flex-1 bg-gray-50">
-      {empty ? (
-        <div className="flex h-full items-center justify-center px-6">
-          <p className="max-w-md text-center text-[14px] leading-relaxed text-balance text-gray-600">
-            <RichText text={report.summary} />
-          </p>
-        </div>
-      ) : (
-        <div className="h-full overflow-auto px-4 pt-16 pb-4">
-          {report.section === 'pipeline' ? (
-            <Pipeline workflow={workflows[picked]} />
-          ) : (
-            <Forms kind={report.section === 'issues' ? 'issue' : 'pull'} template={templates[picked]} labels={labels} large />
-          )}
-        </div>
-      )}
+      <div className={`h-full overflow-auto px-4 pb-4 ${menu ? 'pt-16' : 'pt-4'}`}>
+        {report.section === 'pipeline' ? (
+          <Pipeline workflow={workflows[picked]} />
+        ) : (
+          <Forms kind={report.section === 'issues' ? 'issue' : 'pull'} templates={templates} labels={labels} large />
+        )}
+      </div>
 
-      {!empty && (
+      {menu && (
+        // 스크롤한 내용이 메뉴 뒤로 비치지 않게, 메뉴가 있는 줄에 바탕을 깔아요.
         <div className="absolute inset-x-0 top-0 flex h-16 items-center gap-2 bg-gray-50 px-4">
-          {choices.length > 1 && (
-            <MapMenu
-              label={report.section === 'pipeline' ? '워크플로' : '템플릿'}
-              value={choices[picked]}
-              groups={[{ items: choices.map((choice, item) => ({ label: choice, checked: item === picked, onSelect: () => setIndex(item) })) }]}
-            />
-          )}
-          {report.section !== 'pipeline' && (
-            <button type="button" aria-pressed={summary} onClick={() => setSummary((value) => !value)} className={`${toolButton} ${summary ? 'border-brand text-brand-hover' : ''}`}>
-              요약
-            </button>
-          )}
+          <MapMenu
+            value={workflows[picked].name}
+            groups={[{ items: workflows.map((workflow, item) => ({ label: workflow.name, checked: item === picked, onSelect: () => setIndex(item) })) }]}
+          />
         </div>
-      )}
-
-      {summary && !empty && (
-        <aside className="absolute bottom-3 left-3 max-h-[70%] w-80 overflow-y-auto rounded-xl border border-gray-200 bg-white p-4">
-          <p className="text-[13.5px] leading-relaxed whitespace-pre-line text-gray-900">
-            <RichText text={report.summary} />
-          </p>
-          {report.facts.length > 0 && (
-            <dl className="mt-3 divide-y divide-gray-100 border-t border-gray-100">
-              {report.facts.map((fact) => (
-                <div key={fact.label} className="flex items-baseline justify-between gap-4 py-2">
-                  <dt className="shrink-0 text-[12px] text-gray-500">{fact.label}</dt>
-                  <dd className="min-w-0 text-right text-[13px] font-medium text-gray-900 tabular-nums">{fact.value}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </aside>
       )}
     </div>
   )

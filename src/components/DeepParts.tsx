@@ -86,7 +86,8 @@ export const toolButton =
  * 고른 항목에는 체크 표시가 붙고, 바깥을 누르거나 Esc를 누르면 닫혀요.
  */
 export function MapMenu({ label, value, active = false, groups, onOpen, icon }: {
-  label: string
+  /** 버튼에 적는 이름. 고른 값만 보여줘도 뜻이 통하면 넘기지 않아요. */
+  label?: string
   /** 지금 고른 값. 있으면 버튼에 이름 옆으로 보여줘요. */
   value?: string
   active?: boolean
@@ -127,7 +128,7 @@ export function MapMenu({ label, value, active = false, groups, onOpen, icon }: 
         className={`${toolButton} ${active ? 'border-brand text-brand-hover hover:border-brand hover:text-brand-hover' : ''}`}
       >
         {icon}
-        <span className="text-gray-500">{label}</span>
+        {label && <span className="text-gray-500">{label}</span>}
         {value && <span className="max-w-40 truncate">{value}</span>}
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className={`size-3 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true">
           <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
