@@ -57,6 +57,23 @@ function sourceFolders(root: StructureNode): Set<string> {
   return open
 }
 
+/** 주요 폴더로 치는 기준. 파일이 이만큼은 있고, 전체에서 이 비율은 넘어야 펼쳐요. */
+const MAIN_MIN_FILES = 8
+const MAIN_MIN_SHARE = 0.04
+
+/** 코드가 든 폴더 중에서도 덩치가 큰 것만 펼쳐요. 파일 몇 개짜리 자잘한 폴더는 접어 둬서 큰 줄기만 보여요. */
+function mainFolders(root: StructureNode): Set<string> {
+  const open = new Set<string>()
+  const least = Math.max(MAIN_MIN_FILES, root.files * MAIN_MIN_SHARE)
+  const visit = (node: StructureNode) => {
+    if (isSide(node) || node.children.length === 0 || node.files < least) return
+    open.add(node.path)
+    node.children.forEach(visit)
+  }
+  root.children.forEach(visit)
+  return open
+}
+
 /** 하위 폴더가 있는 폴더 전부예요. */
 function allFolders(root: StructureNode): Set<string> {
   const open = new Set<string>()
@@ -130,7 +147,7 @@ function layout(root: StructureNode, open: Set<string>, nodeH: number): Placed[]
 export function StructureMap({ name, repo, root }: Props) {
   const [open, setOpen] = useState<Set<string>>(() => sourceFolders(root))
   /** 메뉴에서 고른 펼침 방식. 폴더를 직접 눌러서 바꾸면 어느 것도 아니게 돼요. */
-  const [mode, setMode] = useState<'source' | 'all' | 'none' | null>('source')
+  const [mode, setMode] = useState<'main' | 'source' | 'all' | 'none' | null>('source')
   const [selected, setSelected] = useState<string | null>(null)
   const [view, setView] = useState({ x: 24, y: 24, k: 1 })
   const frameRef = useRef<HTMLDivElement>(null)
@@ -223,7 +240,7 @@ export function StructureMap({ name, repo, root }: Props) {
     fit(READABLE_ZOOM)
   }, [placed, fit])
 
-  function showFolders(next: Set<string>, picked: 'source' | 'all' | 'none') {
+  function showFolders(next: Set<string>, picked: 'main' | 'source' | 'all' | 'none') {
     refit.current = true
     setSelected(null)
     setMode(picked)
@@ -439,6 +456,7 @@ export function StructureMap({ name, repo, root }: Props) {
             {
               title: '폴더',
               items: [
+                { label: '주요 폴더만 펼치기', checked: mode === 'main', onSelect: () => showFolders(mainFolders(root), 'main') },
                 { label: '소스 폴더만 펼치기', checked: mode === 'source', onSelect: () => showFolders(sourceFolders(root), 'source') },
                 { label: '모두 펼치기', checked: mode === 'all', onSelect: () => showFolders(allFolders(root), 'all') },
                 { label: '모두 접기', checked: mode === 'none', onSelect: () => showFolders(new Set(), 'none') },
