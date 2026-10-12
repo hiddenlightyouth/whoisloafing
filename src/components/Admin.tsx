@@ -2,19 +2,21 @@ import { track } from '../lib/analytics'
 import { isAdmin, useAuth } from '../lib/auth'
 import { useShortcuts } from '../lib/shortcuts'
 import { AdminChats } from './AdminChats'
+import { AdminFeedback } from './AdminFeedback'
 import { AdminOverview } from './AdminOverview'
 import { AdminUsage } from './AdminUsage'
 import { AdminUsers } from './AdminUsers'
 import { Kbd } from './Shortcuts'
 
-export type AdminTab = 'overview' | 'users' | 'chats' | 'ai'
+export type AdminTab = 'overview' | 'users' | 'chats' | 'feedback' | 'ai'
 
-const ADMIN_TABS: AdminTab[] = ['overview', 'users', 'chats', 'ai']
+const ADMIN_TABS: AdminTab[] = ['overview', 'users', 'chats', 'feedback', 'ai']
 
 const TAB_LABELS: Record<AdminTab, string> = {
   overview: '현황',
   users: '회원',
   chats: '채팅',
+  feedback: '피드백',
   ai: 'AI 사용량',
 }
 
@@ -23,15 +25,17 @@ interface Props {
   onTab: (tab: AdminTab) => void
   /** 서버에 관리자 API가 있는지. 없으면 예전부터 있던 AI 사용량만 보여줘요. */
   full: boolean
+  /** 서버가 피드백을 받는지. 없으면 피드백 탭을 숨겨요. */
+  feedback: boolean
   /** 공유된 채팅을 열어요. */
   onOpenChat: (id: string) => void
 }
 
 /** 앱에서 관리자 계정만 보는 화면이에요. 서비스 현황, 회원, 채팅, AI 사용량을 탭으로 나눠서 봐요. */
-export function Admin({ tab, onTab, full, onOpenChat }: Props) {
+export function Admin({ tab, onTab, full, feedback, onOpenChat }: Props) {
   const { me } = useAuth()
   const allowed = me === null || isAdmin(me)
-  const tabs = full ? ADMIN_TABS : (['ai'] as AdminTab[])
+  const tabs = full ? ADMIN_TABS.filter((item) => feedback || item !== 'feedback') : (['ai'] as AdminTab[])
   const current = tabs.includes(tab) ? tab : tabs[0]
 
   const select = (next: AdminTab) => {
@@ -81,6 +85,8 @@ export function Admin({ tab, onTab, full, onOpenChat }: Props) {
           <AdminUsers onOpenChat={onOpenChat} />
         ) : current === 'chats' ? (
           <AdminChats onOpenChat={onOpenChat} />
+        ) : current === 'feedback' ? (
+          <AdminFeedback onOpenChat={onOpenChat} />
         ) : (
           <AdminUsage calls={full} />
         )}

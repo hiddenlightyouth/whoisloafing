@@ -114,6 +114,27 @@ export interface AiCallDetail extends AiCall {
   response: string | null
 }
 
+/** 사용자가 보낸 평가나 버그 신고 하나 */
+export interface AdminFeedback {
+  id: number
+  kind: 'RATING' | 'BUG'
+  rating: 'GOOD' | 'BAD' | null
+  comment: string | null
+  chatId: string | null
+  page: string | null
+  userId: number | null
+  userEmail: string | null
+  userName: string | null
+  device: DeviceKind
+  createdAt: string
+}
+
+export interface FeedbackSummary {
+  good: number
+  bad: number
+  bugs: number
+}
+
 const MESSAGES: Record<string, string> = {
   C404: '없는 기록이에요. 목록을 새로 받아 주세요.',
   C403: '관리자 계정만 할 수 있어요.',
@@ -172,6 +193,11 @@ export const fetchAdminChats = (query: string, filter: AdminChatFilter, page: nu
 export const unshareAdminChat = (id: string) => send(`/admin/chats/${id}/share`, 'DELETE')
 
 export const deleteAdminChat = (id: string) => send(`/admin/chats/${id}`, 'DELETE')
+
+export const fetchAdminFeedback = (kind: 'ALL' | 'RATING' | 'BUG', page: number) =>
+  request<Slice<AdminFeedback>>(`/admin/feedback?page=${page}&size=20${kind === 'ALL' ? '' : `&kind=${kind}`}`)
+
+export const fetchFeedbackSummary = () => request<FeedbackSummary>('/admin/feedback/summary')
 
 /** from(YYYY-MM-DD)부터 오늘까지의 AI 사용량을 받아요. */
 export const fetchAiUsage = (from: string) => request<AiUsageRow[]>(`/ai-usage/daily?from=${from}`)

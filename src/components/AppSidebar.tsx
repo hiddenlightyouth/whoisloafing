@@ -3,6 +3,7 @@ import { track } from '../lib/analytics'
 import { canPinChats, deleteChat, pinChat, reorderPinned, unshareChat } from '../lib/api'
 import { appAtLeast, appVersion, postToApp, type AppTheme } from '../lib/app'
 import { fetchMyChats, signOut, useAuth, type ChatSummary, type Me } from '../lib/auth'
+import { openBugReport, useFeedback } from '../lib/feedback'
 import { formatWhen } from '../lib/format'
 import { setAppBackdrop, setAppTheme, useAppSettings } from '../lib/theme'
 import { setShortcutHintsPinned, useShortcutHintsPinned } from '../lib/shortcuts'
@@ -392,6 +393,7 @@ function AccountMenu({ me, page, onArticles, onMe, onAdmin }: { me: Me | null; p
   const ref = useRef<HTMLDivElement>(null)
   const { theme, backdrop } = useAppSettings()
   const hintsPinned = useShortcutHintsPinned()
+  const { ready: canReport } = useFeedback()
   const name = me?.name || '내 정보'
 
   useEffect(() => {
@@ -416,7 +418,7 @@ function AccountMenu({ me, page, onArticles, onMe, onAdmin }: { me: Me | null; p
   }
 
   return (
-    <div ref={ref} className="relative shrink-0 border-t border-gray-200 p-2">
+    <div ref={ref} className="relative flex shrink-0 items-center gap-1 border-t border-gray-200 p-2">
       {open && (
         <div role="menu" className="absolute bottom-full left-2 mb-1 w-[272px] animate-rise rounded-2xl border border-gray-200 bg-white p-1.5">
           {me?.email && <p className="truncate px-2.5 pt-1.5 pb-2 text-[12.5px] text-gray-500">{me.email}</p>}
@@ -551,7 +553,7 @@ function AccountMenu({ me, page, onArticles, onMe, onAdmin }: { me: Me | null; p
           if (!open) track('app_menu_open')
           setOpen((value) => !value)
         }}
-        className={`flex h-12 w-full items-center gap-2.5 rounded-xl px-3 text-left transition-colors ${tone(open || page === 'me' || page === 'articles' || page === 'admin')}`}
+        className={`flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-xl px-3 text-left transition-colors ${tone(open || page === 'me' || page === 'articles' || page === 'admin')}`}
       >
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13.5px] font-semibold text-gray-900">{name}</span>
@@ -561,6 +563,20 @@ function AccountMenu({ me, page, onArticles, onMe, onAdmin }: { me: Me | null; p
           <path d="M5 6.5L8 3.5l3 3M5 9.5l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
+      {/* 사이드바 오른쪽 아래의 버그 신고 버튼이에요. 서버가 신고를 받을 때만 보여줘요. */}
+      {canReport && (
+        <button
+          type="button"
+          aria-label="버그 신고"
+          title="버그 신고"
+          onClick={openBugReport}
+          className="flex size-9 shrink-0 items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-gray-200/50 hover:text-gray-700"
+        >
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden="true">
+            <path d="M5.5 5.5a2.5 2.5 0 0 1 5 0M5 6.5h6a1 1 0 0 1 1 1v2a4 4 0 0 1-8 0v-2a1 1 0 0 1 1-1zM8 8v5.5M4 9H2M14 9h-2M4.5 12L3 13.5M11.5 12l1.5 1.5M4.3 6.8L3 5.5M11.7 6.8L13 5.5" />
+          </svg>
+        </button>
+      )}
     </div>
   )
 }

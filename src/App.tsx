@@ -6,6 +6,7 @@ import { ChatSkeleton, ExploreSkeleton } from './components/Skeleton'
 import { Header } from './components/Header'
 import { AppNudge } from './components/AppNudge'
 import { Hero } from './components/Hero'
+import { BugReport, FeedbackPrompt } from './components/Feedback'
 import { LeaveDialog } from './components/LeaveDialog'
 import { LoginNudge } from './components/LoginNudge'
 import { ShortcutTip } from './components/Shortcuts'
@@ -16,6 +17,7 @@ import { fetchChat, fetchConfig, shareChat } from './lib/api'
 import { isApp, isMac, MAC_DOWNLOAD_OPEN } from './lib/app'
 import './lib/theme'
 import { claimChats, isAdmin, loadMe, useAuth } from './lib/auth'
+import { setFeedbackReady, shouldAskFeedback, useFeedback } from './lib/feedback'
 import { useShortcuts } from './lib/shortcuts'
 import { showToast } from './lib/toast'
 
@@ -51,7 +53,7 @@ function deepFromPath(): { repo: string | null } | null {
   return match ? { repo: match[1] ? `${match[1]}/${match[2]}` : null } : null
 }
 
-const ADMIN_PATH = /^\/admin(?:\/(users|chats|ai))?\/?$/
+const ADMIN_PATH = /^\/admin(?:\/(users|chats|feedback|ai))?\/?$/
 
 /** 관리자 화면 주소면 보고 있는 탭을 돌려줘요. */
 function adminFromPath(): AdminTab | null {
@@ -158,6 +160,10 @@ export default function App() {
   /** 앱의 사이드바를 펴 뒀는지. 다음에 켰을 때도 그대로 둬요. */
   const [sidebarOpen, setSidebarOpen] = useState(() => !sidebarClosed())
   const { tokens, me } = useAuth()
+  const feedback = useFeedback()
+  /** 분석이 어땠는지 묻는 카드가 떠 있는지. 아주 가끔만 띄워요. */
+  const [askingFeedback, setAskingFeedback] = useState(false)
+  const wasBusy = useRef(false)
   /** 진행 중인 채팅을 두고 다른 화면으로 가려고 할 때, 정말 떠날지 묻는 창과 가려던 곳 */
   const [leaveTo, setLeaveTo] = useState<LeaveTarget | null>(null)
   const confirmingLeave = leaveTo !== null
@@ -272,6 +278,7 @@ export default function App() {
       setDeep(config.deep)
       setExploreReady(config.explore)
       setAdminApi(config.admin)
+      setFeedbackReady(config.feedback)
     })
     void loadMe()
     void openFromLocation()
@@ -461,6 +468,14 @@ export default function App() {
 
   // 공유된 채팅과 다른 브라우저에서 만든 채팅은 읽기만 할 수 있어요.
   const readOnly = chat !== null && (chat.shared || !chat.mine)
+
+  // 내 채팅에서 답을 하나 다 받을 때마다 세다가, 때가 되면 분석이 어땠는지 물어봐요.
+  useEffect(() => {
+    const finished = wasBusy.current && !busy
+    wasBusy.current = busy
+    if (!finished || !feedback.ready || readOnly || !messages.some((message) => message.from === 'bot')) return
+    if (shouldAskFeedback()) setAskingFeedback(true)
+  }, [busy, feedback.ready, messages, readOnly])
   // 내가 진행 중인 채팅이 화면에 있으면, 떠나기 전에 항상 물어봐요. 분석이 잠깐 멈춰 있을 때(질문을 기다리는 중)도 마찬가지예요.
   const working = busy || (messages.length > 0 && !readOnly)
   // 로그인하지 않고 분석하는 동안, 첫 말풍선이 나온 뒤에 로그인을 권해요.
@@ -630,7 +645,7 @@ export default function App() {
         </Suspense>
       ) : adminPage ? (
         <Suspense fallback={<main className="flex-1" />}>
-          <Admin tab={adminPage} onTab={openAdmin} full={adminApi} onOpenChat={openChat} />
+          <Admin tab={adminPage} onTab={openAdmin} full={adminApi} feedback={feedback.ready} onOpenChat={openChat} />
         </Suspense>
       ) : about ? (
         <Suspense fallback={<main className="flex-1" />}>
@@ -703,6 +718,10 @@ export default function App() {
         <LeaveDialog home={leaveTo === 'home'} onStay={handleStay} onLeave={handleLeave} onLogin={storage && tokens === null && !account ? handleLeaveLogin : undefined} />
       )}
       {isApp && <ShortcutTip />}
+      {askingFeedback && messages.length > 0 && !account && !confirmingLeave && !(nudging && !nudgeClosed) && (
+        <FeedbackPrompt chatId={chatId.current} onClose={() => setAskingFeedback(false)} />
+      )}
+      {feedback.bugOpen && <BugReport chatId={messages.length > 0 ? chatId.current : null} />}
       <Toast />
     </div>
   )

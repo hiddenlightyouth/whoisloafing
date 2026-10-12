@@ -13,6 +13,8 @@ export interface ServerConfig {
   admin: boolean
   /** 서버에 채팅 상단 고정 API가 있는지. 없으면 내 작업의 메뉴에서 고정을 숨겨요. */
   pin: boolean
+  /** 서버가 평가와 버그 신고를 받는지. 없으면 평가를 묻지 않고 버그 신고 버튼도 숨겨요. */
+  feedback: boolean
 }
 
 /** 서버가 어떤 기능을 지원하는지 물어봐요. */
@@ -25,9 +27,10 @@ export async function fetchConfig(): Promise<ServerConfig> {
       explore: result.ok && result.data?.explore === true,
       admin: result.ok && result.data?.admin === true,
       pin: result.ok && result.data?.pin === true,
+      feedback: result.ok && result.data?.feedback === true,
     }
   } catch {
-    return { storage: false, deep: false, explore: false, admin: false, pin: false }
+    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false }
   }
 }
 
