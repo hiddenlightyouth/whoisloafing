@@ -1,4 +1,4 @@
-import { useEffect, type MouseEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, type CSSProperties, type MouseEvent } from 'react'
 import { track } from '../lib/analytics'
 import { MAC_DOWNLOAD, MAC_DOWNLOAD_OPEN } from '../lib/app'
 import { AppleLogo } from './Header'
@@ -75,13 +75,40 @@ function Shot({ feature }: { feature: Feature }) {
 /**
  * 서비스를 소개하는 화면이에요.
  * 위에 로고와 한마디, 시작하는 버튼을 두고, 아래에 기능을 한 줄에 두 개씩 실제 화면과 함께 늘어놓아요.
+ * 스크롤해서 내려가면 기능이 차례로 떠올라요.
  */
 export function About({ onHome }: Props) {
+  const scrollRef = useRef<HTMLElement>(null)
+
   useEffect(() => {
     document.title = `소개 | ${SITE_TITLE}`
     return () => {
       document.title = SITE_TITLE
     }
+  }, [])
+
+  // 스크롤해서 화면에 들어온 기능부터 떠오르게 해요. 처음부터 보이는 것은 그리기 전에 바로 표시해서 깜빡이지 않게 해요.
+  useLayoutEffect(() => {
+    const root = scrollRef.current
+    if (!root || !('IntersectionObserver' in window)) return
+    const targets = [...root.querySelectorAll<HTMLElement>('[data-reveal]')]
+    const limit = window.innerHeight
+    for (const target of targets) {
+      if (target.getBoundingClientRect().top < limit) target.dataset.shown = ''
+    }
+    root.dataset.armed = ''
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue
+          ;(entry.target as HTMLElement).dataset.shown = ''
+          observer.unobserve(entry.target)
+        }
+      },
+      { root, rootMargin: '0px 0px -8% 0px', threshold: 0.12 },
+    )
+    targets.filter((target) => target.dataset.shown === undefined).forEach((target) => observer.observe(target))
+    return () => observer.disconnect()
   }, [])
 
   const start = (event: MouseEvent) => {
@@ -92,7 +119,7 @@ export function About({ onHome }: Props) {
   }
 
   return (
-    <main className="flex-1 overflow-x-hidden overflow-y-auto">
+    <main ref={scrollRef} className="flex-1 overflow-x-hidden overflow-y-auto">
       <section className="mx-auto flex w-full max-w-2xl flex-col items-center px-6 pt-32 pb-20 text-center sm:pt-44 sm:pb-28">
         <img src="/logo.svg" alt="WhoIsLoafing" width={3403} height={367} draggable={false} className="h-6 w-auto sm:h-7" />
         <h1 className="mt-8 text-balance break-keep font-semibold leading-[1.2] tracking-[-0.03em] text-gray-900 text-[clamp(30px,6vw,56px)]">레포를 더 쉽게 분석하기</h1>
@@ -113,8 +140,9 @@ export function About({ onHome }: Props) {
       </section>
 
       <div className="mx-auto grid w-full max-w-7xl gap-x-10 gap-y-14 px-6 pb-20 md:grid-cols-2 md:gap-y-20">
-        {FEATURES.map((feature) => (
-          <article key={feature.shot} className="min-w-0">
+        {FEATURES.map((feature, index) => (
+          // 한 줄의 오른쪽 기능은 왼쪽보다 조금 늦게 떠올라요.
+          <article key={feature.shot} data-reveal style={{ '--reveal-delay': `${(index % 2) * 140}ms` } as CSSProperties} className="min-w-0">
             <Shot feature={feature} />
             <div className="mt-4 flex items-center gap-2.5 md:mt-6">
               <h2 className="min-w-0 break-keep font-semibold leading-snug tracking-[-0.03em] text-gray-900 text-[clamp(19px,2.1vw,26px)]">{feature.title}</h2>
