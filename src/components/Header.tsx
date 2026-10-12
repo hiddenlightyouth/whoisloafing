@@ -163,7 +163,7 @@ export function Header({
                     </span>
                   </a>
                   {/* 아직 받을 수 없어서 누를 수 없게 흐리게 둬요. */}
-                  <div role="menuitem" aria-disabled="true" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-gray-400">
+                  <div role="menuitem" aria-disabled="true" className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-gray-400 cursor-not-allowed">
                     <WindowsLogo />
                     <span>
                       <span className="block text-[13px] font-medium">Windows</span>
@@ -315,7 +315,7 @@ export function Header({
                     <span className="block text-[12px] text-gray-400">{MAC_SUPPORT}</span>
                   </span>
                 </a>
-                <div aria-disabled="true" className="flex items-center gap-2.5 py-2.5 text-gray-400">
+                <div aria-disabled="true" className="flex items-center gap-2.5 py-2.5 text-gray-400 cursor-not-allowed">
                   <WindowsLogo />
                   <span>
                     <span className="block text-[15px]">Windows</span>
