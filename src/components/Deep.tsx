@@ -29,17 +29,9 @@ const SECTION_LABELS: Record<DeepSection, string> = {
   pulls: 'PR 템플릿',
 }
 
-/** 분석하기를 누르기 전에 탭이 무엇을 보여주는지 알려 주는 말 */
-const SECTION_GUIDES: Record<DeepSection, string> = {
-  structure: '폴더가 어떻게 나뉘어 있고 각각 무슨 일을 하는지, 맵을 펼쳐 가며 둘러볼 수 있어요.',
-  pipeline: '코드를 올리면 어떤 검사와 배포가 어떤 순서로 자동으로 도는지 흐름으로 보여줘요.',
-  issues: '이슈를 쓸 때 뜨는 양식과 이 팀이 쓰는 라벨을 실제 화면처럼 보여줘요.',
-  pulls: 'PR을 올릴 때 뜨는 양식과, 팀이 그 양식을 얼마나 따르는지 보여줘요.',
-}
-
 type Loaded = 'loading' | { report: DeepReport } | { error: string }
 
-const SAVED_PREFIX = 'whoisloafing:deep:'
+const SAVED_PREFIX = 'whoisloafing:deep:v2:'
 
 /** 분석한 결과는 이 기기에 저장해 둬요. 다음에 열면 분석하기를 다시 누르지 않아도 바로 보여요. */
 function readSaved(repo: string): Partial<Record<DeepSection, Loaded>> {
@@ -213,16 +205,24 @@ function Dashboard({ repo, onOpen, onOpenChat }: { repo: string; onOpen: (repo: 
   const [loaded, setLoaded] = useState<Partial<Record<DeepSection, Loaded>>>(() => readSaved(repo))
   const current = loaded[section]
 
-  /** 탭의 분석하기를 눌렀을 때만 받아요. 받은 결과는 이 기기에 저장해서, 다음에 열면 바로 보여요. */
+  /** 탭을 받아 와요. 받은 결과는 이 기기에 저장해서, 다음에 열면 기다리지 않고 바로 보여요. */
   async function analyze(target: DeepSection, again = false) {
-    track('deep_analyze', { repo, section: target, again })
+    if (again) track('deep_analyze', { repo, section: target })
     setLoaded((prev) => ({ ...prev, [target]: 'loading' }))
     const result = await fetchDeepReport(repo, target)
     if ('report' in result) writeSaved(repo, target, result.report)
     setLoaded((prev) => ({ ...prev, [target]: result }))
   }
 
+  // 탭에 들어오면 저장해 둔 결과를 보여주고, 없으면 바로 받아 와요.
+  useEffect(() => {
+    if (!current) void analyze(section)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section, current])
+
   const [owner, name] = repo.split('/')
+  // 프로젝트 구조는 맵이 여백 없이 탭 아래를 가득 채워요.
+  const bleed = section === 'structure' && current !== undefined && current !== 'loading' && 'report' in current && current.report.structure !== undefined
 
   return (
     <main className="flex min-h-0 flex-1 flex-col px-6 pt-14 pb-6 md:px-10">
@@ -297,29 +297,22 @@ function Dashboard({ repo, onOpen, onOpenChat }: { repo: string; onOpen: (repo: 
         )}
       </div>
 
-      <div role="tabpanel" className="mt-5 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto xl:flex-row xl:overflow-visible">
-        {!current ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-            <div>
-              <h2 className="text-[17px] font-semibold text-gray-900">{SECTION_LABELS[section]}</h2>
-              <p className="mt-1.5 max-w-sm text-[13.5px] leading-relaxed text-balance break-keep text-gray-500">{SECTION_GUIDES[section]}</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void analyze(section)}
-              className="h-10 rounded-full bg-brand px-5 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover"
-            >
-              분석하기
-            </button>
-          </div>
-        ) : current === 'loading' ? (
+      <div
+        role="tabpanel"
+        className={
+          bleed
+            ? '-mx-6 -mb-6 flex min-h-0 flex-1 flex-col md:-mx-10'
+            : 'mt-5 flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto xl:flex-row xl:overflow-visible'
+        }
+      >
+        {!current || current === 'loading' ? (
           <Loading />
         ) : 'error' in current ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <p className="text-[14px] leading-relaxed text-gray-600">{current.error}</p>
             <button
               type="button"
-              onClick={() => void analyze(section)}
+              onClick={() => void analyze(section, true)}
               className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover"
             >
               다시 시도하기
@@ -342,7 +335,7 @@ function Report({ report, name }: { report: DeepReport; name: string }) {
   // 프로젝트 구조는 설명 없이 맵만 크게 보여줘요.
   if (hasStructure && report.structure) {
     return (
-      <div className="h-[560px] min-w-0 shrink-0 xl:h-auto xl:flex-1 xl:shrink">
+      <div className="min-h-0 min-w-0 flex-1">
         <StructureMap name={name} root={report.structure} />
       </div>
     )

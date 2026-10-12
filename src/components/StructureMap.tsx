@@ -8,7 +8,9 @@ interface Props {
 }
 
 const NODE_W = 208
+/** 설명을 보여줄 때와 숨길 때의 칸 높이 */
 const NODE_H = 50
+const NODE_H_COMPACT = 34
 const COL_GAP = 72
 const ROW_GAP = 10
 const MIN_ZOOM = 0.3
@@ -41,7 +43,7 @@ const isSide = (node: StructureNode) => {
 }
 
 /** 처음에 펼쳐 둘 폴더예요. 코드가 든 폴더는 끝까지 펼치고, 설정이나 문서 같은 곁가지 폴더는 접어 둬요. */
-function initialOpen(root: StructureNode): Set<string> {
+function sourceFolders(root: StructureNode): Set<string> {
   const open = new Set<string>()
   const visit = (node: StructureNode) => {
     if (isSide(node) || node.children.length === 0) return
@@ -52,8 +54,30 @@ function initialOpen(root: StructureNode): Set<string> {
   return open
 }
 
+/** 하위 폴더가 있는 폴더 전부예요. */
+function allFolders(root: StructureNode): Set<string> {
+  const open = new Set<string>()
+  const visit = (node: StructureNode) => {
+    if (node.children.length === 0) return
+    open.add(node.path)
+    node.children.forEach(visit)
+  }
+  root.children.forEach(visit)
+  return open
+}
+
+const ROLES_HIDDEN_KEY = 'whoisloafing:deep-map-roles-hidden'
+
+function rolesHidden(): boolean {
+  try {
+    return localStorage.getItem(ROLES_HIDDEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 /** 펼쳐 둔 폴더만 가로로 뻗는 나무로 자리를 잡아요. 부모는 자식들의 가운데 높이에 와요. */
-function layout(root: StructureNode, open: Set<string>): Placed[] {
+function layout(root: StructureNode, open: Set<string>, nodeH: number): Placed[] {
   const placed: Placed[] = []
   let cursor = 0
 
@@ -64,13 +88,13 @@ function layout(root: StructureNode, open: Set<string>): Placed[] {
     const children = expanded ? node.children.map((child) => place(child, depth + 1, item)) : []
     if (expanded && node.more !== undefined && depth > 0) {
       const more: Placed = { node, x: (depth + 1) * (NODE_W + COL_GAP), y: cursor, depth: depth + 1, parent: item, more: node.more }
-      cursor += NODE_H + ROW_GAP
+      cursor += nodeH + ROW_GAP
       placed.push(more)
       children.push(more)
     }
     if (children.length === 0) {
       item.y = cursor
-      cursor += NODE_H + ROW_GAP
+      cursor += nodeH + ROW_GAP
     } else {
       item.y = (children[0].y + children[children.length - 1].y) / 2
     }
@@ -87,7 +111,7 @@ function layout(root: StructureNode, open: Set<string>): Placed[] {
  * 빈 곳을 끌거나 두 손가락으로 밀면 맵이 움직이고, 두 손가락을 벌리거나 아래 버튼을 누르면 커지고 작아져요.
  */
 export function StructureMap({ name, root }: Props) {
-  const [open, setOpen] = useState<Set<string>>(() => initialOpen(root))
+  const [open, setOpen] = useState<Set<string>>(() => sourceFolders(root))
   const [selected, setSelected] = useState<string | null>(null)
   const [view, setView] = useState({ x: 24, y: 24, k: 1 })
   const frameRef = useRef<HTMLDivElement>(null)
@@ -97,10 +121,16 @@ export function StructureMap({ name, root }: Props) {
   /** 폴더를 펼치거나 접을 때, 누른 칸이 화면에서 제자리에 있도록 기억해 두는 값 */
   const anchor = useRef<{ key: string; y: number } | null>(null)
 
-  const placed = useMemo(() => layout(root, open), [root, open])
+  /** 폴더 이름 아래의 설명을 보여줄지. 숨기면 칸이 낮아져서 한 화면에 더 많이 들어와요. */
+  const [roles, setRoles] = useState(() => !rolesHidden())
+  const nodeH = roles ? NODE_H : NODE_H_COMPACT
+  /** 펼친 폴더를 한꺼번에 바꾼 뒤에는 맵을 다시 화면에 맞춰요. */
+  const refit = useRef(false)
+
+  const placed = useMemo(() => layout(root, open, nodeH), [root, open, nodeH])
   const keyOf = (item: Placed) => (item.more !== undefined ? `${item.node.path}:more` : item.node.path)
   const width = Math.max(...placed.map((item) => item.x)) + NODE_W
-  const height = Math.max(...placed.map((item) => item.y)) + NODE_H
+  const height = Math.max(...placed.map((item) => item.y)) + nodeH
 
   /** 맵 전체가 화면에 들어오게 맞춰요. 작은 맵을 억지로 키우지는 않아요. */
   const rootY = placed[0].y
@@ -112,9 +142,9 @@ export function StructureMap({ name, root }: Props) {
       const k = Math.min(1, Math.max(floor, Math.min((frame.clientWidth - pad * 2) / width, (frame.clientHeight - pad * 2) / height)))
       // 다 들어오지 않을 만큼 크면, 가지가 시작되는 뿌리 칸이 화면 가운데 높이에 오게 해요.
       const fits = height * k <= frame.clientHeight - pad * 2
-      setView({ k, x: pad, y: fits ? (frame.clientHeight - height * k) / 2 : frame.clientHeight / 2 - (rootY + NODE_H / 2) * k })
+      setView({ k, x: pad, y: fits ? (frame.clientHeight - height * k) / 2 : frame.clientHeight / 2 - (rootY + nodeH / 2) * k })
     },
-    [width, height, rootY],
+    [width, height, rootY, nodeH],
   )
 
   // 처음 그릴 때 한 번만 화면에 맞춰요. 그 뒤로는 보던 자리를 그대로 둬요.
@@ -125,6 +155,30 @@ export function StructureMap({ name, root }: Props) {
     // 처음에는 글자를 읽을 수 있는 크기까지만 줄여요. 전체는 한눈에 보기로 볼 수 있어요.
     fit(READABLE_ZOOM)
   }, [fit])
+
+  useLayoutEffect(() => {
+    if (!refit.current) return
+    refit.current = false
+    fit(READABLE_ZOOM)
+  }, [placed, fit])
+
+  function showFolders(next: Set<string>) {
+    refit.current = true
+    setSelected(null)
+    setOpen(next)
+  }
+
+  function toggleRoles() {
+    const next = !roles
+    refit.current = true
+    setRoles(next)
+    try {
+      if (next) localStorage.removeItem(ROLES_HIDDEN_KEY)
+      else localStorage.setItem(ROLES_HIDDEN_KEY, '1')
+    } catch {
+      return
+    }
+  }
 
   // 펼치거나 접으면 다른 칸들의 높이가 바뀌어요. 누른 칸은 화면에서 움직이지 않게 맵을 그만큼 옮겨요.
   useLayoutEffect(() => {
@@ -210,7 +264,11 @@ export function StructureMap({ name, root }: Props) {
         if (suppressClick.current) window.setTimeout(() => (suppressClick.current = false), 0)
       }}
       onPointerCancel={() => (drag.current = null)}
-      className="relative h-full touch-none overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 select-none"
+      onClick={(event) => {
+        // 칸이나 버튼이 아닌 빈 곳을 누르면 골라 둔 폴더의 설명을 닫아요.
+        if (!suppressClick.current && !(event.target as HTMLElement).closest('button, aside')) setSelected(null)
+      }}
+      className="relative h-full touch-none overflow-hidden bg-gray-50 select-none"
       style={{ cursor: 'grab' }}
     >
       <div className="absolute top-0 left-0 origin-top-left" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.k})`, width, height }}>
@@ -218,19 +276,19 @@ export function StructureMap({ name, root }: Props) {
           {placed.map((item) => {
             if (!item.parent) return null
             const fromX = item.parent.x + NODE_W
-            const fromY = item.parent.y + NODE_H / 2
-            const toY = item.y + NODE_H / 2
+            const fromY = item.parent.y + nodeH / 2
+            const toY = item.y + nodeH / 2
             const mid = (fromX + item.x) / 2
             return <path key={keyOf(item)} d={`M${fromX} ${fromY} C${mid} ${fromY}, ${mid} ${toY}, ${item.x} ${toY}`} strokeDasharray={item.more !== undefined ? '3 4' : undefined} />
           })}
         </svg>
 
         {placed.map((item) => {
-          const style = { left: item.x, top: item.y, width: NODE_W, height: NODE_H }
+          const style = { left: item.x, top: item.y, width: NODE_W, height: nodeH }
           if (item.more !== undefined) {
             return (
               <p key={keyOf(item)} style={style} className="absolute flex items-center rounded-xl border border-dashed border-gray-300 px-3 text-[12px] text-gray-500">
-                작은 폴더 {count(item.more)}개 더 있어요
+                폴더 {count(item.more)}개 생략
               </p>
             )
           }
@@ -259,12 +317,14 @@ export function StructureMap({ name, root }: Props) {
             >
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-mono text-[13px] font-semibold tracking-normal">{isRoot ? name : node.name}</span>
-                <span className={`block truncate text-[11.5px] ${isRoot ? 'text-white/70' : 'text-gray-500'}`}>
-                  {isRoot ? `파일 ${count(node.files)}개` : (node.role ?? `파일 ${count(node.files)}개`)}
-                </span>
+                {roles && (
+                  <span className={`block truncate text-[11.5px] ${isRoot ? 'text-white/70' : 'text-gray-500'}`}>
+                    {isRoot ? `파일 ${count(node.files)}개` : (node.role ?? `파일 ${count(node.files)}개`)}
+                  </span>
+                )}
               </span>
               {!isRoot && (
-                <span className="flex shrink-0 flex-col items-end gap-1">
+                <span className={`flex shrink-0 gap-1 ${roles ? 'flex-col items-end' : 'items-center'}`}>
                   <span className="text-[11px] text-gray-500 tabular-nums">{count(node.files)}</span>
                   {expandable && (
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className={`size-3 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`} aria-hidden="true">
@@ -304,6 +364,21 @@ export function StructureMap({ name, root }: Props) {
         </aside>
       )}
 
+      <div onPointerDown={(event) => event.stopPropagation()} className="absolute top-3 left-3 flex cursor-default flex-wrap items-center gap-1 rounded-full border border-gray-200 bg-white p-1">
+        <button type="button" onClick={() => showFolders(sourceFolders(root))} className={option}>
+          소스 폴더만 펼치기
+        </button>
+        <button type="button" onClick={() => showFolders(allFolders(root))} className={option}>
+          전체 펼치기
+        </button>
+        <button type="button" onClick={() => showFolders(new Set())} className={option}>
+          전체 접기
+        </button>
+        <button type="button" aria-pressed={roles} onClick={toggleRoles} className={option}>
+          {roles ? '설명 숨기기' : '설명 표시'}
+        </button>
+      </div>
+
       <div onPointerDown={(event) => event.stopPropagation()} className="absolute right-3 bottom-3 flex cursor-default items-center gap-1 rounded-full border border-gray-200 bg-white p-1">
         <button type="button" aria-label="작게" onClick={() => zoomBy(1 / 1.25)} className={control}>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
@@ -325,3 +400,4 @@ export function StructureMap({ name, root }: Props) {
 }
 
 const control = 'flex size-7 items-center justify-center rounded-full text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900'
+const option = 'h-7 rounded-full px-2.5 text-[12px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900'
