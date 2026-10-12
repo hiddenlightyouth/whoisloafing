@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { track } from '../lib/analytics'
-import { addDays, dayLabel, daysBetween, fetchAiCalls, fetchAiUsage, monthLabel, seoulToday, type AiCall, type AiUsageRow } from '../lib/admin'
+import { addDays, dayLabel, daysBetween, fetchAiCall, fetchAiCalls, fetchAiUsage, monthLabel, seoulToday, type AiCall, type AiCallDetail, type AiUsageRow } from '../lib/admin'
 import { formatDateTime } from '../lib/format'
+import { showToast } from '../lib/toast'
 import { tag } from './DeepParts'
-import { BarChart, card, compact, Empty, Failed, full, MoreButton, RowsSkeleton, sectionTitle, Segmented, share, Stat, StatsSkeleton, tableWrap, td, th, usePaged, type Bar } from './AdminParts'
+import { BarChart, card, compact, Empty, Failed, full, MoreButton, rowButton, RowsSkeleton, sectionTitle, Segmented, share, Stat, StatsSkeleton, tableWrap, td, th, usePaged, type Bar } from './AdminParts'
+import { Bone } from './Skeleton'
 
 type Period = 7 | 30 | 90 | 365 | 'all'
 
@@ -223,10 +225,12 @@ const CALL_FILTERS: ['all' | 'failed', string][] = [
 
 const seconds = (ms: number) => `${(ms / 1000).toFixed(1)}초`
 
-/** 최근에 AI를 부른 기록이에요. 어떤 호출이 실패했는지, 얼마나 걸렸는지 봐요. */
+/** 최근에 AI를 부른 기록이에요. 어떤 호출이 실패했는지, 얼마나 걸렸는지 보고, 줄을 누르면 넣은 프롬프트와 받은 응답을 봐요. */
 function Calls() {
   const [filter, setFilter] = useState<'all' | 'failed'>('all')
   const list = usePaged<AiCall>((page) => fetchAiCalls(filter === 'failed', page), filter)
+  const [openId, setOpenId] = useState<number | null>(null)
+  const close = useCallback(() => setOpenId(null), [])
 
   return (
     <>
@@ -260,7 +264,19 @@ function Calls() {
               </thead>
               <tbody>
                 {list.items.map((call) => (
-                  <tr key={call.id} className="border-t border-gray-100">
+                  <tr
+                    key={call.id}
+                    tabIndex={0}
+                    aria-label={`${purposeLabel(call.purpose)} 호출 자세히 보기`}
+                    onClick={() => {
+                      track('admin_call_open', { status: call.status })
+                      setOpenId(call.id)
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') setOpenId(call.id)
+                    }}
+                    className={`cursor-pointer border-t border-gray-100 transition-colors hover:bg-gray-50 ${openId === call.id ? 'bg-gray-50' : ''}`}
+                  >
                     <td className={`${td} whitespace-nowrap text-gray-500`}>{formatDateTime(call.createdAt)}</td>
                     <td className={`${td} whitespace-nowrap`}>{purposeLabel(call.purpose)}</td>
                     <td className={`${td} max-w-[260px]`}>
@@ -285,6 +301,157 @@ function Calls() {
           {list.hasNext && <MoreButton loading={list.loadingMore} onClick={() => void list.more()} />}
         </>
       )}
+
+      {openId !== null && <CallPanel key={openId} id={openId} onClose={close} />}
+    </>
+  )
+}
+
+/** 응답이 JSON이면 읽기 좋게 줄을 나눠요. 아니면 받은 그대로 보여줘요. */
+function pretty(text: string): string {
+  const trimmed = text.trim()
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return text
+  try {
+    return JSON.stringify(JSON.parse(trimmed), null, 2)
+  } catch {
+    return text
+  }
+}
+
+/** 프롬프트나 응답 한 덩어리를 원문 그대로 보여주는 칸이에요. */
+function Passage({ title, note, text, empty }: { title: string; note?: string; text: string | null; empty: string }) {
+  const [copied, setCopied] = useState(false)
+
+  async function copy() {
+    if (!text) return
+    const ok = await navigator.clipboard.writeText(text).then(
+      () => true,
+      () => false,
+    )
+    track('admin_call_copy', { part: title, success: ok })
+    if (!ok) {
+      showToast('복사하지 못했어요.')
+      return
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <section className="mt-6">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="flex min-w-0 items-baseline gap-2 text-[13.5px] font-semibold text-gray-900">
+          {title}
+          {note && <span className="truncate text-[12px] font-normal text-gray-400 tabular-nums">{note}</span>}
+        </h3>
+        {text && (
+          <button type="button" onClick={() => void copy()} className={rowButton}>
+            {copied ? '복사했어요' : '복사'}
+          </button>
+        )}
+      </div>
+      {text ? (
+        <pre className="mt-2 max-h-[55dvh] overflow-auto rounded-lg bg-gray-50 p-3 font-mono text-[12.5px] leading-[20px] tracking-normal break-words whitespace-pre-wrap text-gray-700">{text}</pre>
+      ) : (
+        <p className="mt-2 text-[13px] text-gray-500">{empty}</p>
+      )}
+    </section>
+  )
+}
+
+/** AI 호출 하나를 오른쪽에서 열어 보는 칸이에요. 넣은 것을 시스템과 사용자로 나눠서, 받은 것을 그 아래에 보여줘요. */
+function CallPanel({ id, onClose }: { id: number; onClose: () => void }) {
+  const [call, setCall] = useState<AiCallDetail | null>(null)
+  const [error, setError] = useState('')
+  const [attempt, setAttempt] = useState(0)
+
+  useEffect(() => {
+    let stale = false
+    void fetchAiCall(id).then((result) => {
+      if (stale) return
+      if (result.ok) {
+        setError('')
+        setCall(result.data)
+      } else setError(result.message)
+    })
+    return () => {
+      stale = true
+    }
+  }, [id, attempt])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  return (
+    <>
+      <div className="fixed inset-0 z-20" onPointerDown={onClose} aria-hidden />
+      <aside aria-label="AI 호출 자세히 보기" className="fixed inset-y-0 right-0 z-30 flex w-full max-w-[640px] animate-rise flex-col border-l border-gray-200 bg-white">
+        <div className="flex h-14 shrink-0 items-center justify-end px-4">
+          <button type="button" aria-label="닫기" onClick={onClose} className="flex size-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-4" aria-hidden="true">
+              <path d="M4 4l8 8M12 4l-8 8" />
+            </svg>
+          </button>
+        </div>
+
+        {!call ? (
+          error ? (
+            <Failed message={error} onRetry={() => setAttempt((value) => value + 1)} />
+          ) : (
+            <div aria-busy="true" className="px-6">
+              <span className="sr-only">불러오고 있어요.</span>
+              <Bone className="h-5 w-40" />
+              <Bone className="mt-2.5 h-3.5 w-56" />
+              <div aria-hidden className="mt-8 h-32 rounded-lg bg-gray-100 motion-safe:animate-pulse" />
+              <div aria-hidden className="mt-6 h-48 rounded-lg bg-gray-100 motion-safe:animate-pulse" />
+            </div>
+          )
+        ) : (
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-8">
+            <h2 className="text-[20px] leading-tight font-semibold break-keep text-gray-900 [overflow-wrap:anywhere]">{call.label || purposeLabel(call.purpose)}</h2>
+            <div className="mt-3 flex flex-wrap gap-1">
+              <span className={tag}>{purposeLabel(call.purpose)}</span>
+              <span className={`${tag} font-mono tracking-normal`}>{call.model}</span>
+              {call.status === 'OK' ? <span className={tag}>성공</span> : <span className={`${tag} text-red-500`}>실패</span>}
+            </div>
+
+            <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 text-[13px] sm:grid-cols-4">
+              {[
+                ['호출한 때', formatDateTime(call.createdAt)],
+                ['걸린 시간', seconds(call.durationMs)],
+                ['입력 토큰', call.inputTokens === null ? '모름' : full(call.inputTokens)],
+                ['출력 토큰', call.outputTokens === null ? '모름' : full(call.outputTokens)],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <dt className="text-[12px] text-gray-400">{label}</dt>
+                  <dd className="mt-0.5 text-gray-900 tabular-nums">{value}</dd>
+                </div>
+              ))}
+            </dl>
+
+            {call.error && (
+              <section className="mt-6">
+                <h3 className="text-[13.5px] font-semibold text-red-500">오류</h3>
+                <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-gray-50 p-3 font-mono text-[12.5px] leading-[20px] tracking-normal break-words whitespace-pre-wrap text-gray-700">{call.error}</pre>
+              </section>
+            )}
+
+            <Passage title="입력: 시스템" note={`${full(call.systemPrompt.length)}자`} text={call.systemPrompt} empty="시스템 프롬프트가 없어요." />
+            <Passage title="입력: 사용자" note={`${full(call.userPrompt.length)}자`} text={call.userPrompt} empty="사용자 프롬프트가 없어요." />
+            <Passage
+              title="출력"
+              note={call.response ? `${full(call.response.length)}자` : undefined}
+              text={call.response ? pretty(call.response) : null}
+              empty="받은 응답이 없어요."
+            />
+          </div>
+        )}
+      </aside>
     </>
   )
 }

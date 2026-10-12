@@ -107,7 +107,15 @@ export interface AiCall {
   createdAt: string
 }
 
+/** AI 호출 한 번의 전문이에요. 넣은 프롬프트와 받은 응답이 그대로 들어 있어요. */
+export interface AiCallDetail extends AiCall {
+  systemPrompt: string
+  userPrompt: string
+  response: string | null
+}
+
 const MESSAGES: Record<string, string> = {
+  C404: '없는 기록이에요. 목록을 새로 받아 주세요.',
   C403: '관리자 계정만 할 수 있어요.',
   C4035: '내 계정에는 할 수 없는 작업이에요.',
   C4041: '없는 회원이에요. 목록을 새로 받아 주세요.',
@@ -170,6 +178,8 @@ export const fetchAiUsage = (from: string) => request<AiUsageRow[]>(`/ai-usage/d
 
 export const fetchAiCalls = (failedOnly: boolean, page: number) =>
   request<Slice<AiCall>>(`/ai-usage/calls?page=${page}&size=20${failedOnly ? '&status=ERROR' : ''}`)
+
+export const fetchAiCall = (id: number) => request<AiCallDetail>(`/ai-usage/calls/${id}`)
 
 // 서버는 날짜를 한국 날짜로 묶어서, 화면도 한국 날짜로 기간을 세요.
 const seoulDay = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' })
