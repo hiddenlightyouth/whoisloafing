@@ -136,6 +136,10 @@ export interface DeepReport {
   workflows?: Workflow[]
   templates?: FormTemplate[]
   labels?: RepoLabel[]
+  /** 분석한 시점의 레포 상태(마지막 푸시 시각). 재분석을 요청할 때 돌려보내서, 그 뒤로 바뀐 것이 있는지 서버가 판단해요. */
+  revision?: string
+  /** 재분석을 요청했는데 그 뒤로 푸시가 없으면 true. 이때는 다른 내용 없이 와요. */
+  unchanged?: boolean
   /** 탭이 아니라 구조 맵의 참여자별 보기에서 따로 받아요. */
   people?: FolderPerson[]
 }

@@ -5,6 +5,7 @@ import { useAnalysis } from '../hooks/useAnalysis'
 import { fetchChat, fetchDeepReport } from '../lib/api'
 import { fetchMyChats } from '../lib/auth'
 import { formatWhen } from '../lib/format'
+import { showToast } from '../lib/toast'
 import { Chat } from './Chat'
 import { MapMenu, toolButton } from './DeepParts'
 import { Forms } from './Forms'
@@ -48,6 +49,14 @@ function readSaved(repo: string): Partial<Record<DeepSection, Loaded>> {
     }
   }
   return saved
+}
+
+function clearPeople(repo: string) {
+  try {
+    localStorage.removeItem(`whoisloafing:deep:v2:${repo.toLowerCase()}:people`)
+  } catch {
+    return
+  }
 }
 
 function writeSaved(repo: string, section: DeepSection, report: DeepReport) {
@@ -222,9 +231,28 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
   /** 탭을 받아 와요. 받은 결과는 이 기기에 저장해서, 다음에 열면 기다리지 않고 바로 보여요. */
   async function analyze(target: DeepSection, again = false) {
     if (again) track('deep_analyze', { repo, section: target })
+    const before = loaded[target]
+    const kept = before && before !== 'loading' && 'report' in before ? before : null
     setLoaded((prev) => ({ ...prev, [target]: 'loading' }))
-    const result = await fetchDeepReport(repo, target)
-    if ('report' in result) writeSaved(repo, target, result.report)
+    // 받아 둔 결과가 있으면 그때의 상태를 같이 보내서, 그 뒤로 새 커밋이 없으면 다시 분석하지 않아요.
+    const result = await fetchDeepReport(repo, target, kept?.report.revision)
+    if (kept && 'report' in result && result.report.unchanged) {
+      track('deep_analyze_unchanged', { repo, section: target })
+      showToast('기존 분석 이후 새로운 변화가 감지되지 않았어요.')
+      setLoaded((prev) => ({ ...prev, [target]: kept }))
+      return
+    }
+    // 다시 받지 못했으면 보던 결과를 그대로 둬요.
+    if (kept && 'error' in result) {
+      showToast(result.error)
+      setLoaded((prev) => ({ ...prev, [target]: kept }))
+      return
+    }
+    if ('report' in result) {
+      writeSaved(repo, target, result.report)
+      // 구조가 바뀌었으면 참여자가 고친 폴더도 다시 받아야 해서, 받아 둔 것을 지워요.
+      if (kept && target === 'structure') clearPeople(repo)
+    }
     setLoaded((prev) => ({ ...prev, [target]: result }))
   }
 

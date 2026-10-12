@@ -28,9 +28,15 @@ const DEEP_ERRORS: Record<string, string> = {
 }
 
 /** 심층 분석의 탭 하나를 받아요. 로그인해야 받을 수 있어요. 실패하면 화면에 보여줄 안내를 돌려줘요. */
-export async function fetchDeepReport(repo: string, section: DeepSection | 'people'): Promise<{ report: DeepReport } | { error: string }> {
+export async function fetchDeepReport(
+  repo: string,
+  section: DeepSection | 'people',
+  /** 받아 둔 결과의 revision. 넘기면 그 뒤로 푸시가 없을 때 서버가 다시 분석하지 않아요. */
+  since?: string,
+): Promise<{ report: DeepReport } | { error: string }> {
   try {
-    const result = await authFetch<DeepReport>(`/deep/${section}?url=${encodeURIComponent(repo)}`)
+    const query = `url=${encodeURIComponent(repo)}${since ? `&since=${encodeURIComponent(since)}` : ''}`
+    const result = await authFetch<DeepReport>(`/deep/${section}?${query}`)
     if (result.ok && result.data) return { report: result.data }
     return { error: (result.code && DEEP_ERRORS[result.code]) || '분석하지 못했어요. 잠시 뒤에 다시 시도해 주세요.' }
   } catch {
