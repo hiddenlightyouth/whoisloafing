@@ -11,6 +11,8 @@ export interface ServerConfig {
   explore: boolean
   /** 서버에 관리자 API가 있는지. 없으면 앱의 관리자 화면에서 AI 사용량만 보여줘요. */
   admin: boolean
+  /** 서버에 채팅 상단 고정 API가 있는지. 없으면 내 작업의 메뉴에서 고정을 숨겨요. */
+  pin: boolean
 }
 
 /** 서버가 어떤 기능을 지원하는지 물어봐요. */
@@ -22,9 +24,10 @@ export async function fetchConfig(): Promise<ServerConfig> {
       deep: result.ok && result.data?.deep === true,
       explore: result.ok && result.data?.explore === true,
       admin: result.ok && result.data?.admin === true,
+      pin: result.ok && result.data?.pin === true,
     }
   } catch {
-    return { storage: false, deep: false, explore: false, admin: false }
+    return { storage: false, deep: false, explore: false, admin: false, pin: false }
   }
 }
 
@@ -96,6 +99,28 @@ export const shareChat = (id: string) => manageChat(`/chats/${id}/share`, 'POST'
 
 /** 공유를 취소해요. 다시 나만 열고 이어서 분석할 수 있어요. */
 export const unshareChat = (id: string) => manageChat(`/chats/${id}/share`, 'DELETE')
+
+/** 채팅을 내 작업 맨 위에 고정하거나 고정을 풀어요. */
+export const pinChat = (id: string, pinned: boolean) => manageChat(`/chats/${id}/pin`, pinned ? 'POST' : 'DELETE')
+
+let pinSupport: Promise<boolean> | null = null
+
+/** 서버가 상단 고정을 지원하는지. 한 번만 물어봐요. */
+export function canPinChats(): Promise<boolean> {
+  pinSupport ??= fetchConfig().then((config) => config.pin)
+  return pinSupport
+}
+
+/** 채팅 하나의 고정을 바꾼 뒤의 목록 순서예요. 서버처럼 고정한 채팅이 먼저, 새로 고정한 것이 맨 위, 나머지는 최근에 작업한 순서로 둬요. */
+export function reorderPinned<T extends { id: string; pinned?: boolean; updatedAt: string }>(chats: T[], id: string, pinned: boolean): T[] {
+  const target = chats.find((chat) => chat.id === id)
+  if (!target) return chats
+  const rest = chats.filter((chat) => chat.id !== id)
+  const changed = { ...target, pinned }
+  if (pinned) return [changed, ...rest]
+  const loose = [...rest.filter((chat) => !chat.pinned), changed].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+  return [...rest.filter((chat) => chat.pinned), ...loose]
+}
 
 /** 채팅을 지워요. 되돌릴 수 없어요. */
 export const deleteChat = (id: string) => manageChat(`/chats/${id}`, 'DELETE')

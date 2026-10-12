@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { track } from '../lib/analytics'
-import { deleteChat, unshareChat } from '../lib/api'
+import { canPinChats, deleteChat, pinChat, reorderPinned, unshareChat } from '../lib/api'
 import { fetchMyChats, type ChatSummary } from '../lib/auth'
 import { formatWhen } from '../lib/format'
 import { showToast } from '../lib/toast'
@@ -107,10 +107,12 @@ interface RowProps {
   onToggleMenu: () => void
   onCloseMenu: () => void
   onUnshare: () => void
+  /** 맨 위에 고정하거나 고정을 풀어요. 서버가 지원하지 않으면 넘기지 않아요. */
+  onPin?: () => void
   onDelete: () => void
 }
 
-function ChatRow({ chat, menuOpen, working, onOpen, onToggleMenu, onCloseMenu, onUnshare, onDelete }: RowProps) {
+function ChatRow({ chat, menuOpen, working, onOpen, onToggleMenu, onCloseMenu, onUnshare, onPin, onDelete }: RowProps) {
   const [owner, repo] = chat.repoName.includes('/') ? chat.repoName.split('/') : ['', chat.repoName]
   const preview = chat.preview
     ? `${chat.lastSender === 'user' ? '나: ' : ''}${chat.preview}`
@@ -150,9 +152,16 @@ function ChatRow({ chat, menuOpen, working, onOpen, onToggleMenu, onCloseMenu, o
         <Avatar owner={owner} />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-3">
-            <p className="min-w-0 truncate text-[15px] text-gray-900">
-              {owner && <span className="text-gray-500">{owner}/</span>}
-              <span className="font-semibold">{repo}</span>
+            <p className="flex min-w-0 items-center gap-1.5 text-[15px] text-gray-900">
+              <span className="min-w-0 truncate">
+                {owner && <span className="text-gray-500">{owner}/</span>}
+                <span className="font-semibold">{repo}</span>
+              </span>
+              {chat.pinned && (
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="size-3.5 shrink-0 text-gray-400" role="img" aria-label="고정한 채팅">
+                <path d="M9.5 2.5l4 4-2 .5-2.2 2.2.2 2.8L4 6.5l2.8.2L9 4.5zM6.7 9.3L3 13" />
+              </svg>
+              )}
             </p>
             <span className="shrink-0 text-xs text-gray-400">{formatWhen(chat.updatedAt)}</span>
           </div>
@@ -179,6 +188,11 @@ function ChatRow({ chat, menuOpen, working, onOpen, onToggleMenu, onCloseMenu, o
 
         {menuOpen && (
           <div role="menu" className="absolute top-full right-1 z-10 -mt-2 w-36 animate-rise rounded-2xl border border-gray-200 bg-white p-1.5">
+            {onPin && (
+              <button type="button" role="menuitem" disabled={working} onClick={onPin} className={`${item} text-gray-700`}>
+                {chat.pinned ? '고정 해제' : '상단에 고정'}
+              </button>
+            )}
             {chat.shared && (
               <>
                 <button
@@ -218,6 +232,11 @@ export function History({ onOpenChat, onHome }: Props) {
   const [menuFor, setMenuFor] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<ChatSummary | null>(null)
   const [working, setWorking] = useState(false)
+  const [canPin, setCanPin] = useState(false)
+
+  useEffect(() => {
+    void canPinChats().then(setCanPin)
+  }, [])
 
   const load = useCallback(async (next: number) => {
     setLoading(true)
@@ -254,6 +273,21 @@ export function History({ onOpenChat, onHome }: Props) {
     showToast('공유를 취소했어요. 이제 링크로 열 수 없어요.')
   }
 
+  async function pin(chat: ChatSummary) {
+    const pinned = !chat.pinned
+    setMenuFor(null)
+    setWorking(true)
+    const ok = await pinChat(chat.id, pinned)
+    setWorking(false)
+    track('chat_pin', { pinned, success: ok })
+    if (!ok) {
+      showToast(pinned ? '고정하지 못했어요. 잠시 뒤에 다시 시도해 주세요.' : '고정을 풀지 못했어요. 잠시 뒤에 다시 시도해 주세요.')
+      return
+    }
+    setChats((prev) => reorderPinned(prev, chat.id, pinned))
+    showToast(pinned ? '맨 위에 고정했어요.' : '고정을 풀었어요.')
+  }
+
   async function remove(chat: ChatSummary) {
     setWorking(true)
     const ok = await deleteChat(chat.id)
@@ -285,6 +319,7 @@ export function History({ onOpenChat, onHome }: Props) {
                 onToggleMenu={() => setMenuFor((open) => (open === chat.id ? null : chat.id))}
                 onCloseMenu={closeMenu}
                 onUnshare={() => void unshare(chat)}
+                onPin={canPin ? () => void pin(chat) : undefined}
                 onDelete={() => {
                   setMenuFor(null)
                   setDeleting(chat)

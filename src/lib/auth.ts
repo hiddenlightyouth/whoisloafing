@@ -53,6 +53,8 @@ export interface ChatSummary {
   repoUrl: string
   repoName: string
   shared: boolean
+  /** 내 작업 맨 위에 고정했는지. 예전 서버는 이 값을 보내지 않아요. */
+  pinned?: boolean
   preview: string | null
   lastSender: 'user' | 'bot' | null
   messageCount: number
