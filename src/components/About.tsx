@@ -8,39 +8,55 @@ interface Props {
 
 const SITE_TITLE = 'WhoIsLoafing'
 
-interface Slide {
-  /** 한 장에 크게 적는 말. 설명 없이 이 한마디로 기능을 알려줘요. */
+interface Feature {
+  /** 기능을 알려 주는 한마디. 긴 설명은 붙이지 않아요. */
   title: string
+  /** 그 기능의 실제 화면. `public/about`에 있는 그림 이름이에요. */
+  shot: string
+  /** 화면을 못 보는 사람에게 읽어 줄 그림 설명 */
+  alt: string
   /** 쓸 수 있는 조건. 조건이 없으면 적지 않아요. */
   tag?: string
 }
 
 const APP_ONLY = '앱 전용'
 
-/** 소개하는 기능이에요. 웹과 앱을 나누지 않고 한 줄로 이어서 보여주고, 앱에서만 되는 것에는 태그를 달아요. 서비스에 실제로 있는 기능만 적어요. */
-const FEATURES: Slide[] = [
-  { title: '어떤 프로젝트인지 한 문장으로 알려줘요' },
-  { title: '누가 얼마나 기여했는지 보여줘요' },
-  { title: '누가 어떤 기능을 만들었는지 정리해요' },
-  { title: '팀이 언제, 어떻게 일했는지 그려줘요' },
-  { title: '잘하는 팀의 협업 방식을 그대로 가져와요' },
-  { title: '분석을 저장하고 링크로 공유해요', tag: '로그인 필요' },
-  { title: '프로젝트 구조를 맵으로 둘러봐요', tag: APP_ONLY },
-  { title: 'CI/CD와 이슈, PR 템플릿을 한눈에 봐요', tag: APP_ONLY },
-  { title: '인기 있는 레포를 골라 바로 분석해요', tag: APP_ONLY },
+/**
+ * 소개하는 기능이에요. 웹과 앱을 나누지 않고 한 장에 두 개씩 이어서 보여주고, 앱에서만 되는 것에는 태그를 달아요.
+ * 서비스에 실제로 있는 기능만 적어요. 그림은 공개 레포(vitejs/vite)를 앱의 다크 모드에서 분석한 실제 화면이에요.
+ */
+const FEATURES: Feature[] = [
+  { title: '어떤 프로젝트인지 한 문장으로 알려줘요', shot: 'intro', alt: '레포 소개 문장과 기술 스택, 기본 정보가 말풍선으로 나온 화면' },
+  { title: '누가 얼마나 기여했는지 보여줘요', shot: 'contribution', alt: '참여자별 기여도를 커밋 수와 줄 수 기준 막대 그래프로 비교한 화면' },
+  { title: '누가 어떤 기능을 만들었는지 정리해요', shot: 'features', alt: '참여자가 맡은 기능이 번호 목록으로 정리된 화면' },
+  { title: '팀이 언제 일했는지 그려줘요', shot: 'hours', alt: '시간대별 커밋 수 그래프와 참여자별 활동 시간 히트맵 화면' },
+  { title: '잘하는 팀의 협업 방식을 그대로 가져와요', shot: 'teamwork', alt: '우리 팀에 적용하는 순서와 팀 규칙 문서 복사하기 버튼이 있는 화면' },
+  { title: '분석을 저장하고 링크로 공유해요', shot: 'save', alt: '내 작업 목록과 채팅 공유 확인 창이 떠 있는 화면', tag: '로그인 필요' },
+  { title: '프로젝트 구조를 맵으로 둘러봐요', shot: 'structure', alt: '폴더가 가지처럼 뻗은 프로젝트 구조 맵 화면', tag: APP_ONLY },
+  { title: 'CI/CD가 도는 순서를 보여줘요', shot: 'pipeline', alt: '워크플로의 작동 조건과 작업 순서가 카드로 나온 화면', tag: APP_ONLY },
+  { title: '이슈와 PR 템플릿을 한눈에 봐요', shot: 'forms', alt: '이슈 템플릿의 양식과 원문이 나란히 나온 화면', tag: APP_ONLY },
+  { title: '인기 있는 레포를 골라 바로 분석해요', shot: 'explore', alt: '인기 있는 레포 카드가 늘어선 탐색 화면', tag: APP_ONLY },
 ]
+
+/** 한 장에 기능을 두 개씩 묶어요. */
+const PAIRS: Feature[][] = FEATURES.reduce<Feature[][]>((pairs, feature, index) => {
+  if (index % 2 === 0) pairs.push([feature])
+  else pairs[pairs.length - 1].push(feature)
+  return pairs
+}, [])
 
 const HERO_TITLE = '링크 하나로 레포를 읽어 드려요'
 const LAST_TITLE = '우리 프로젝트의 MVP가 궁금한가요?'
-const SLIDE_NAMES = ['처음', ...FEATURES.map((feature) => feature.title), '시작하기']
+const SLIDE_NAMES = ['처음', ...PAIRS.map((pair) => pair.map((feature) => feature.title).join(', ')), '시작하기']
 
 /** 어절이 떠오르는 간격 */
-const WORD_STAGGER_MS = 90
+const WORD_STAGGER_MS = 70
 const delay = (ms: number) => ({ '--reveal-delay': `${ms}ms` }) as CSSProperties
 
 const slide = 'relative flex h-full snap-start snap-always flex-col items-center justify-center px-6 text-center'
 const headline = 'max-w-4xl text-balance break-keep font-semibold leading-[1.2] tracking-[-0.03em] text-gray-900 text-[clamp(30px,6.4vw,68px)]'
-const tagStyle = 'inline-flex h-8 items-center rounded-full border border-gray-300 px-3.5 text-[13px] font-medium text-gray-500'
+const cardTitle = 'mt-4 text-balance break-keep font-semibold leading-snug tracking-[-0.03em] text-gray-900 text-[clamp(18px,2.3vw,28px)] md:mt-6'
+const tagStyle = 'inline-flex h-7 items-center rounded-full border border-gray-300 px-3 text-[12.5px] font-medium text-gray-500'
 const primaryButton = 'inline-flex h-12 items-center rounded-full bg-brand px-7 text-[15px] font-semibold text-white transition-colors hover:bg-brand-hover'
 const quietButton = 'inline-flex h-12 items-center rounded-full border border-gray-300 px-7 text-[15px] font-medium text-gray-800 transition-colors hover:border-gray-500'
 
@@ -71,7 +87,7 @@ function After({ text, extra = 0, className, children }: { text: string; extra?:
 }
 
 /**
- * 서비스의 기능을 한 장에 하나씩 보여주는 소개 화면이에요. 이 화면만 바탕이 새까맣고,
+ * 서비스의 기능을 한 장에 두 개씩, 실제 화면과 한마디로 보여주는 소개 화면이에요. 이 화면만 바탕이 새까맣고,
  * 스크롤하면 한 장씩 걸리듯 넘어가면서 그 장의 글자가 떠올라요.
  */
 export function About({ onHome }: Props) {
@@ -144,16 +160,33 @@ export function About({ onHome }: Props) {
           </After>
         </section>
 
-        {FEATURES.map((feature) => (
-          <section key={feature.title} data-reveal className={slide}>
-            <h2 aria-label={feature.title} className={headline}>
-              <Words text={feature.title} />
-            </h2>
-            {feature.tag && (
-              <After text={feature.title} className="mt-7">
-                <span className={feature.tag === APP_ONLY ? `${tagStyle} border-brand text-brand` : tagStyle}>{feature.tag}</span>
-              </After>
-            )}
+        {PAIRS.map((pair, order) => (
+          <section key={order} data-reveal className={slide}>
+            <div className="grid w-full max-w-7xl gap-5 pt-14 sm:gap-8 md:grid-cols-2 md:gap-10 md:pt-0">
+              {pair.map((feature, index) => (
+                <article key={feature.shot} className="min-w-0">
+                  <div data-rise style={delay(index * 160)} className="overflow-hidden rounded-xl border border-gray-200 sm:rounded-2xl">
+                    <img
+                      src={`/about/${feature.shot}.webp`}
+                      alt={feature.alt}
+                      width={1600}
+                      height={1018}
+                      loading="lazy"
+                      draggable={false}
+                      className="block aspect-[1600/1018] w-full max-md:max-h-[24dvh] max-md:object-cover max-md:object-top"
+                    />
+                  </div>
+                  <h2 aria-label={feature.title} className={cardTitle}>
+                    <Words text={feature.title} from={index * 160 + 220} />
+                  </h2>
+                  {feature.tag && (
+                    <After text={feature.title} extra={index * 160 + 220} className="mt-3 md:mt-4">
+                      <span className={feature.tag === APP_ONLY ? `${tagStyle} border-brand text-brand` : tagStyle}>{feature.tag}</span>
+                    </After>
+                  )}
+                </article>
+              ))}
+            </div>
           </section>
         ))}
 
