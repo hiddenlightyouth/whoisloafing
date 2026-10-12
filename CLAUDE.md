@@ -56,6 +56,7 @@ index.html            폰트 로드, 탭 제목, 파비콘, 링크 미리보기 
 public/logo.svg       로고 (중절모와 서비스명). 헤더에 그대로 쓰여요.
 public/favicon.svg    파비콘 (로고의 중절모만 따온 그림)
 public/og.png         링크 미리보기 카드에 뜨는 대표 이미지 (1200x630)
+public/download/appcast.xml  macOS 앱이 새 버전이 있는지 읽어 가는 업데이트 목록. 앱 레포의 스크립트가 업데이트용 zip(`WhoIsLoafing-버전.zip`)과 함께 만들어 넣어요. 아직 낸 버전이 없어서 지금은 비어 있어요. 이 파일이 없으면 없는 주소라 `index.html`이 대신 가서 앱의 업데이트 확인이 오류를 내니 지우지 않아요.
 public/download/WhoIsLoafing.dmg  macOS 앱 설치 파일. 다운로드를 막아 둔 동안에는 저장소에 없어요. 앱 레포의 `PUBLISH=1 ./scripts/make-dmg.sh`가 만들어서 넣어요. 버전이 바뀌어도 같은 이름으로 덮어써요.
 public/robots.txt     검색 로봇 안내 (API, 채팅 주소, 내 정보와 내 작업, 앱 로그인 화면, 심층 분석은 막고, 사이트맵 위치를 알려줘요)
 scripts/prerender.mjs 빌드 마지막에 아티클 화면을 페이지별 HTML 파일로 만들고 사이트맵을 만들어요
