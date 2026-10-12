@@ -20,6 +20,7 @@ import { formatDateTime, formatWhen } from '../lib/format'
 import { showToast } from '../lib/toast'
 import { tag, toolButton } from './DeepParts'
 import { ConfirmDialog, DeviceTags, Empty, Failed, full, MoreButton, rowButton, RowsSkeleton, SearchBox, Segmented, tableWrap, td, th, useDebounced, usePaged } from './AdminParts'
+import { IpPlace } from './IpPlace'
 import { Bone } from './Skeleton'
 
 const FILTERS: [AdminUserFilter, string][] = [
@@ -367,7 +368,7 @@ function UserPanel({ id, selfId, onClose, onChanged, onDeleted, onOpenChat }: Pa
                     <span className={tag}>{DEVICE_LABELS[login.device]}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13px] text-gray-900">{login.deviceName || describeDevice(login.userAgent)}</span>
-                      <span className="block truncate text-[12px] text-gray-400 tabular-nums">{login.ipAddress ?? ''}</span>
+                      <span className="block truncate text-[12px] text-gray-400 tabular-nums">{login.ipAddress ? <IpPlace ip={login.ipAddress} /> : '주소를 알 수 없어요'}</span>
                     </span>
                     <span className="shrink-0 text-[12px] text-gray-400 tabular-nums">{formatDateTime(login.loggedInAt)}</span>
                   </li>

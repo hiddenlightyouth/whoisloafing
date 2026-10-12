@@ -14,6 +14,7 @@ import {
 import { appAtLeast, appVersion, isApp, postToApp, type AppTheme } from '../lib/app'
 import { formatDate, formatDateTime, parseServerTime } from '../lib/format'
 import { setAppBackdrop, setAppTheme, useAppSettings } from '../lib/theme'
+import { IpPlace } from './IpPlace'
 import { Bone } from './Skeleton'
 
 interface Props {
@@ -154,7 +155,8 @@ function LoginHistory() {
                 {record.deviceName || describeDevice(record.userAgent)}
               </p>
               <p className="mt-1 text-[13px] text-gray-500">
-                {[record.ipAddress, record.current ? '현재 사용 중' : null].filter(Boolean).join(', ') || '주소를 알 수 없어요'}
+                {record.ipAddress ? <IpPlace ip={record.ipAddress} /> : record.current ? null : '주소를 알 수 없어요'}
+                {record.current && (record.ipAddress ? ', 현재 사용 중' : '현재 사용 중')}
               </p>
             </div>
             <span className="shrink-0 pt-0.5 text-[13px] text-gray-400">{formatDateTime(record.loggedInAt)}</span>
