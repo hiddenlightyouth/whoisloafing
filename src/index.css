@@ -385,37 +385,6 @@
   }
 }
 
-/*
-  소개 화면의 등장 효과예요. 화면이 준비되면(data-armed) 지금 보고 있지 않은 장(data-reveal)의 글자를 숨겨 두고,
-  그 장이 화면에 들어오면(data-shown) 어절(data-rise)이 흐릿한 채로 아래에서 하나씩 떠오르며 또렷해져요.
-  숨길 때는 바로 숨기고 나타날 때만 움직여요. 자바스크립트가 뜨기 전에는 숨기지 않아서, 미리 그려 둔 화면은 그대로 읽을 수 있어요.
-*/
-[data-armed] [data-reveal]:not([data-shown]) [data-rise] {
-  opacity: 0;
-  transform: translateY(0.5em);
-  filter: blur(10px);
-}
-
-[data-armed] [data-reveal][data-shown] [data-rise] {
-  transition:
-    opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1),
-    filter 0.9s cubic-bezier(0.16, 1, 0.3, 1);
-  transition-delay: var(--reveal-delay, 0ms);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  [data-armed] [data-reveal]:not([data-shown]) [data-rise] {
-    opacity: 1;
-    transform: none;
-    filter: none;
-  }
-
-  [data-armed] [data-reveal][data-shown] [data-rise] {
-    transition: none;
-  }
-}
-
 /* 소개 화면은 바탕이 새까매요. 들어오는 순간 흰 바탕에서 검은 바탕으로 넘어가요. */
 .about-zone {
   --color-white: #000000;
