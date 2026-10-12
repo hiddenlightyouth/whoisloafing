@@ -11,10 +11,12 @@ interface Props {
   /** 지금 열려 있는 채팅. 목록에서 강조해요. */
   activeChatId: string | null
   /** 지금 보고 있는 화면. 아래쪽 링크를 강조해요. */
-  page: 'articles' | 'me' | null
+  page: 'deep' | 'articles' | 'me' | null
   /** 값이 바뀌면 목록을 다시 받아요. */
   refreshKey: string
   onNew: () => void
+  /** 심층 분석 화면을 열어요. 서버에 심층 분석 API가 없으면 넘기지 않고, 그때는 버튼을 숨겨요. */
+  onDeep?: () => void
   onOpenChat: (id: string) => void
   /** 목록에서 공유를 취소하거나 지웠을 때 불러요. 열려 있는 채팅이면 화면도 맞춰요. */
   onChatChanged: (id: string, change: 'unshared' | 'deleted') => void
@@ -139,7 +141,7 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
 }
 
 /** 앱 화면 왼쪽의 사이드바예요. 새 분석, 내 작업 목록과 관리, 아티클과 내 정보로 가는 링크가 있어요. */
-export function AppSidebar({ activeChatId, page, refreshKey, onNew, onOpenChat, onChatChanged, onArticles, onMe }: Props) {
+export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onOpenChat, onChatChanged, onArticles, onMe }: Props) {
   const { me } = useAuth()
   const [chats, setChats] = useState<ChatSummary[] | null>(null)
   const [nextPage, setNextPage] = useState<number | null>(null)
@@ -230,6 +232,26 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onOpenChat, 
           </svg>
           새 분석
         </button>
+        {onDeep && (
+          <a
+            href="/deep"
+            aria-current={page === 'deep' ? 'page' : undefined}
+            onClick={(event) => {
+              if (!plain(event)) return
+              event.preventDefault()
+              onDeep()
+            }}
+            className={`${link} mt-1.5 gap-2 ${tone(page === 'deep')}`}
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
+              <rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1" />
+              <rect x="9" y="2.5" width="4.5" height="4.5" rx="1" />
+              <rect x="2.5" y="9" width="4.5" height="4.5" rx="1" />
+              <rect x="9" y="9" width="4.5" height="4.5" rx="1" />
+            </svg>
+            심층 분석
+          </a>
+        )}
       </div>
 
       <h2 className="mt-5 px-6 text-xs font-medium text-gray-400">내 작업</h2>

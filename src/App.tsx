@@ -35,10 +35,21 @@ const APP_LOGIN_PATH = /^\/app-login\/?$/
 
 const appLoginFromPath = () => APP_LOGIN_PATH.test(window.location.pathname)
 
+const DEEP_PATH = /^\/deep(?:\/([^/]+)\/([^/]+))?\/?$/
+
+/** 심층 분석 주소면 보고 있는 레포(소유자/레포)를 돌려줘요. repo가 null이면 레포를 고르는 화면이에요. */
+function deepFromPath(): { repo: string | null } | null {
+  const match = DEEP_PATH.exec(window.location.pathname)
+  return match ? { repo: match[1] ? `${match[1]}/${match[2]}` : null } : null
+}
+
 // 앱에서만 쓰는 화면과, 앱이 브라우저로 열어 주는 로그인 화면은 필요할 때만 받아요.
 const AppGate = lazy(() => import('./components/AppGate').then((module) => ({ default: module.AppGate })))
 const AppSidebar = lazy(() => import('./components/AppSidebar').then((module) => ({ default: module.AppSidebar })))
 const AppLogin = lazy(() => import('./components/AppLogin').then((module) => ({ default: module.AppLogin })))
+
+// 심층 분석 대시보드는 앱에서만 쓰는 화면이라, 열 때만 받아요.
+const Deep = lazy(() => import('./components/Deep').then((module) => ({ default: module.Deep })))
 
 const Account = lazy(() => import('./components/Account').then((module) => ({ default: module.Account })))
 
@@ -94,8 +105,10 @@ export default function App() {
   const { messages, busy, paused, send, resume, stop, abandon, reset, load, settle, chatId } = useAnalysis()
   /** 서버에 채팅 저장 기능(Supabase)이 켜져 있는지 */
   const [storage, setStorage] = useState(false)
-  /** 서버가 심층 분석 질문을 받을 수 있는지 */
+  /** 서버에 심층 분석 API가 있는지. 있을 때만 앱의 사이드바에 심층 분석을 보여줘요. */
   const [deep, setDeep] = useState(false)
+  /** 앱의 심층 분석 화면을 보고 있는지. repo가 null이면 레포를 고르는 화면이에요. */
+  const [deepPage, setDeepPage] = useState(() => (isApp ? deepFromPath() : null))
   /** 지금 보고 있는 채팅의 상태. mine은 이 브라우저에서 만든 채팅인지, shared는 공유됐는지예요. */
   const [chat, setChat] = useState<{ mine: boolean; shared: boolean } | null>(null)
   const [opening, setOpening] = useState(() => chatIdFromPath() !== null)
@@ -132,6 +145,17 @@ export default function App() {
       setChat(null)
       setOpening(false)
       trackPageView('app-login')
+      return
+    }
+    // 심층 분석은 앱에서만 써요. 브라우저에서 이 주소로 들어오면 메인 화면으로 보내요.
+    const nextDeep = deepFromPath()
+    if (nextDeep && !isApp) window.history.replaceState(null, '', '/')
+    setDeepPage(isApp ? nextDeep : null)
+    if (nextDeep && isApp) {
+      reset()
+      setChat(null)
+      setOpening(false)
+      trackPageView('deep', { repo: nextDeep.repo ?? undefined })
       return
     }
     if (nextAccount) {
@@ -228,6 +252,7 @@ export default function App() {
     setArticle(null)
     setAccount(null)
     setAppLogin(false)
+    setDeepPage(null)
     if (window.location.pathname !== '/') window.history.pushState(null, '', '/')
     trackPageView('home')
   }, [account, article, chat, messages.length, reset])
@@ -241,6 +266,7 @@ export default function App() {
       setMissing(false)
       setAccount(null)
       setAppLogin(false)
+      setDeepPage(null)
       setArticle({ slug })
       window.history.pushState(null, '', slug ? `/articles/${slug}` : '/articles')
       trackPageView(slug ? 'article' : 'articles', { slug: slug ?? undefined })
@@ -260,12 +286,25 @@ export default function App() {
       setMissing(false)
       setArticle(null)
       setAppLogin(false)
+      setDeepPage(null)
       setAccount(page)
       if (replace) window.history.replaceState(null, '', `/${page}`)
       else window.history.pushState(null, '', `/${page}`)
       trackPageView(page)
     },
     [chatId, reset],
+  )
+
+  /** 앱의 심층 분석을 열어요. repo(소유자/레포)가 없으면 레포를 고르는 화면이에요. */
+  const openDeep = useCallback(
+    (repo: string | null) => {
+      loginReturn.current = null
+      // 돌던 분석은 서버가 끝까지 마쳐서 저장하니, 기다리지 않고 바로 옮겨요.
+      abandon()
+      window.history.pushState(null, '', repo ? `/deep/${repo}` : '/deep')
+      void openFromLocation()
+    },
+    [abandon, openFromLocation],
   )
 
   const openChat = useCallback(
@@ -470,6 +509,10 @@ export default function App() {
         <Suspense fallback={<main className="flex-1" />}>
           <AppLogin onCancel={goHome} />
         </Suspense>
+      ) : deepPage ? (
+        <Suspense fallback={<main className="flex-1" />}>
+          <Deep repo={deepPage.repo} onOpen={openDeep} />
+        </Suspense>
       ) : article ? (
         <Suspense fallback={<main className="flex-1" />}>
           <Articles slug={article.slug} onOpen={openArticle} onHome={goHome} />
@@ -513,7 +556,6 @@ export default function App() {
           busy={busy}
           paused={paused}
           readOnly={readOnly}
-          deep={deep}
           onResume={resume}
           onSend={send}
           onHome={handleHome}
@@ -549,12 +591,13 @@ export default function App() {
       {sidebarOpen && (
         <Suspense fallback={<aside data-app-drag className="w-64 shrink-0 border-r border-gray-200 bg-gray-50" />}>
           <AppSidebar
-            activeChatId={account || article ? null : chatIdFromPath()}
-            page={account === 'me' ? 'me' : article ? 'articles' : null}
-            refreshKey={`${busy}:${account ?? ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`}
+            activeChatId={account || article || deepPage ? null : chatIdFromPath()}
+            page={deepPage ? 'deep' : account === 'me' ? 'me' : article ? 'articles' : null}
+            onDeep={deep ? () => openDeep(null) : undefined}
+            refreshKey={`${busy}:${account ?? ''}:${deepPage ? 'deep' : ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`}
             onNew={handleHome}
             onOpenChat={(id) => {
-              if (id === chatId.current && !account && !article) return
+              if (id === chatId.current && !account && !article && !deepPage) return
               track('history_chat_open', { from: 'sidebar' })
               // 돌던 분석은 서버가 끝까지 마쳐서 저장하니, 기다리지 않고 바로 다른 채팅을 열어요.
               abandon()

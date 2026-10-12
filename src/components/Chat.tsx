@@ -14,8 +14,6 @@ interface Props {
   paused: string | null
   /** 공유된 채팅처럼 읽기만 할 수 있는 상태 */
   readOnly: boolean
-  /** 서버가 심층 분석 질문을 받을 수 있는지. 받을 수 있을 때만 메뉴에 심층 분석을 보여줘요. */
-  deep: boolean
   onResume: () => void
   onHome: () => void
   /** 오류 말풍선의 다른 레포 분석하기. 잃을 작업이 없어서 확인 없이 바로 메인 화면으로 가요. */
@@ -34,7 +32,7 @@ const FOCUS_MIN_OPACITY = 0.3
 /** 이만큼 스크롤되면 흐림 효과가 온전히 적용돼요. */
 const FOCUS_RAMP_PX = 240
 
-export function Chat({ messages, busy, paused, readOnly, deep, onResume, onSend, onHome, onNewRepo }: Props) {
+export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHome, onNewRepo }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const pinned = useRef(true)
   const lastScrollTop = useRef(0)
@@ -152,7 +150,6 @@ export function Chat({ messages, busy, paused, readOnly, deep, onResume, onSend,
                   isLast={index === messages.length - 1}
                   onSend={onSend}
                   onNewRepo={onNewRepo}
-                  deep={deep}
                 />
               </div>
             ))}
@@ -196,7 +193,7 @@ export function Chat({ messages, busy, paused, readOnly, deep, onResume, onSend,
           <div className="absolute right-6 bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-10 hidden animate-rise md:block">
             {menuOpen ? (
               <div className="absolute right-0 bottom-[calc(100%+0.75rem)] max-h-[calc(100dvh-11rem)] w-[300px] overflow-y-auto">
-                <Bubble key={menu.id} message={menu} busy={busy} isLast onSend={onSend} docked deep={deep} />
+                <Bubble key={menu.id} message={menu} busy={busy} isLast onSend={onSend} docked />
               </div>
             ) : (
               <button

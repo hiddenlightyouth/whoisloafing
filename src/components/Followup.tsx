@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { track } from '../lib/analytics'
-import { ANALYSIS_LABEL, DEEP_QUESTIONS, FOLLOWUP_LABELS, type FollowupPerson, type FollowupQuestion } from '../../shared/types'
+import { ANALYSIS_LABEL, FOLLOWUP_LABELS, type FollowupPerson, type FollowupQuestion } from '../../shared/types'
 
 interface Props {
   people: FollowupPerson[]
@@ -8,18 +8,15 @@ interface Props {
   onAsk: (question: FollowupQuestion, userText: string, person?: string) => void
   /** 아직 기여도 분석 전이면 있어요. 맨 위에 기여도 분석을 시작하는 버튼을 보여줘요. */
   onStart?: () => void
-  /** 서버가 심층 분석 질문을 받을 수 있으면 true. 메뉴 아래에 심층 분석을 따로 묶어서 보여줘요. */
-  deep?: boolean
 }
 
 const chip =
   'rounded-lg bg-white px-3 py-2 text-left text-[13px] font-medium text-gray-700 transition-colors hover:text-brand disabled:text-gray-400'
 
-const DEEP = new Set<FollowupQuestion>(DEEP_QUESTIONS)
-const QUESTIONS = (Object.keys(FOLLOWUP_LABELS) as FollowupQuestion[]).filter((question) => !DEEP.has(question))
+const QUESTIONS = Object.keys(FOLLOWUP_LABELS) as FollowupQuestion[]
 
 /** 살펴볼 내용을 고르는 버튼 묶음이에요. 레포 소개 직후와 답이 끝날 때마다 나와요. */
-export function Followup({ people, disabled, onAsk, onStart, deep = false }: Props) {
+export function Followup({ people, disabled, onAsk, onStart }: Props) {
   const [picking, setPicking] = useState(false)
 
   return (
@@ -67,26 +64,6 @@ export function Followup({ people, disabled, onAsk, onStart, deep = false }: Pro
             ))}
           </div>
         </div>
-      )}
-
-      {/* 심층 분석은 커밋 통계가 아니라 레포의 파일을 읽는 질문이라, 다른 질문과 섞지 않고 따로 묶어요. */}
-      {deep && (
-        <>
-          <p className="mt-3.5 mb-1.5 text-[12px] font-medium text-gray-500">심층 분석</p>
-          <div className="flex flex-col items-start gap-1.5">
-            {DEEP_QUESTIONS.map((question) => (
-              <button
-                key={question}
-                type="button"
-                disabled={disabled}
-                onClick={() => onAsk(question, FOLLOWUP_LABELS[question])}
-                className={chip}
-              >
-                {FOLLOWUP_LABELS[question]}
-              </button>
-            ))}
-          </div>
-        </>
       )}
     </div>
   )

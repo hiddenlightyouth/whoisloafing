@@ -1,12 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import type { FormField, FormTemplate, RepoLabel } from '../../shared/types'
-import { Source, Tabs } from './Expand'
+import { Source, Tabs } from './DeepParts'
 
 interface Props {
   kind: 'issue' | 'pull'
   templates: FormTemplate[]
   labels?: RepoLabel[]
-  /** 크게 보기 창 안이면 true. 양식 옆에 원문을 나란히 보여주고, 라벨도 설명과 함께 다 보여줘요. */
+  /** 넓은 자리에 그릴 때 true. 양식 옆에 원문을 나란히 보여주고, 라벨도 설명과 함께 다 보여줘요. */
   large: boolean
 }
 

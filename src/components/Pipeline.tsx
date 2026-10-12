@@ -1,10 +1,10 @@
 import { Fragment, useState } from 'react'
 import type { Workflow, WorkflowJob } from '../../shared/types'
-import { Source, Tabs } from './Expand'
+import { Source, Tabs } from './DeepParts'
 
 interface Props {
   workflows: Workflow[]
-  /** 크게 보기 창 안이면 true. 단계를 줄이지 않고 다 보여주고, 원문도 함께 보여줘요. */
+  /** 넓은 자리에 그릴 때 true. 단계를 줄이지 않고 다 보여주고, 원문도 함께 보여줘요. */
   large: boolean
 }
 
@@ -50,7 +50,7 @@ export function Pipeline({ workflows, large }: Props) {
           ))}
         </div>
       ) : (
-        <p className="mt-3 text-[13px] text-gray-500">이 파일은 흐름으로 읽지 못했어요. {large ? '아래 원문을 확인해 주세요.' : '크게 보기에서 원문을 확인해 주세요.'}</p>
+        <p className="mt-3 text-[13px] text-gray-500">이 파일은 흐름으로 읽지 못했어요. {large ? '아래 원문을 확인해 주세요.' : ''}</p>
       )}
 
       {large ? (
