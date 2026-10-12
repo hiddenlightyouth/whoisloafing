@@ -65,6 +65,7 @@ export type AuthOutcome = { ok: true } | { ok: false; message: string }
 const ERROR_MESSAGES: Record<string, string> = {
   C4012: '비밀번호가 맞지 않아요.',
   C4014: '로그인 시간이 지났어요. 처음부터 다시 시도해 주세요.',
+  C4034: '정지된 계정이에요. 관리자에게 문의해 주세요.',
   C4041: '가입하지 않은 이메일이에요.',
   C4091: '이미 가입한 이메일이에요.',
   C002: '입력한 내용을 다시 확인해 주세요.',
@@ -320,30 +321,7 @@ export const fetchSessions = () => fetchList<DeviceSession[]>('/auth/sessions')
 
 export const fetchLoginHistory = (page: number) => fetchList<Slice<LoginRecord>>(`/users/me/login-history?page=${page}&size=20`)
 
-/** 관리자 화면에서 보는 AI 사용량 한 줄. 날짜, 목적, 모델별로 묶여서 와요. */
-export interface AiUsageRow {
-  day: string
-  purpose: string
-  model: string
-  calls: number
-  failedCalls: number
-  inputTokens: number
-  outputTokens: number
-  totalTokens: number
-}
-
 export const isAdmin = (me: Me | null) => me?.role === 'ADMIN'
-
-/** from(YYYY-MM-DD)부터 오늘까지의 AI 사용량을 받아요. 서버가 관리자 계정만 허용해요. */
-export async function fetchAiUsage(from: string): Promise<{ ok: true; data: AiUsageRow[] } | { ok: false; message: string }> {
-  try {
-    const result = await authFetch<AiUsageRow[]>(`/ai-usage/daily?from=${from}`)
-    if (result.status === 403) return { ok: false, message: '관리자 계정만 볼 수 있는 화면이에요.' }
-    return result.ok && result.data ? { ok: true, data: result.data } : { ok: false, message: messageOf(result.code) }
-  } catch {
-    return { ok: false, message: NETWORK_MESSAGE }
-  }
-}
 
 export const fetchMyChats = (page: number) => fetchList<Slice<ChatSummary>>(`/users/me/chats?page=${page}&size=20`)
 

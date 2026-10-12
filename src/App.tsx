@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import type { AccountPage } from './components/Account'
+import type { AdminTab } from './components/Admin'
 import { Chat } from './components/Chat'
 import { ChatSkeleton, ExploreSkeleton } from './components/Skeleton'
 import { Header } from './components/Header'
@@ -46,9 +47,13 @@ function deepFromPath(): { repo: string | null } | null {
   return match ? { repo: match[1] ? `${match[1]}/${match[2]}` : null } : null
 }
 
-const ADMIN_PATH = /^\/admin\/?$/
+const ADMIN_PATH = /^\/admin(?:\/(users|chats|ai))?\/?$/
 
-const adminFromPath = () => ADMIN_PATH.test(window.location.pathname)
+/** 관리자 화면 주소면 보고 있는 탭을 돌려줘요. */
+function adminFromPath(): AdminTab | null {
+  const match = ADMIN_PATH.exec(window.location.pathname)
+  return match ? ((match[1] as AdminTab | undefined) ?? 'overview') : null
+}
 
 // 앱에서만 쓰는 화면과, 앱이 브라우저로 열어 주는 로그인 화면은 필요할 때만 받아요.
 const AppGate = lazy(() => import('./components/AppGate').then((module) => ({ default: module.AppGate })))
@@ -124,8 +129,10 @@ export default function App() {
   const [exploreReady, setExploreReady] = useState<boolean | null>(null)
   /** 앱의 심층 분석 화면을 보고 있는지. repo가 null이면 레포를 고르는 화면이에요. */
   const [deepPage, setDeepPage] = useState(() => (isApp ? deepFromPath() : null))
-  /** 앱의 관리자 화면을 보고 있는지 */
-  const [adminPage, setAdminPage] = useState(() => isApp && adminFromPath())
+  /** 서버에 관리자 API가 있는지. 없으면 관리자 화면에서 AI 사용량만 보여줘요. */
+  const [adminApi, setAdminApi] = useState(false)
+  /** 앱의 관리자 화면에서 보고 있는 탭. 관리자 화면이 아니면 null이에요. */
+  const [adminPage, setAdminPage] = useState(() => (isApp ? adminFromPath() : null))
   /** 사이드바에서 채팅을 지우거나 공유를 바꾸면 올라가요. 심층 분석이 내 작업을 다시 받게 해요. */
   const [chatsVersion, setChatsVersion] = useState(0)
   /** 지금 보고 있는 채팅의 상태. mine은 이 브라우저에서 만든 채팅인지, shared는 공유됐는지예요. */
@@ -180,12 +187,12 @@ export default function App() {
     // 관리자 화면도 앱에서만 써요. 권한은 서버가 확인하고, 관리자가 아니면 화면이 안내만 보여줘요.
     const nextAdmin = adminFromPath()
     if (nextAdmin && !isApp) window.history.replaceState(null, '', '/')
-    setAdminPage(isApp && nextAdmin)
+    setAdminPage(isApp ? nextAdmin : null)
     if (nextAdmin && isApp) {
       reset()
       setChat(null)
       setOpening(false)
-      trackPageView('admin')
+      trackPageView('admin', { tab: nextAdmin })
       return
     }
     if (nextAccount) {
@@ -243,6 +250,7 @@ export default function App() {
       setStorage(config.storage)
       setDeep(config.deep)
       setExploreReady(config.explore)
+      setAdminApi(config.admin)
     })
     void loadMe()
     void openFromLocation()
@@ -284,7 +292,7 @@ export default function App() {
     setAccount(null)
     setAppLogin(false)
     setDeepPage(null)
-    setAdminPage(false)
+    setAdminPage(null)
     if (window.location.pathname !== '/') window.history.pushState(null, '', '/')
     trackPageView('home')
   }, [account, article, chat, messages.length, reset])
@@ -299,7 +307,7 @@ export default function App() {
       setAccount(null)
       setAppLogin(false)
       setDeepPage(null)
-      setAdminPage(false)
+      setAdminPage(null)
       setArticle({ slug })
       window.history.pushState(null, '', slug ? `/articles/${slug}` : '/articles')
       trackPageView(slug ? 'article' : 'articles', { slug: slug ?? undefined })
@@ -320,7 +328,7 @@ export default function App() {
       setArticle(null)
       setAppLogin(false)
       setDeepPage(null)
-      setAdminPage(false)
+      setAdminPage(null)
       setAccount(page)
       if (replace) window.history.replaceState(null, '', `/${page}`)
       else window.history.pushState(null, '', `/${page}`)
@@ -341,13 +349,16 @@ export default function App() {
     [abandon, openFromLocation],
   )
 
-  /** 앱의 관리자 화면을 열어요. */
-  const openAdmin = useCallback(() => {
-    loginReturn.current = null
-    abandon()
-    window.history.pushState(null, '', '/admin')
-    void openFromLocation()
-  }, [abandon, openFromLocation])
+  /** 앱의 관리자 화면을 열어요. 탭마다 주소가 달라서 뒤로 가기로 앞의 탭에 돌아가요. */
+  const openAdmin = useCallback(
+    (tab: AdminTab = 'overview') => {
+      loginReturn.current = null
+      abandon()
+      window.history.pushState(null, '', tab === 'overview' ? '/admin' : `/admin/${tab}`)
+      void openFromLocation()
+    },
+    [abandon, openFromLocation],
+  )
 
   const openChat = useCallback(
     (id: string, replace = false) => {
@@ -573,7 +584,7 @@ export default function App() {
         </Suspense>
       ) : adminPage ? (
         <Suspense fallback={<main className="flex-1" />}>
-          <Admin />
+          <Admin tab={adminPage} onTab={openAdmin} full={adminApi} onOpenChat={openChat} />
         </Suspense>
       ) : article ? (
         <Suspense fallback={<main className="flex-1" />}>
@@ -670,7 +681,7 @@ export default function App() {
             activeChatId={account || article || deepPage || adminPage ? null : chatIdFromPath()}
             page={deepPage ? 'deep' : adminPage ? 'admin' : account === 'me' ? 'me' : article ? 'articles' : null}
             onDeep={deep ? () => openDeep(null) : undefined}
-            onAdmin={isAdmin(me) ? openAdmin : undefined}
+            onAdmin={isAdmin(me) ? () => openAdmin() : undefined}
             refreshKey={`${busy}:${account ?? ''}:${deepPage ? 'deep' : ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`}
             onNew={handleHome}
             onOpenChat={(id) => {

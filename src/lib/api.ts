@@ -9,15 +9,22 @@ export interface ServerConfig {
   deep: boolean
   /** 서버에 탐색 API가 있는지. 없으면 앱의 사이드바에서 탐색을 숨겨요. */
   explore: boolean
+  /** 서버에 관리자 API가 있는지. 없으면 앱의 관리자 화면에서 AI 사용량만 보여줘요. */
+  admin: boolean
 }
 
 /** 서버가 어떤 기능을 지원하는지 물어봐요. */
 export async function fetchConfig(): Promise<ServerConfig> {
   try {
     const result = await readResult<Partial<ServerConfig>>(await fetch(apiUrl('/config')))
-    return { storage: result.ok && result.data?.storage === true, deep: result.ok && result.data?.deep === true, explore: result.ok && result.data?.explore === true }
+    return {
+      storage: result.ok && result.data?.storage === true,
+      deep: result.ok && result.data?.deep === true,
+      explore: result.ok && result.data?.explore === true,
+      admin: result.ok && result.data?.admin === true,
+    }
   } catch {
-    return { storage: false, deep: false, explore: false }
+    return { storage: false, deep: false, explore: false, admin: false }
   }
 }
 
