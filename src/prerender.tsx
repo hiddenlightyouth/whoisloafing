@@ -20,10 +20,10 @@ export interface PrerenderedPage {
 const noop = () => {}
 const never = async () => false
 
-function render(screen: ReactNode): string {
+function render(screen: ReactNode, zone = ''): string {
   return renderToString(
     // App의 바깥 틀과 같은 모양이에요. 자바스크립트가 뜨기 전과 뒤의 화면이 달라 보이지 않게 맞춰요.
-    <div className="relative flex h-dvh flex-col bg-white">
+    <div className={`relative flex h-dvh flex-col bg-white${zone}`}>
       <Header
         onHome={noop}
         inChat={false}
@@ -50,7 +50,7 @@ export const pages: PrerenderedPage[] = [
     path: '/about',
     title: '소개 | WhoIsLoafing',
     description: 'GitHub 레포 링크 하나로 누가 얼마나, 무엇을, 어떻게 만들었는지 읽어 드려요. 기여도와 맡은 기능, 협업 방식을 대화로 풀어 줘요.',
-    html: render(<About onHome={noop} onArticles={noop} />),
+    html: render(<About onHome={noop} />, ' dark about-zone'),
   },
   {
     path: '/articles',

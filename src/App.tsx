@@ -578,7 +578,8 @@ export default function App() {
   }
 
   const screen = (
-    <div className={isApp ? 'relative flex min-w-0 flex-1 flex-col bg-white' : 'relative flex h-dvh flex-col bg-white'}>
+    // 소개 화면은 바탕이 새까매요. 화면 틀에 dark를 붙여서 헤더까지 같이 어둡게 해요.
+    <div className={`${isApp ? 'relative flex min-w-0 flex-1 flex-col bg-white' : 'relative flex h-dvh flex-col bg-white'}${about ? ' dark about-zone' : ''}`}>
       <Header
         app={isApp}
         onHome={handleHome}
@@ -622,7 +623,7 @@ export default function App() {
         </Suspense>
       ) : about ? (
         <Suspense fallback={<main className="flex-1" />}>
-          <About onHome={goHome} onArticles={() => openArticle(null)} />
+          <About onHome={goHome} />
         </Suspense>
       ) : article ? (
         <Suspense fallback={<main className="flex-1" />}>
