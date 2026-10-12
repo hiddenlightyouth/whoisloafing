@@ -25,8 +25,6 @@ interface Placed {
   y: number
   depth: number
   parent: Placed | null
-  /** 서버가 생략한 하위 폴더를 알려 주는 칸이면 그 수 */
-  more?: number
 }
 
 const count = (value: number) => value.toLocaleString('ko-KR')
@@ -86,12 +84,6 @@ function layout(root: StructureNode, open: Set<string>, nodeH: number): Placed[]
     placed.push(item)
     const expanded = depth === 0 || open.has(node.path)
     const children = expanded ? node.children.map((child) => place(child, depth + 1, item)) : []
-    if (expanded && node.more !== undefined && depth > 0) {
-      const more: Placed = { node, x: (depth + 1) * (NODE_W + COL_GAP), y: cursor, depth: depth + 1, parent: item, more: node.more }
-      cursor += nodeH + ROW_GAP
-      placed.push(more)
-      children.push(more)
-    }
     if (children.length === 0) {
       item.y = cursor
       cursor += nodeH + ROW_GAP
@@ -128,7 +120,7 @@ export function StructureMap({ name, root }: Props) {
   const refit = useRef(false)
 
   const placed = useMemo(() => layout(root, open, nodeH), [root, open, nodeH])
-  const keyOf = (item: Placed) => (item.more !== undefined ? `${item.node.path}:more` : item.node.path)
+  const keyOf = (item: Placed) => item.node.path
   const width = Math.max(...placed.map((item) => item.x)) + NODE_W
   const height = Math.max(...placed.map((item) => item.y)) + nodeH
 
@@ -232,7 +224,7 @@ export function StructureMap({ name, root }: Props) {
 
   function toggle(item: Placed) {
     setSelected(item.node.path)
-    if (item.depth === 0 || (item.node.children.length === 0 && item.node.more === undefined)) return
+    if (item.depth === 0 || item.node.children.length === 0) return
     anchor.current = { key: keyOf(item), y: item.y }
     setOpen((prev) => {
       const next = new Set(prev)
@@ -246,7 +238,7 @@ export function StructureMap({ name, root }: Props) {
     })
   }
 
-  const focus = placed.find((item) => item.more === undefined && item.node.path === selected && item.depth > 0)
+  const focus = placed.find((item) => item.node.path === selected && item.depth > 0)
   const zoomBy = (factor: number) => {
     const frame = frameRef.current
     if (frame) zoomAt(factor, frame.clientWidth / 2, frame.clientHeight / 2)
@@ -279,22 +271,15 @@ export function StructureMap({ name, root }: Props) {
             const fromY = item.parent.y + nodeH / 2
             const toY = item.y + nodeH / 2
             const mid = (fromX + item.x) / 2
-            return <path key={keyOf(item)} d={`M${fromX} ${fromY} C${mid} ${fromY}, ${mid} ${toY}, ${item.x} ${toY}`} strokeDasharray={item.more !== undefined ? '3 4' : undefined} />
+            return <path key={keyOf(item)} d={`M${fromX} ${fromY} C${mid} ${fromY}, ${mid} ${toY}, ${item.x} ${toY}`} />
           })}
         </svg>
 
         {placed.map((item) => {
           const style = { left: item.x, top: item.y, width: NODE_W, height: nodeH }
-          if (item.more !== undefined) {
-            return (
-              <p key={keyOf(item)} style={style} className="absolute flex items-center rounded-xl border border-dashed border-gray-300 px-3 text-[12px] text-gray-500">
-                폴더 {count(item.more)}개 생략
-              </p>
-            )
-          }
           const { node } = item
           const isRoot = item.depth === 0
-          const expandable = !isRoot && (node.children.length > 0 || node.more !== undefined)
+          const expandable = !isRoot && node.children.length > 0
           const expanded = open.has(node.path)
           const active = selected === node.path && !isRoot
           const total = item.parent?.node.files ?? node.files
