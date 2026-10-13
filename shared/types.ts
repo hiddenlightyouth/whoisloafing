@@ -121,7 +121,7 @@ export interface FolderPerson {
 }
 
 /** 심층 분석 대시보드의 탭 */
-export const DEEP_SECTIONS = ['structure', 'pipeline', 'issues', 'pulls', 'activity'] as const
+export const DEEP_SECTIONS = ['structure', 'pipeline', 'issues', 'pulls', 'stack'] as const
 export type DeepSection = (typeof DEEP_SECTIONS)[number]
 
 /** 심층 분석의 탭 하나에 들어가는 내용. 탭에 따라 structure, workflows, templates, labels 중 해당하는 것만 와요. */
@@ -144,18 +144,22 @@ export interface DeepReport {
   unchanged?: boolean
   /** 탭이 아니라 구조 맵의 참여자별 보기에서 따로 받아요. */
   people?: FolderPerson[]
-  /** 활동 탭에서만 와요. */
-  activity?: DeepActivity
+  /** 기술 스택 탭에서만 와요. */
+  stack?: TechGroup[]
 }
 
-/** 심층 분석의 활동 탭에 쓰는 커밋 기록. 날짜와 시간으로 묶는 일은 화면이 기기의 시간대로 해요. */
-export interface DeepActivity {
-  /** 커밋이 많은 순서의 참여자 */
-  people: { id: string; name: string; commits: number }[]
-  /** 오래된 것부터. at은 커밋한 시각(밀리초), person은 people에서의 순서예요. */
-  commits: { at: number; person: number }[]
-  /** 커밋이 많아서 최근 것만 봤으면 true */
-  capped: boolean
+/** 심층 분석의 기술 스택 탭에 쓰는, 종류 하나와 그 안의 기술들 */
+export interface TechGroup {
+  /** 언어, 프레임워크, 데이터베이스, 인프라와 배포, 그 외 도구 */
+  category: string
+  items: {
+    name: string
+    version?: string
+    /** 이 프로젝트에서 맡은 역할 한 줄 */
+    role?: string
+    /** 언어일 때만. 코드에서 차지하는 비율(%) */
+    share?: number
+  }[]
 }
 
 /** 기술 스택을 종류별로 묶은 것 */

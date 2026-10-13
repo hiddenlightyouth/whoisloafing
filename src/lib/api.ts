@@ -27,8 +27,8 @@ export interface ServerConfig {
   socialUnlink: boolean
   /** 서버에 회원 탈퇴 API가 있는지. 없으면 내 정보에서 회원 탈퇴를 숨겨요. */
   withdraw: boolean
-  /** 서버의 심층 분석에 활동 탭이 있는지. 없으면 그 탭을 숨겨요. */
-  deepActivity: boolean
+  /** 서버의 심층 분석에 기술 스택 탭이 있는지. 없으면 그 탭을 숨겨요. */
+  deepStack: boolean
 }
 
 /** 서버가 어떤 기능을 지원하는지 물어봐요. */
@@ -48,10 +48,10 @@ export async function fetchConfig(): Promise<ServerConfig> {
       socialAppLink: result.ok && result.data?.socialAppLink === true,
       socialUnlink: result.ok && result.data?.socialUnlink === true,
       withdraw: result.ok && result.data?.withdraw === true,
-      deepActivity: result.ok && result.data?.deepActivity === true,
+      deepStack: result.ok && result.data?.deepStack === true,
     }
   } catch {
-    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false, clubs: false, githubClientId: null, kakaoClientId: null, socialAppLink: false, socialUnlink: false, withdraw: false, deepActivity: false }
+    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false, clubs: false, githubClientId: null, kakaoClientId: null, socialAppLink: false, socialUnlink: false, withdraw: false, deepStack: false }
   }
 }
 

@@ -1,4 +1,3 @@
-import { Activity } from './Activity'
 import { useEffect, useState } from 'react'
 import { DEEP_SECTIONS, type DeepReport, type DeepSection } from '../../shared/types'
 import { track } from '../lib/analytics'
@@ -17,6 +16,7 @@ import { Kbd } from './Shortcuts'
 import { Pipeline } from './Pipeline'
 import { RichText } from './RichText'
 import { Bone } from './Skeleton'
+import { Stack } from './Stack'
 import { StructureMap } from './StructureMap'
 
 interface Props {
@@ -40,7 +40,7 @@ const SECTION_LABELS: Record<DeepSection, string> = {
   pipeline: 'CI/CD',
   issues: 'Issues',
   pulls: 'Pull requests',
-  activity: '활동',
+  stack: '기술 스택',
 }
 
 type Loaded = 'loading' | { report: DeepReport } | { error: string }
@@ -212,12 +212,12 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
   const [chatId, setChatId] = useState<string | null>(null)
   /** 오른쪽의 채팅 칸을 열어 뒀는지 */
   const [chatOpen, setChatOpen] = useState(false)
-  /** 서버에 활동 탭이 있는지. 없는 예전 서버에서는 탭을 숨겨요. */
-  const [activityReady, setActivityReady] = useState(false)
+  /** 서버에 기술 스택 탭이 있는지. 없는 예전 서버에서는 탭을 숨겨요. */
+  const [stackReady, setStackReady] = useState(false)
   useEffect(() => {
-    void loadConfig().then((config) => setActivityReady(config.deepActivity))
+    void loadConfig().then((config) => setStackReady(config.deepStack))
   }, [])
-  const sections = DEEP_SECTIONS.filter((item) => item !== 'activity' || activityReady)
+  const sections = DEEP_SECTIONS.filter((item) => item !== 'stack' || stackReady)
   /** 채팅에서 넘어왔을 때 채팅 버튼 아래에 잠깐 띄우는 안내가 보이는지 */
   const [hinting, setHinting] = useState(chatHint)
 
@@ -297,7 +297,7 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
     Digit2: () => setSection('pipeline'),
     Digit3: () => setSection('issues'),
     Digit4: () => setSection('pulls'),
-    Digit5: activityReady ? () => setSection('activity') : undefined,
+    Digit5: stackReady ? () => setSection('stack') : undefined,
     // R은 구조 맵의 사각형 도구가 쓰고 있어서, 재분석 요청은 Shift와 같이 눌러요.
     'Shift+KeyR': ready ? () => setAsking(true) : undefined,
     KeyC: chatId ? () => setChatOpen((value) => !value) : undefined,
@@ -510,8 +510,8 @@ function SideChat({ chatId, onClose }: { chatId: string; onClose: () => void }) 
 function Report({ report, name }: { report: DeepReport; name: string }) {
   const [index, setIndex] = useState(0)
 
-  if (report.section === 'activity' && report.activity) {
-    return <Activity activity={report.activity} repo={report.repo} />
+  if (report.section === 'stack' && report.stack) {
+    return <Stack groups={report.stack} />
   }
 
   if (report.section === 'structure' && report.structure) {
@@ -603,22 +603,26 @@ function Loading({ section }: { section: DeepSection }) {
     )
   }
 
-  if (section === 'activity') {
+  if (section === 'stack') {
     return (
-      <div className="relative min-h-0 flex-1 overflow-hidden bg-gray-50" aria-busy="true">
+      <div className="min-h-0 flex-1 overflow-hidden bg-gray-50 p-4" aria-busy="true">
         <span className="sr-only">분석하고 있어요.</span>
-        <div aria-hidden>
-          <div className={`absolute top-3.5 left-4 h-9 w-[104px] ${shade}`} />
-          <div className="absolute inset-x-4 top-16 bottom-24 flex items-center justify-center gap-1 overflow-hidden">
-            {Array.from({ length: 16 }, (_, week) => (
-              <div key={week} className="flex shrink-0 flex-col gap-1">
-                {Array.from({ length: 7 }, (_, day) => (
-                  <div key={day} className={`size-9 ${shade}`} />
+        <div className="flex flex-wrap items-start gap-x-4 gap-y-8" aria-hidden>
+          {[3, 4, 2, 3, 5].map((items, column) => (
+            <div key={column} className="w-60">
+              <div className="flex h-9 items-center px-1">
+                <div className={`h-3 w-16 ${shade}`} />
+              </div>
+              <div className="space-y-2">
+                {Array.from({ length: items }, (_, item) => (
+                  <div key={item} className="rounded-xl border border-gray-200 bg-white px-3.5 py-3">
+                    <Bone className="h-3.5 w-24" />
+                    <Bone className="mt-2 h-3 w-36" />
+                  </div>
                 ))}
               </div>
-            ))}
-          </div>
-          <div className={`absolute bottom-4 left-4 h-[70px] w-72 ${shade}`} />
+            </div>
+          ))}
         </div>
       </div>
     )
