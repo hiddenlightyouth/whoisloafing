@@ -349,20 +349,18 @@ export function MyPage({ onSignedOut }: Props) {
           <LoginHistory />
         </Section>
 
+        {/* 회원탈퇴는 눈에 띄지 않게, 맨 아래 오른쪽에 작은 글자로만 둬요. */}
         {withdrawReady && (
-          <Section title="회원 탈퇴">
-            <div className="flex items-center justify-between gap-4 border-y border-gray-100 py-4">
-              <p className="min-w-0 break-keep text-[13px] leading-relaxed text-gray-500">탈퇴하면 계정과 분석한 채팅이 모두 지워지고 되돌릴 수 없어요.</p>
-              <button type="button" onClick={() => setAskingWithdraw(true)} className={`${quiet} bg-gray-100 text-gray-700 hover:text-red-500`}>
-                탈퇴하기
-              </button>
-            </div>
-          </Section>
+          <div className="mt-10 text-right">
+            <button type="button" onClick={() => setAskingWithdraw(true)} className="text-[13px] text-red-500 transition-colors hover:text-red-600">
+              회원탈퇴
+            </button>
+          </div>
         )}
         {askingWithdraw && (
           <ConfirmDialog
             title="정말 탈퇴할까요?"
-            body="계정과 로그인 기록, 분석한 채팅과 공유한 링크가 모두 지워져요. 지운 뒤에는 되돌릴 수 없어요."
+            body="계속하면 계정에 대한 모든 정보가 유실되며, 이 작업은 되돌릴 수 없습니다."
             confirm="탈퇴하기"
             danger
             working={withdrawing}
