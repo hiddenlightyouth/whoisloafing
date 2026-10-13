@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { track } from '../lib/analytics'
 import { fetchExplore, type ExploreKind, type ExploreRepo } from '../lib/api'
 import { Avatar } from './History'
+import { MapMenu } from './DeepParts'
 import { ExploreCardsSkeleton } from './Skeleton'
 
 /** 탐색의 큰 갈래. GitHub는 GitHub 전체에서 인기 있는 레포, 동아리는 IT 연합 동아리와 커뮤니티가 만든 레포예요. */
@@ -81,9 +82,6 @@ function useList(kind: ExploreKind, enabled = true): Loaded | undefined {
   return list
 }
 
-const chip = (active: boolean) =>
-  `h-9 shrink-0 rounded-lg border px-3.5 text-[13px] font-medium transition-colors ${active ? 'border-brand text-brand-hover' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:text-gray-900'}`
-
 /** 스타 수를 "12.3만"처럼 짧게 적어요. */
 function formatStars(stars: number): string {
   if (stars >= 10000) return `${(stars / 10000).toFixed(1).replace(/\.0$/, '')}만`
@@ -106,10 +104,14 @@ const cardsGrid = 'grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4'
 /** 한 줄만 보여주는 카드 줄. 둘째 줄부터는 높이를 0으로 두고 잘라서, 화면 폭에 들어가는 만큼만 보여요. */
 const cardsRow = 'grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] auto-rows-[0px] grid-rows-[auto] gap-x-4 overflow-hidden'
 
-function Card({ item, onOpen }: { item: ExploreRepo; onOpen: (item: ExploreRepo) => void }) {
+/** 카드는 앞에서부터 조금씩 늦게 떠올라요. 뒤쪽 카드는 더 늦추지 않아요. */
+const STAGGER_MS = 28
+const STAGGER_MAX = 14
+
+function Card({ item, order, onOpen }: { item: ExploreRepo; order: number; onOpen: (item: ExploreRepo) => void }) {
   const [owner, name] = item.repo.split('/')
   return (
-    <li className="min-h-0">
+    <li className="min-h-0 animate-rise" style={{ animationDelay: `${Math.min(order, STAGGER_MAX) * STAGGER_MS}ms` }}>
       <button
         type="button"
         onClick={() => onOpen(item)}
@@ -218,8 +220,8 @@ export function ExplorePreview({ onPick, clubs: hasClubs = false, onMore }: Prev
             <Failed compact onRetry={() => retry(kind)} />
           ) : (
             <ul className={`mt-3 ${cardsRow}`}>
-              {list.map((item) => (
-                <Card key={item.repo} item={item} onOpen={(picked) => open(picked, kind)} />
+              {list.map((item, order) => (
+                <Card key={item.repo} item={item} order={order} onOpen={(picked) => open(picked, kind)} />
               ))}
             </ul>
           )}
@@ -260,6 +262,12 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
     () => (clubRepos ? [...new Set(clubRepos.map((item) => item.club ?? ''))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'ko')) : []),
     [clubRepos],
   )
+  /** 동아리마다 레포가 몇 개인지. 메뉴의 이름 옆에 적어요. */
+  const counts = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const item of clubRepos ?? []) if (item.club) map.set(item.club, (map.get(item.club) ?? 0) + 1)
+    return map
+  }, [clubRepos])
   const sorted = useMemo(
     () => (clubRepos ? clubRepos.filter((item) => !club || item.club === club).sort(SORTERS[sort]) : []),
     [clubRepos, club, sort],
@@ -269,89 +277,97 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
   const { open, dialog } = useAsk(onPick, 'page')
 
   return (
-    <main className="flex-1 overflow-y-auto">
-      <div className="px-6 pt-20 pb-16 md:px-10">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-[24px] font-semibold leading-snug text-gray-900 sm:text-[30px]">탐색</h1>
-          <div role="radiogroup" aria-label="탐색 갈래" className={hasClubs ? 'inline-flex rounded-xl bg-gray-100 p-1' : 'hidden'}>
-            {CATEGORIES.map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                role="radio"
-                aria-checked={category === value}
-                onClick={() => {
-                  if (category === value) return
-                  track('explore_kind_change', { kind: value === 'clubs' ? 'clubs' : githubKind })
-                  onCategory(value)
-                }}
-                className={`h-9 rounded-lg px-4 text-[14px] font-medium transition-colors ${category === value ? 'bg-white text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+    <main className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0 px-6 pt-16 md:px-10">
+        <h1 className="text-[20px] leading-tight font-semibold text-gray-900">탐색</h1>
+        {/* 심층 분석의 탭과 같은 모양이에요. 갈래가 하나뿐이면 탭을 두지 않아요. */}
+        <div role="tablist" aria-label="탐색 갈래" className={`mt-4 flex gap-1 border-b border-gray-200 ${hasClubs ? '' : 'h-0 overflow-hidden'}`}>
+          {CATEGORIES.map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={category === value}
+              onClick={() => {
+                if (category === value) return
+                track('explore_kind_change', { kind: value === 'clubs' ? 'clubs' : githubKind })
+                onCategory(value)
+              }}
+              className={`relative -mb-px h-10 border-b-2 px-3 text-[13.5px] font-medium transition-colors ${
+                category === value ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
+      </div>
 
-        {/* 갈래 안에서 한 번 더 골라요. GitHub는 인기와 요즘 뜨는, 동아리는 전체와 동아리 이름이에요. */}
-        <div role="radiogroup" aria-label={category === 'clubs' ? '동아리' : '목록 종류'} className="mt-6 flex flex-wrap gap-2">
-          {category === 'github'
-            ? KINDS.map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={githubKind === value}
-                  onClick={() => {
-                    track('explore_kind_change', { kind: value })
-                    setGithubKind(value)
-                  }}
-                  className={chip(githubKind === value)}
-                >
-                  {label}
-                </button>
-              ))
-            : [null, ...clubs].map((name) => (
-                <button
-                  key={name ?? ''}
-                  type="button"
-                  role="radio"
-                  aria-checked={club === name}
-                  onClick={() => {
-                    track('explore_club_select', { club: name ?? 'all' })
-                    setClub(name)
-                    setShown(PAGE_SIZE)
-                  }}
-                  className={chip(club === name)}
-                >
-                  {name ?? '전체'}
-                </button>
-              ))}
+      <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 px-6 pt-4 pb-16 md:px-10">
+        {/* 갈래 안에서 한 번 더 골라요. 심층 분석과 같은 드롭다운 메뉴를 써요. */}
+        <div className="flex flex-wrap items-center gap-2">
+          {category === 'github' ? (
+            <MapMenu
+              label="목록"
+              value={KINDS.find(([value]) => value === githubKind)?.[1]}
+              groups={[
+                {
+                  items: KINDS.map(([value, label]) => ({
+                    label,
+                    checked: githubKind === value,
+                    onSelect: () => {
+                      track('explore_kind_change', { kind: value })
+                      setGithubKind(value)
+                    },
+                  })),
+                },
+              ]}
+            />
+          ) : (
+            <>
+              <MapMenu
+                label="동아리"
+                value={club ?? '전체'}
+                active={club !== null}
+                groups={[
+                  {
+                    loading: !clubRepos && loaded === undefined,
+                    items: clubRepos
+                      ? [null, ...clubs].map((name) => ({
+                          label: name ?? '전체',
+                          hint: `${(name ? (counts.get(name) ?? 0) : clubRepos.length).toLocaleString('ko-KR')}개`,
+                          checked: club === name,
+                          onSelect: () => {
+                            track('explore_club_select', { club: name ?? 'all' })
+                            setClub(name)
+                            setShown(PAGE_SIZE)
+                          },
+                        }))
+                      : [],
+                  },
+                ]}
+              />
+              <MapMenu
+                label="정렬"
+                value={SORTS.find(([value]) => value === sort)?.[1]}
+                groups={[
+                  {
+                    items: SORTS.map(([value, label]) => ({
+                      label,
+                      checked: sort === value,
+                      onSelect: () => {
+                        track('explore_sort_change', { sort: value })
+                        setSort(value)
+                        setShown(PAGE_SIZE)
+                      },
+                    })),
+                  },
+                ]}
+              />
+              {clubRepos && <p className="ml-auto text-[13px] text-gray-500 tabular-nums">{sorted.length.toLocaleString('ko-KR')}개의 항목</p>}
+            </>
+          )}
         </div>
-
-        {clubRepos && sorted.length > 0 && (
-          <div className="mt-6 flex items-center justify-between gap-3">
-            <p className="text-[13px] text-gray-500 tabular-nums">{sorted.length.toLocaleString('ko-KR')}개의 항목</p>
-            <div role="radiogroup" aria-label="순서" className="flex items-center gap-4">
-              {SORTS.map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={sort === value}
-                  onClick={() => {
-                    track('explore_sort_change', { sort: value })
-                    setSort(value)
-                    setShown(PAGE_SIZE)
-                  }}
-                  className={`text-[13px] font-medium transition-colors ${sort === value ? 'text-gray-900' : 'text-gray-400 hover:text-gray-700'}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {list === undefined ? (
           <ExploreCardsSkeleton />
@@ -359,8 +375,8 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
           <Failed onRetry={() => retry(kind)} />
         ) : (
           <ul className={`mt-4 ${cardsGrid}`}>
-            {list.map((item) => (
-              <Card key={item.repo} item={item} onOpen={(picked) => open(picked, kind)} />
+            {list.map((item, order) => (
+              <Card key={`${kind}:${club ?? ''}:${sort}:${item.repo}`} item={item} order={order % PAGE_SIZE} onOpen={(picked) => open(picked, kind)} />
             ))}
           </ul>
         )}
@@ -370,7 +386,7 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
             <button
               type="button"
               onClick={() => setShown((prev) => prev + PAGE_SIZE)}
-              className="h-10 rounded-full bg-gray-100 px-5 text-[13px] font-medium text-gray-700 transition-colors hover:text-brand"
+              className="h-10 rounded-full border border-gray-200 bg-white px-5 text-[13px] font-medium text-gray-700 transition-colors hover:text-brand"
             >
               더 보기
             </button>
@@ -399,12 +415,12 @@ function ConfirmDialog({ repo, onCancel, onConfirm }: { repo: ExploreRepo; onCan
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
+      className="fixed inset-0 animate-fade z-50 flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) onCancel()
       }}
     >
-      <div role="alertdialog" aria-modal="true" aria-labelledby="explore-confirm-title" className="w-full max-w-sm animate-rise rounded-2xl border border-gray-200 bg-white p-5">
+      <div role="alertdialog" aria-modal="true" aria-labelledby="explore-confirm-title" className="w-full max-w-sm animate-pop rounded-2xl border border-gray-200 bg-white p-5">
         <h2 id="explore-confirm-title" className="text-[15px] font-semibold text-gray-900">
           이 프로젝트를 분석할까요?
         </h2>
