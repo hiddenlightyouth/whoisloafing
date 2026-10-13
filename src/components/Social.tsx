@@ -159,7 +159,7 @@ function AppLink({ provider, ticket, code }: { provider: SocialProvider; ticket:
           target !== 'missing' && (
             <>
               <h1 className="text-[20px] font-semibold text-gray-900">{label} 계정을 연결할까요?</h1>
-              <p className="mt-3 break-keep text-[14px] leading-relaxed text-gray-600">아래 WhoIsLoafing 계정에 지금 로그인한 {label} 계정을 연결해요. 내 계정이 맞는지 확인해 주세요.</p>
+              <p className="mt-3 break-keep text-[14px] leading-relaxed text-gray-600">아래 계정에 {label} 계정으로 로그인할 수 있도록 연결합니다</p>
               <div className="mt-5 rounded-2xl border border-gray-200 px-4 py-3.5 text-left">
                 <p className="truncate text-[14.5px] font-semibold text-gray-900">{target.name}</p>
                 <p className="mt-0.5 truncate text-[13px] text-gray-500">{target.email}</p>

@@ -118,7 +118,7 @@ function Connections() {
                 <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-3.5 text-brand" aria-hidden="true">
                   <path d="M3.5 8.5l3 3 6-7" />
                 </svg>
-                등록 됨
+                연결됨
                 {canUnlink(provider) && (
                   <button type="button" onClick={() => setUnlinking(provider)} className={`${quiet} ml-1.5 bg-gray-100 text-gray-700 hover:text-red-500`}>
                     해제
@@ -134,7 +134,6 @@ function Connections() {
           </li>
         ))}
       </ul>
-      {isApp && canLink && me && providers.some((provider) => !linked(provider)) && <p className="mt-3 text-[13px] text-gray-500">연결을 누르면 브라우저가 열려요. 거기서 마무리하면 돼요.</p>}
       {unlinking && (
         <ConfirmDialog
           title={`${SOCIAL_LABELS[unlinking]} 연결을 해제할까요?`}
