@@ -35,7 +35,7 @@ export function DeepNudge({ onDeep, onClose }: { onDeep: () => void; onClose: ()
   return (
     <section
       aria-labelledby="deep-nudge-title"
-      className="absolute inset-x-3 bottom-3 z-20 animate-rise rounded-2xl border border-gray-200 bg-white p-4 md:inset-x-auto md:top-16 md:right-4 md:bottom-auto md:w-80"
+      className="absolute inset-x-3 bottom-3 z-20 origin-bottom md:origin-top-right animate-pop rounded-2xl border border-gray-200 bg-white p-4 md:inset-x-auto md:top-16 md:right-4 md:bottom-auto md:w-80"
     >
       <div className="flex items-start justify-between gap-3">
         <h2 id="deep-nudge-title" className="text-[14px] font-semibold text-gray-900">

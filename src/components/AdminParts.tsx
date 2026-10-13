@@ -129,12 +129,12 @@ export function ConfirmDialog({ title, body, confirm, danger = false, working, o
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
+      className="fixed inset-0 animate-fade z-40 flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) onCancel()
       }}
     >
-      <div role="alertdialog" aria-modal="true" aria-labelledby="admin-confirm-title" className="w-full max-w-sm animate-rise rounded-2xl border border-gray-200 bg-white p-5">
+      <div role="alertdialog" aria-modal="true" aria-labelledby="admin-confirm-title" className="w-full max-w-sm animate-pop rounded-2xl border border-gray-200 bg-white p-5">
         <h2 id="admin-confirm-title" className="text-[15px] font-semibold text-gray-900">
           {title}
         </h2>

@@ -390,7 +390,7 @@ function CallPanel({ id, onClose }: { id: number; onClose: () => void }) {
   return (
     <>
       <div className="fixed inset-0 z-20" onPointerDown={onClose} aria-hidden />
-      <aside aria-label="AI 호출 자세히 보기" className="fixed inset-y-0 right-0 z-30 flex w-full max-w-[640px] animate-rise flex-col border-l border-gray-200 bg-white">
+      <aside aria-label="AI 호출 자세히 보기" className="fixed inset-y-0 right-0 z-30 flex w-full max-w-[640px] animate-slide-in flex-col border-l border-gray-200 bg-white">
         <div className="flex h-14 shrink-0 items-center justify-end px-4">
           <button type="button" aria-label="닫기" onClick={onClose} className="flex size-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-4" aria-hidden="true">

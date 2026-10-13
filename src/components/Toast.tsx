@@ -13,7 +13,7 @@ export function Toast() {
       {toast && (
         <p
           key={toast.id}
-          className="max-w-sm animate-rise rounded-full bg-gray-900/90 px-4 py-2.5 text-center text-[13px] leading-snug text-white backdrop-blur-md"
+          className="max-w-sm origin-bottom animate-pop rounded-full bg-gray-900/90 px-4 py-2.5 text-center text-[13px] leading-snug text-white backdrop-blur-md"
         >
           {toast.text}
         </p>

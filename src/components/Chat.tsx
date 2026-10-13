@@ -192,7 +192,7 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
         </div>
 
         {menu && menuActive && !compact && (
-          <div className="absolute right-6 bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-10 hidden animate-rise md:block">
+          <div className="absolute right-6 bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-10 hidden origin-bottom-right animate-pop md:block">
             {menuOpen ? (
               <div className="absolute right-0 bottom-[calc(100%+0.75rem)] max-h-[calc(100dvh-11rem)] w-[300px] overflow-y-auto">
                 <Bubble key={menu.id} message={menu} busy={busy} isLast onSend={onSend} docked />
@@ -201,7 +201,7 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
               <button
                 type="button"
                 onClick={() => setMenuOpen(true)}
-                className="absolute top-1/2 right-[calc(100%+0.625rem)] -translate-y-1/2 animate-rise rounded-full bg-gray-100 px-3.5 py-2 text-[13px] font-medium whitespace-nowrap text-gray-700 transition-colors hover:text-brand"
+                className="absolute top-1/2 right-[calc(100%+0.625rem)] -translate-y-1/2 origin-right animate-pop rounded-full bg-gray-100 px-3.5 py-2 text-[13px] font-medium whitespace-nowrap text-gray-700 transition-colors hover:text-brand"
               >
                 {menu.from === 'bot' ? menu.event.text : ''}
               </button>

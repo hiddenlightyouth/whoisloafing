@@ -343,7 +343,7 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
               <Kbd corner>C</Kbd>
             </button>
             {hinting && !chatOpen && (
-              <p role="status" className="pointer-events-none absolute top-full right-0 z-30 mt-2 animate-rise whitespace-nowrap rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-medium text-white">
+              <p role="status" className="pointer-events-none absolute top-full right-0 z-30 mt-2 origin-top-right animate-pop whitespace-nowrap rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-medium text-white">
                 <span aria-hidden className="absolute -top-1 right-6 size-2 rotate-45 bg-brand" />
                 여기서 채팅을 계속 이용할 수 있어요
               </p>

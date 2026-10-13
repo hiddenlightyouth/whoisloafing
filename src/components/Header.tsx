@@ -158,7 +158,7 @@ export function Header({
               </button>
               {MAC_DOWNLOAD_OPEN && home && !downloadOpen && (
                 <p
-                  className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 animate-rise rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-medium whitespace-nowrap text-white"
+                  className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 origin-top animate-pop rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-medium whitespace-nowrap text-white"
                   style={{ animationDelay: '600ms' }}
                 >
                   {/* 앱 다운로드를 가리키는 말풍선 꼬리 */}
@@ -169,7 +169,7 @@ export function Header({
               {downloadOpen && (
                 <div
                   role="menu"
-                  className="absolute top-full left-1/2 mt-2 w-52 -translate-x-1/2 animate-rise rounded-2xl border border-gray-200 bg-white/80 p-1.5 backdrop-blur-xl"
+                  className="absolute top-full left-1/2 mt-2 w-52 -translate-x-1/2 origin-top animate-pop rounded-2xl border border-gray-200 bg-white/80 p-1.5 backdrop-blur-xl"
                 >
                   {!MAC_DOWNLOAD_OPEN && (
                     <div role="menuitem" aria-disabled="true" className="flex cursor-not-allowed items-center gap-2.5 rounded-xl px-3 py-2 text-gray-400">
@@ -273,7 +273,7 @@ export function Header({
           )}
 
           {confirming && !shared && !busy && (
-            <div className="absolute top-full right-0 mt-2 w-64 animate-rise rounded-2xl border border-gray-200 bg-white p-4">
+            <div className="absolute top-full right-0 mt-2 w-64 origin-top-right animate-pop rounded-2xl border border-gray-200 bg-white p-4">
               <p className="text-[14px] font-semibold text-gray-900">{signedIn ? '이 채팅을 저장하고 공유할까요?' : '공유하기'}</p>
               <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">
                 {signedIn
@@ -338,7 +338,7 @@ export function Header({
 
       {menuOpen && (
         <div
-          className="absolute inset-x-0 top-14 bottom-0 z-20 animate-rise bg-white/70 backdrop-blur-xl sm:hidden"
+          className="absolute inset-x-0 top-14 bottom-0 z-20 animate-fade bg-white/70 backdrop-blur-xl sm:hidden"
           onClick={(event) => {
             if (event.target === event.currentTarget) setMenuOpen(false)
           }}

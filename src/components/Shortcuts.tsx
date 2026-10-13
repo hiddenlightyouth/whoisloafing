@@ -51,7 +51,7 @@ export function ShortcutTip() {
   return (
     <p
       role="status"
-      className="pointer-events-none fixed right-3 bottom-3 z-40 flex animate-rise items-center gap-1.5 rounded-md bg-black/90 px-2 py-1 text-[11.5px] font-medium text-white"
+      className="pointer-events-none fixed right-3 bottom-3 z-40 flex origin-bottom-right animate-pop items-center gap-1.5 rounded-md bg-black/90 px-2 py-1 text-[11.5px] font-medium text-white"
       style={{ animationDelay: '800ms' }}
     >
       {/* Mac 자판의 Option 키에 그려진 기호예요. */}

@@ -59,7 +59,7 @@ export function DeleteDialog({ chat, working, onCancel, onConfirm }: { chat: Cha
 
   return (
     <div
-      className="fixed inset-0 z-30 flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
+      className="fixed inset-0 animate-fade z-30 flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) onCancel()
       }}
@@ -68,7 +68,7 @@ export function DeleteDialog({ chat, working, onCancel, onConfirm }: { chat: Cha
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="delete-dialog-title"
-        className="w-full max-w-xs animate-rise rounded-2xl border border-gray-200 bg-white p-5"
+        className="w-full max-w-xs animate-pop rounded-2xl border border-gray-200 bg-white p-5"
       >
         <h2 id="delete-dialog-title" className="text-[15px] font-semibold text-gray-900">
           이 채팅을 지울까요?
@@ -187,7 +187,7 @@ function ChatRow({ chat, menuOpen, working, onOpen, onToggleMenu, onCloseMenu, o
         </button>
 
         {menuOpen && (
-          <div role="menu" className="absolute top-full right-1 z-10 -mt-2 w-36 animate-rise rounded-2xl border border-gray-200 bg-white p-1.5">
+          <div role="menu" className="absolute top-full right-1 z-10 -mt-2 w-36 origin-top-right animate-pop rounded-2xl border border-gray-200 bg-white p-1.5">
             {onPin && (
               <button type="button" role="menuitem" disabled={working} onClick={onPin} className={`${item} text-gray-700`}>
                 {chat.pinned ? '고정 해제' : '상단에 고정'}

@@ -149,7 +149,7 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
       </div>
 
       {menuOpen && (
-        <div role="menu" className="absolute top-full right-1 z-10 -mt-1 w-36 animate-rise rounded-2xl border border-gray-200 bg-white p-1.5">
+        <div role="menu" className="absolute top-full right-1 z-10 -mt-1 w-36 origin-top-right animate-pop rounded-2xl border border-gray-200 bg-white p-1.5">
           {onPin && (
             <button type="button" role="menuitem" disabled={working} onClick={onPin} className={`${menuItem} text-gray-700`}>
               {chat.pinned ? '고정 해제' : '상단에 고정'}
@@ -435,7 +435,7 @@ function AccountMenu({ me, page, onArticles, onMe, onSettings, settingsOpen, onA
   return (
     <div ref={ref} className="relative flex shrink-0 items-center gap-1 border-t border-gray-200 p-2">
       {open && (
-        <div role="menu" className="absolute bottom-full left-2 mb-1 w-[272px] animate-rise rounded-2xl border border-gray-200 bg-white p-1.5">
+        <div role="menu" className="absolute bottom-full left-2 mb-1 w-[272px] origin-bottom-left animate-pop rounded-2xl border border-gray-200 bg-white p-1.5">
           {me?.email && <p className="truncate px-2.5 pt-1.5 pb-2 text-[12.5px] text-gray-500">{me.email}</p>}
 
           <button type="button" role="menuitem" onClick={go(onMe)} className={menuRow}>

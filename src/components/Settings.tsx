@@ -43,7 +43,7 @@ function Switch({ on, label, onChange }: { on: boolean; label: string; onChange:
       className={`flex h-6 w-10 items-center rounded-full p-0.5 transition-colors ${on ? 'bg-brand' : 'bg-gray-200'}`}
     >
       {/* 손잡이는 다크 모드에서도 흰색이라 색 토큰을 쓰지 않아요. */}
-      <span style={{ background: '#fff' }} className={`size-5 rounded-full transition-transform ${on ? 'translate-x-4' : ''}`} />
+      <span style={{ background: '#fff' }} className={`size-5 rounded-full transition-transform duration-200 ease-spring ${on ? 'translate-x-4' : ''}`} />
     </button>
   )
 }
@@ -67,12 +67,12 @@ export function Settings({ onClose }: { onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
+      className="fixed inset-0 animate-fade z-40 flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div role="dialog" aria-modal="true" aria-labelledby="settings-title" className="flex max-h-[85dvh] w-full max-w-lg animate-rise flex-col rounded-2xl border border-gray-200 bg-white">
+      <div role="dialog" aria-modal="true" aria-labelledby="settings-title" className="flex max-h-[85dvh] w-full max-w-lg animate-pop flex-col rounded-2xl border border-gray-200 bg-white">
         <div className="flex shrink-0 items-center justify-between px-6 pt-5 pb-4">
           <h2 id="settings-title" className="text-[17px] font-semibold text-gray-900">
             설정

@@ -139,7 +139,7 @@ export function MapMenu({ label, value, active = false, groups, onOpen }: {
       </button>
 
       {open && (
-        <div role="menu" className="absolute top-full left-0 z-10 mt-2 max-h-[60dvh] w-64 animate-rise overflow-y-auto rounded-xl border border-gray-200 bg-white p-1.5">
+        <div role="menu" className="absolute top-full left-0 z-10 mt-2 max-h-[60dvh] w-64 origin-top-left animate-pop overflow-y-auto rounded-xl border border-gray-200 bg-white p-1.5">
           {groups.map((group, index) => (
             <div key={group.title ?? index} className={index > 0 ? 'mt-1 border-t border-gray-100 pt-1' : ''}>
               {group.title && <p className="px-3 pt-2 pb-1 text-[12px] font-medium text-gray-400">{group.title}</p>}

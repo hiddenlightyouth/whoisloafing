@@ -11,7 +11,15 @@
   --tracking-base: -0.02em;
 
   --animate-typing: typing 1.2s ease-in-out infinite;
-  --animate-rise: rise 0.28s ease-out both;
+  /* 움직임의 빠르기 두 가지예요. spring은 살짝 넘쳤다가 돌아오는 통통 튀는 느낌, smooth는 빠르게 나와서 부드럽게 멈추는 느낌이에요. */
+  --ease-spring: cubic-bezier(0.34, 1.45, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-rise: rise 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-pop: pop 0.32s cubic-bezier(0.34, 1.45, 0.64, 1) both;
+  --animate-slide-in: slide-in 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade: fade 0.2s ease-out both;
+  --animate-grow: grow 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-shimmer: shimmer 1.8s linear infinite;
   --animate-shake: shake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
   --animate-word: word 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
@@ -71,10 +79,56 @@
     }
   }
 
+  /* 메뉴, 확인 창, 툴팁, 떠 있는 카드가 나타날 때 써요. 작게 시작해서 통 하고 커져요. 어디서 커질지는 origin-* 클래스로 정해요. */
+  @keyframes pop {
+    from {
+      opacity: 0;
+      scale: 0.92;
+    }
+    55% {
+      opacity: 1;
+    }
+    to {
+      opacity: 1;
+      scale: 1;
+    }
+  }
+
+  /* 오른쪽에서 여는 칸이 옆에서 미끄러져 들어와요. */
+  @keyframes slide-in {
+    from {
+      opacity: 0;
+      transform: translateX(32px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* 막대 그래프의 막대가 왼쪽에서부터 자라나요. */
+  @keyframes grow {
+    from {
+      scale: 0 1;
+    }
+    to {
+      scale: 1 1;
+    }
+  }
+
   @keyframes rise {
     from {
       opacity: 0;
-      transform: translateY(6px);
+      transform: translateY(10px);
     }
     to {
       opacity: 1;
@@ -84,6 +138,15 @@
 }
 
 @layer base {
+  /* 버튼은 누르는 동안 살짝 작아졌다가, 떼면 통 하고 돌아와요. 끌어서 옮기는 칸처럼 누름 반응이 어색한 곳은 data-no-press로 빼요. */
+  button {
+    transition: scale 0.18s var(--ease-spring);
+  }
+
+  button:not(:disabled, [data-no-press]):active {
+    scale: 0.96;
+  }
+
   html {
     /* 모바일에서 화면을 돌리거나 입력할 때 글자 크기가 멋대로 커지지 않게 해요. */
     -webkit-text-size-adjust: 100%;
@@ -480,4 +543,15 @@
 
 .dark canvas {
   filter: invert(1) hue-rotate(180deg);
+}
+
+/* 색만 바뀌던 버튼도 누름 반응(scale)이 부드럽게 이어지게 해요. 색은 전처럼, 크기는 통 튀는 빠르기로 바뀌어요. */
+@layer utilities {
+  button.transition-colors {
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, scale;
+    transition-timing-function:
+      var(--default-transition-timing-function), var(--default-transition-timing-function), var(--default-transition-timing-function),
+      var(--default-transition-timing-function), var(--default-transition-timing-function), var(--default-transition-timing-function),
+      var(--default-transition-timing-function), var(--ease-spring);
+  }
 }

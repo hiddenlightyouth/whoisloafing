@@ -48,7 +48,7 @@ export function LoginNudge({ collapsed, onLogin, onClose, onOpen }: Props) {
     <>
       <aside
         aria-labelledby="login-nudge-title"
-        className="absolute bottom-6 left-6 z-10 hidden w-[300px] animate-rise rounded-2xl border border-gray-200 bg-white p-4 md:block"
+        className="absolute bottom-6 left-6 z-10 hidden w-[300px] origin-bottom-left animate-pop rounded-2xl border border-gray-200 bg-white p-4 md:block"
       >
         <button
           type="button"

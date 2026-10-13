@@ -21,7 +21,7 @@ function Group({ title, contributors, value }: GroupProps) {
               <span className="w-20 shrink-0 truncate text-[13px] text-gray-900 sm:w-24">{contributor.name}</span>
               <div className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-gray-100">
                 <div
-                  className="h-full rounded-full bg-brand"
+                  className="h-full origin-left animate-grow rounded-full bg-brand"
                   style={{ width: `${Math.min(100, Math.max(share, share > 0 ? 1.5 : 0))}%` }}
                 />
               </div>

@@ -122,7 +122,7 @@ export function AdminOverview() {
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium text-gray-900">{repo.repoName}</span>
                 <span className="mt-1.5 block h-1 rounded-full bg-gray-100">
-                  <span className="block h-1 rounded-full bg-brand" style={{ width: `${(repo.chats / topCount) * 100}%` }} />
+                  <span className="block h-1 origin-left animate-grow rounded-full bg-brand" style={{ width: `${(repo.chats / topCount) * 100}%` }} />
                 </span>
               </span>
               <span className="w-12 shrink-0 text-right text-gray-700 tabular-nums">{full(repo.chats)}번</span>

@@ -36,7 +36,7 @@ export function FeedbackPrompt({ chatId, onClose }: { chatId: string | null; onC
   return (
     <section
       aria-label="분석이 어땠는지 알려주기"
-      className="absolute inset-x-3 bottom-3 z-20 animate-rise rounded-2xl border border-gray-200 bg-white p-4 md:inset-x-auto md:top-16 md:right-4 md:bottom-auto md:w-80"
+      className="absolute inset-x-3 bottom-3 z-20 origin-bottom md:origin-top-right animate-pop rounded-2xl border border-gray-200 bg-white p-4 md:inset-x-auto md:top-16 md:right-4 md:bottom-auto md:w-80"
     >
       <div className="flex items-start justify-between gap-3">
         <h2 className="text-[14px] font-semibold text-gray-900">분석은 어땠나요?</h2>
@@ -125,12 +125,12 @@ export function BugReport({ chatId }: { chatId: string | null }) {
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
+      className="fixed inset-0 animate-fade z-40 flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) closeBugReport()
       }}
     >
-      <div role="dialog" aria-modal="true" aria-labelledby="bug-report-title" className="w-full max-w-md animate-rise rounded-2xl border border-gray-200 bg-white p-5">
+      <div role="dialog" aria-modal="true" aria-labelledby="bug-report-title" className="w-full max-w-md animate-pop rounded-2xl border border-gray-200 bg-white p-5">
         <h2 id="bug-report-title" className="text-[15px] font-semibold text-gray-900">
           버그 신고
         </h2>

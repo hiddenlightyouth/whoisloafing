@@ -738,6 +738,7 @@ export function StructureMap({ name, repo, root }: Props) {
             <button
               key={keyOf(item)}
               type="button"
+              data-no-press
               style={{ ...style, ...tint, opacity: touched === 0 ? 0.4 : undefined }}
               aria-expanded={expandable ? expanded : undefined}
               onPointerDown={(event) => {

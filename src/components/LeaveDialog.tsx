@@ -26,7 +26,7 @@ export function LeaveDialog({ home, onStay, onLeave, onLogin }: Props) {
   return (
     // 바깥의 어두운 부분을 누르면 닫혀요.
     <div
-      className="absolute inset-0 z-20 flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
+      className="absolute inset-0 z-20 animate-fade flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) onStay()
       }}
@@ -35,7 +35,7 @@ export function LeaveDialog({ home, onStay, onLeave, onLogin }: Props) {
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="leave-dialog-title"
-        className="relative w-full max-w-xs animate-rise rounded-2xl border border-gray-200 bg-white p-5"
+        className="relative w-full max-w-xs animate-pop rounded-2xl border border-gray-200 bg-white p-5"
       >
         {/* 로그인을 권할 때는 버튼을 둘로 줄이고, 그대로 남는 것은 X 버튼이 맡아요. */}
         {onLogin && (
