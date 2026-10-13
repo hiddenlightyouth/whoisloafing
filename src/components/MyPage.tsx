@@ -206,8 +206,13 @@ function Sessions() {
   )
 }
 
+/** 로그인 기록은 처음에 이만큼만 보여주고, 더 보기를 누를 때마다 이만큼씩 더 보여줘요. */
+const HISTORY_STEP = 5
+
 function LoginHistory() {
   const [records, setRecords] = useState<LoginRecord[]>([])
+  /** 받아 둔 기록 중에 몇 개까지 보여줄지 */
+  const [shown, setShown] = useState(HISTORY_STEP)
   const [page, setPage] = useState(0)
   const [hasNext, setHasNext] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -238,7 +243,7 @@ function LoginHistory() {
   return (
     <>
       <ul className="divide-y divide-gray-100 border-y border-gray-100">
-        {records.map((record) => (
+        {records.slice(0, shown).map((record) => (
           <li key={record.id} className="flex items-start justify-between gap-4 py-4">
             <div className="min-w-0">
               <p className="truncate text-[15px] font-medium text-gray-900">
@@ -254,12 +259,17 @@ function LoginHistory() {
         ))}
       </ul>
       {error && <p className="mt-3 text-[13px] text-red-500">{error}</p>}
-      {hasNext && (
+      {(hasNext || shown < records.length) && (
         <div className="mt-4 text-center">
           <button
             type="button"
             disabled={loading}
-            onClick={() => void load(page + 1)}
+            onClick={() => {
+              // 받아 둔 기록을 먼저 더 보여주고, 모자라면 서버에서 다음 묶음을 받아요.
+              const next = shown + HISTORY_STEP
+              setShown(next)
+              if (next > records.length && hasNext) void load(page + 1)
+            }}
             className={`${quiet} bg-gray-100 text-gray-700 hover:text-brand disabled:text-gray-400`}
           >
             {loading ? '처리 중' : '더 보기'}
