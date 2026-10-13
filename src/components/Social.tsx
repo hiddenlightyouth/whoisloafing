@@ -105,7 +105,7 @@ const primary = 'h-11 rounded-full bg-brand px-6 text-[14px] font-semibold text-
 function AppLink({ provider, ticket, code }: { provider: SocialProvider; ticket: string; code: string | null }) {
   const [target, setTarget] = useState<SocialLinkTarget | null | 'missing'>(null)
   const [state, setState] = useState<'asking' | 'working' | 'done'>('asking')
-  const [error, setError] = useState(code ? '' : `${SOCIAL_LABELS[provider]} 로그인을 취소했어요. 앱에서 연결하기를 다시 눌러 주세요.`)
+  const [error, setError] = useState(code ? '' : `${SOCIAL_LABELS[provider]} 로그인을 취소했어요. 앱에서 연결을 다시 눌러 주세요.`)
   const label = SOCIAL_LABELS[provider]
 
   useEffect(() => {
@@ -138,7 +138,7 @@ function AppLink({ provider, ticket, code }: { provider: SocialProvider; ticket:
     )
   }
 
-  const failed = error || (target === 'missing' ? '연결 요청 시간이 지났어요. 앱에서 연결하기를 다시 눌러 주세요.' : '')
+  const failed = error || (target === 'missing' ? '연결 요청 시간이 지났어요. 앱에서 연결을 다시 눌러 주세요.' : '')
 
   return (
     <main className={shell}>

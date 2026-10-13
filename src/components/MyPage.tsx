@@ -87,19 +87,25 @@ function Connections() {
           <li key={provider} className="flex items-center justify-between gap-4 py-3.5 text-[14px]">
             <div className="min-w-0">
               <p className="font-medium text-gray-900">{SOCIAL_LABELS[provider]}</p>
-              {me && linked(provider) && (
-                <p className="mt-0.5 truncate text-[13px] text-gray-500">{provider === 'github' && me.githubLogin ? `${me.githubLogin} 계정으로 연결했어요.` : '연결했어요.'}</p>
-              )}
+              {me && linked(provider) && provider === 'github' && me.githubLogin && <p className="mt-0.5 truncate text-[13px] text-gray-500">{me.githubLogin}</p>}
             </div>
+            {me && linked(provider) && (
+              <p className="flex shrink-0 items-center gap-1.5 text-[13px] font-medium text-gray-600">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-3.5 text-brand" aria-hidden="true">
+                  <path d="M3.5 8.5l3 3 6-7" />
+                </svg>
+                등록 됨
+              </p>
+            )}
             {me && !linked(provider) && canLink && (
-              <div className="w-28 shrink-0 [&_button]:h-9 [&_button]:text-[13px]">
-                <SocialButtons mode="link" returnTo="/me" only={provider} label={() => '연결하기'} />
+              <div className="w-20 shrink-0 [&_button]:h-9 [&_button]:text-[13px]">
+                <SocialButtons mode="link" returnTo="/me" only={provider} label={() => '연결'} />
               </div>
             )}
           </li>
         ))}
       </ul>
-      {isApp && canLink && me && providers.some((provider) => !linked(provider)) && <p className="mt-3 text-[13px] text-gray-500">연결하기를 누르면 브라우저가 열려요. 거기서 마무리하면 돼요.</p>}
+      {isApp && canLink && me && providers.some((provider) => !linked(provider)) && <p className="mt-3 text-[13px] text-gray-500">연결을 누르면 브라우저가 열려요. 거기서 마무리하면 돼요.</p>}
     </Section>
   )
 }
