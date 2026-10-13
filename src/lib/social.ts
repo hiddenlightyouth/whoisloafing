@@ -1,4 +1,4 @@
-import { linkSocial, signInSocial, type AuthOutcome } from './auth'
+import { confirmSocialLink, createSocialLinkTicket, linkSocial, signInSocial, type AuthOutcome } from './auth'
 
 export type SocialProvider = 'github' | 'kakao'
 
@@ -47,11 +47,41 @@ export function startSocial(provider: SocialProvider, clientId: string, mode: So
   } catch {
     // 적어 두지 못하면 돌아왔을 때 확인할 수 없어서, 그때 다시 시도하라고 안내해요.
   }
+  window.location.assign(authorizeUrl(provider, clientId, state))
+}
+
+function authorizeUrl(provider: SocialProvider, clientId: string, state: string): string {
   const params = new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri(provider), state })
   if (provider === 'github') params.set('scope', 'read:user user:email')
   else params.set('response_type', 'code')
-  window.location.assign(`${AUTHORIZE_URLS[provider]}?${params}`)
+  return `${AUTHORIZE_URLS[provider]}?${params}`
 }
+
+/** 앱에서 시작한 연결은 state 앞에 이 표시를 붙여요. 브라우저가 돌아왔을 때 이 표시로 알아봐요. */
+const APP_STATE_PREFIX = 'app.'
+
+/**
+ * 앱에서 내 계정에 소셜 계정을 연결해요. 앱은 바깥 주소를 기본 브라우저로 넘기기 때문에, 연결은 브라우저에서 마무리돼요.
+ * 브라우저는 앱의 로그인을 모르니, 어느 계정에 연결할지 알려 주는 일회용 값을 서버에서 받아 같이 보내요.
+ * 받지 못하면 false를 돌려줘요.
+ */
+export async function startSocialFromApp(provider: SocialProvider, clientId: string): Promise<boolean> {
+  const ticket = await createSocialLinkTicket(provider)
+  if (!ticket) return false
+  window.location.assign(authorizeUrl(provider, clientId, `${APP_STATE_PREFIX}${ticket}`))
+  return true
+}
+
+/** 앱에서 시작한 연결로 돌아온 주소면, 연결에 쓸 일회용 값과 코드를 돌려줘요. */
+export function appLinkFromLocation(): { ticket: string; code: string | null } | null {
+  const params = new URLSearchParams(window.location.search)
+  const state = params.get('state') ?? ''
+  if (!state.startsWith(APP_STATE_PREFIX)) return null
+  return { ticket: state.slice(APP_STATE_PREFIX.length), code: params.get('error') ? null : params.get('code') }
+}
+
+/** 앱에서 시작한 연결을 브라우저에서 마무리해요. */
+export const finishAppLink = (provider: SocialProvider, ticket: string, code: string) => confirmSocialLink(provider, ticket, code, redirectUri(provider))
 
 export interface SocialResult {
   outcome: AuthOutcome

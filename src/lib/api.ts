@@ -21,6 +21,8 @@ export interface ServerConfig {
   githubClientId: string | null
   /** 카카오 로그인에 쓰는 공개 값. 서버가 카카오 로그인을 켜 두지 않았으면 null이에요. */
   kakaoClientId: string | null
+  /** 앱에서 시작한 계정 연결을 브라우저에서 마무리하는 API가 서버에 있는지. 없으면 앱의 내 정보에서 연결 버튼을 숨겨요. */
+  socialAppLink: boolean
 }
 
 /** 서버가 어떤 기능을 지원하는지 물어봐요. */
@@ -37,9 +39,10 @@ export async function fetchConfig(): Promise<ServerConfig> {
       clubs: result.ok && result.data?.clubs === true,
       githubClientId: (result.ok && result.data?.githubClientId) || null,
       kakaoClientId: (result.ok && result.data?.kakaoClientId) || null,
+      socialAppLink: result.ok && result.data?.socialAppLink === true,
     }
   } catch {
-    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false, clubs: false, githubClientId: null, kakaoClientId: null }
+    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false, clubs: false, githubClientId: null, kakaoClientId: null, socialAppLink: false }
   }
 }
 

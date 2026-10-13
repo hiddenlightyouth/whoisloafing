@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { track } from '../lib/analytics'
 import { loadConfig } from '../lib/api'
-import { finishSocial, SOCIAL_LABELS, startSocial, type SocialMode, type SocialProvider, type SocialResult } from '../lib/social'
+import { isApp } from '../lib/app'
+import { fetchSocialLinkTarget, type SocialLinkTarget } from '../lib/auth'
+import { appLinkFromLocation, finishAppLink, finishSocial, SOCIAL_LABELS, startSocial, startSocialFromApp, type SocialMode, type SocialProvider, type SocialResult } from '../lib/social'
+import { showToast } from '../lib/toast'
 
 /** 서버가 켜 둔 소셜 로그인과 그 공개 값. 아직 모르면 null이에요. */
 export function useSocialClients(): Partial<Record<SocialProvider, string>> | null {
@@ -67,8 +70,16 @@ export function SocialButtons({ mode, returnTo, only, label = (name) => `${name}
           disabled={going}
           onClick={() => {
             setGoing(true)
-            track('auth_social_click', { provider, mode })
-            startSocial(provider, clients[provider] ?? '', mode, returnTo)
+            track('auth_social_click', { provider, mode, app: isApp })
+            if (!isApp) {
+              startSocial(provider, clients[provider] ?? '', mode, returnTo)
+              return
+            }
+            // 앱에서는 브라우저가 열려서 거기서 마무리돼요. 이 화면은 그대로 남으니 버튼을 다시 누를 수 있게 풀어요.
+            void startSocialFromApp(provider, clients[provider] ?? '').then((opened) => {
+              setGoing(false)
+              showToast(opened ? '브라우저에서 연결을 마무리해 주세요.' : '연결을 시작하지 못했어요. 잠시 뒤에 다시 시도해 주세요.')
+            })
           }}
           className={`${base} ${provider === 'kakao' ? '' : 'border border-gray-200 bg-white text-gray-900 hover:border-gray-300'}`}
           style={provider === 'kakao' ? { background: '#FEE500', color: '#191919' } : undefined}
@@ -84,8 +95,100 @@ export function SocialButtons({ mode, returnTo, only, label = (name) => `${name}
 // 개발 모드에서는 화면이 두 번 그려져요. 받은 코드는 한 번만 쓸 수 있어서, 요청을 한 번만 보내고 결과를 나눠 써요.
 let finishing: Promise<SocialResult> | null = null
 
+const shell = 'flex h-dvh items-center justify-center bg-white px-5'
+const primary = 'h-11 rounded-full bg-brand px-6 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover disabled:bg-gray-200 disabled:text-gray-400'
+
+/**
+ * 앱에서 시작한 계정 연결을 브라우저에서 마무리하는 화면이에요. 어느 계정에 연결하는지 보여주고, 버튼을 눌러야 연결해요.
+ * 묻지 않고 연결하면, 남이 보낸 링크를 누르기만 해도 내 소셜 계정이 그 사람의 계정에 묶일 수 있어요.
+ */
+function AppLink({ provider, ticket, code }: { provider: SocialProvider; ticket: string; code: string | null }) {
+  const [target, setTarget] = useState<SocialLinkTarget | null | 'missing'>(null)
+  const [state, setState] = useState<'asking' | 'working' | 'done'>('asking')
+  const [error, setError] = useState(code ? '' : `${SOCIAL_LABELS[provider]} 로그인을 취소했어요. 앱에서 연결하기를 다시 눌러 주세요.`)
+  const label = SOCIAL_LABELS[provider]
+
+  useEffect(() => {
+    let stale = false
+    void fetchSocialLinkTarget(ticket).then((found) => {
+      if (!stale) setTarget(found ?? 'missing')
+    })
+    return () => {
+      stale = true
+    }
+  }, [ticket])
+
+  async function confirm() {
+    if (!code) return
+    setState('working')
+    const outcome = await finishAppLink(provider, ticket, code)
+    track('auth_social', { provider, mode: 'link', app: true, success: outcome.ok })
+    if (outcome.ok) setState('done')
+    else {
+      setError(outcome.message)
+      setState('asking')
+    }
+  }
+
+  if (target === null) {
+    return (
+      <main className={shell} aria-busy="true">
+        <p className="text-[14px] text-gray-500">{label} 계정을 확인하고 있어요.</p>
+      </main>
+    )
+  }
+
+  const failed = error || (target === 'missing' ? '연결 요청 시간이 지났어요. 앱에서 연결하기를 다시 눌러 주세요.' : '')
+
+  return (
+    <main className={shell}>
+      <div className="w-full max-w-sm animate-rise text-center">
+        {state === 'done' ? (
+          <>
+            <h1 className="text-[20px] font-semibold text-gray-900">연결했어요</h1>
+            <p className="mt-3 break-keep text-[14px] leading-relaxed text-gray-600">이제 {label} 계정으로도 로그인할 수 있어요. 이 창을 닫고 앱으로 돌아가면 돼요.</p>
+          </>
+        ) : failed ? (
+          <>
+            <h1 className="text-[20px] font-semibold text-gray-900">연결하지 못했어요</h1>
+            <p role="alert" className="mt-3 break-keep text-[14px] leading-relaxed text-gray-600">
+              {failed}
+            </p>
+          </>
+        ) : (
+          target !== 'missing' && (
+            <>
+              <h1 className="text-[20px] font-semibold text-gray-900">{label} 계정을 연결할까요?</h1>
+              <p className="mt-3 break-keep text-[14px] leading-relaxed text-gray-600">아래 WhoIsLoafing 계정에 지금 로그인한 {label} 계정을 연결해요. 내 계정이 맞는지 확인해 주세요.</p>
+              <div className="mt-5 rounded-2xl border border-gray-200 px-4 py-3.5 text-left">
+                <p className="truncate text-[14.5px] font-semibold text-gray-900">{target.name}</p>
+                <p className="mt-0.5 truncate text-[13px] text-gray-500">{target.email}</p>
+              </div>
+              <div className="mt-7 flex justify-center gap-2">
+                <button type="button" onClick={() => window.location.replace('/')} className="h-11 rounded-full px-5 text-[14px] font-medium text-gray-600 transition-colors hover:text-gray-900">
+                  취소
+                </button>
+                <button type="button" disabled={state === 'working'} onClick={() => void confirm()} className={primary}>
+                  {state === 'working' ? '처리 중' : '연결하기'}
+                </button>
+              </div>
+            </>
+          )
+        )}
+      </div>
+    </main>
+  )
+}
+
 /** GitHub나 카카오에서 돌아온 화면이에요. 받은 코드로 로그인하거나 계정에 연결하고, 원래 가려던 화면으로 보내요. */
 export function SocialCallback({ provider }: { provider: SocialProvider }) {
+  // 앱에서 시작한 연결이면 확인을 받는 화면을 따로 보여줘요.
+  const [appLink] = useState(appLinkFromLocation)
+  if (appLink) return <AppLink provider={provider} ticket={appLink.ticket} code={appLink.code} />
+  return <BrowserCallback provider={provider} />
+}
+
+function BrowserCallback({ provider }: { provider: SocialProvider }) {
   const [failed, setFailed] = useState<SocialResult | null>(null)
 
   useEffect(() => {

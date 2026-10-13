@@ -73,6 +73,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   C4012: '비밀번호가 맞지 않아요.',
   C4014: '로그인 시간이 지났어요. 처음부터 다시 시도해 주세요.',
   C4015: '계정을 확인하지 못했어요. 처음부터 다시 시도해 주세요.',
+  C4017: '연결 요청 시간이 지났어요. 앱에서 연결하기를 다시 눌러 주세요.',
   C4016: 'GitHub 계정에 인증된 이메일이 없어요. GitHub에서 이메일을 인증한 뒤에 다시 시도해 주세요.',
   C4045: '지금은 이 방법으로 로그인할 수 없어요.',
   C4092: '이미 이메일로 가입한 계정이에요. 이메일로 로그인한 뒤, 내 정보에서 계정을 연결해 주세요.',
@@ -293,6 +294,47 @@ export async function linkSocial(provider: string, code: string, redirectUri: st
     if (!result.ok) return { ok: false, message: messageOf(result.code) }
     await loadMe()
     return { ok: true }
+  } catch {
+    return { ok: false, message: NETWORK_MESSAGE }
+  }
+}
+
+/** 앱에서, 브라우저로 넘겨줄 계정 연결용 일회용 값을 받아요. 브라우저는 이 값으로 어느 계정에 연결할지 알아요. */
+export async function createSocialLinkTicket(provider: string): Promise<string | null> {
+  try {
+    const result = await authFetch<{ ticket: string }>(`/auth/social/${provider}/link/ticket`, { method: 'POST' })
+    return result.ok ? (result.data?.ticket ?? null) : null
+  } catch {
+    return null
+  }
+}
+
+/** 일회용 값이 가리키는, 소셜 계정을 연결하려는 계정 */
+export interface SocialLinkTarget {
+  provider: string
+  name: string
+  email: string
+}
+
+export async function fetchSocialLinkTarget(ticket: string): Promise<SocialLinkTarget | null> {
+  try {
+    const result = await readResult<SocialLinkTarget>(await fetch(apiUrl(`/auth/social/link/ticket/${encodeURIComponent(ticket)}`)))
+    return result.ok ? result.data : null
+  } catch {
+    return null
+  }
+}
+
+/** 앱이 넘겨준 일회용 값으로, 브라우저에서 받은 소셜 계정을 그 계정에 연결해요. 브라우저의 로그인과는 상관없어요. */
+export async function confirmSocialLink(provider: string, ticket: string, code: string, redirectUri: string): Promise<AuthOutcome> {
+  try {
+    const res = await fetch(apiUrl(`/auth/social/${provider}/link/confirm`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticket, code, redirectUri }),
+    })
+    const result = await readResult<null>(res)
+    return result.ok ? { ok: true } : { ok: false, message: messageOf(result.code) }
   } catch {
     return { ok: false, message: NETWORK_MESSAGE }
   }

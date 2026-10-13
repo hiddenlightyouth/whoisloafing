@@ -12,6 +12,7 @@ import {
   type LoginRecord,
 } from '../lib/auth'
 import { formatDate, formatDateTime, parseServerTime } from '../lib/format'
+import { loadConfig } from '../lib/api'
 import { isApp } from '../lib/app'
 import { SOCIAL_LABELS, type SocialProvider } from '../lib/social'
 import { IpPlace } from './IpPlace'
@@ -55,29 +56,42 @@ function SkeletonRows({ count, action }: { count: number; action?: boolean }) {
 }
 
 /**
- * 내 계정에 연결된 GitHub와 카카오 계정이에요. 연결해 두면 그 계정으로도 로그인할 수 있어요.
+ * 내 정보의 소셜 로그인 묶음이에요. 내 계정에 연결된 GitHub와 카카오 계정을 보여줘요. 연결해 두면 그 계정으로도 로그인할 수 있어요.
  * 서버가 켜 둔 서비스만 보여주고, 하나도 없으면 묶음을 통째로 숨겨요.
  */
 function Connections() {
   const { me } = useAuth()
   const clients = useSocialClients()
   const providers = (['github', 'kakao'] as const).filter((provider) => clients?.[provider])
+  /** 앱에서는 연결이 브라우저에서 마무리돼요. 그 API가 없는 예전 서버에서는 앱에 연결 버튼을 두지 않아요. */
+  const [appLink, setAppLink] = useState(false)
+
+  useEffect(() => {
+    if (!isApp) return
+    void loadConfig().then((config) => setAppLink(config.socialAppLink))
+    // 브라우저에서 연결을 마치고 앱으로 돌아오면 바로 보이게, 창에 다시 들어올 때 내 정보를 새로 받아요.
+    const refresh = () => void loadMe()
+    window.addEventListener('focus', refresh)
+    return () => window.removeEventListener('focus', refresh)
+  }, [])
+
   if (providers.length === 0) return null
+  const canLink = !isApp || appLink
 
   const linked = (provider: SocialProvider) => (provider === 'github' ? me?.github === true : me?.kakao === true)
 
   return (
-    <Section title="연결된 계정">
+    <Section title="소셜 로그인">
       <ul className="divide-y divide-gray-100 border-y border-gray-100">
         {providers.map((provider) => (
           <li key={provider} className="flex items-center justify-between gap-4 py-3.5 text-[14px]">
             <div className="min-w-0">
               <p className="font-medium text-gray-900">{SOCIAL_LABELS[provider]}</p>
-              <p className="mt-0.5 truncate text-[13px] text-gray-500">
-                {!me ? '' : linked(provider) ? (provider === 'github' && me.githubLogin ? `${me.githubLogin} 계정으로 연결했어요.` : '연결했어요.') : '연결하면 이 계정으로도 로그인할 수 있어요.'}
-              </p>
+              {me && linked(provider) && (
+                <p className="mt-0.5 truncate text-[13px] text-gray-500">{provider === 'github' && me.githubLogin ? `${me.githubLogin} 계정으로 연결했어요.` : '연결했어요.'}</p>
+              )}
             </div>
-            {me && !linked(provider) && !isApp && (
+            {me && !linked(provider) && canLink && (
               <div className="w-28 shrink-0 [&_button]:h-9 [&_button]:text-[13px]">
                 <SocialButtons mode="link" returnTo="/me" only={provider} label={() => '연결하기'} />
               </div>
@@ -85,7 +99,7 @@ function Connections() {
           </li>
         ))}
       </ul>
-      {isApp && providers.some((provider) => !linked(provider)) && <p className="mt-3 text-[13px] text-gray-500">계정 연결은 브라우저의 내 정보에서 할 수 있어요.</p>}
+      {isApp && canLink && me && providers.some((provider) => !linked(provider)) && <p className="mt-3 text-[13px] text-gray-500">연결하기를 누르면 브라우저가 열려요. 거기서 마무리하면 돼요.</p>}
     </Section>
   )
 }
