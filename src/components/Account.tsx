@@ -13,6 +13,8 @@ interface Props {
   onSignedIn: () => void
   /** 로그인 화면 위에 따로 보여줄 안내 */
   notice?: string
+  /** 소셜 로그인을 마치고 돌아갈 주소. 채팅에서 로그인하러 왔을 때 그 채팅 주소를 넘겨요. */
+  returnTo?: string
   onOpenChat: (id: string) => void
   onHome: () => void
 }
@@ -26,7 +28,7 @@ const TITLES: Record<AccountPage, string> = {
   history: '내 작업',
 }
 
-export function Account({ page, onNavigate, onSignedIn, notice, onOpenChat, onHome }: Props) {
+export function Account({ page, onNavigate, onSignedIn, notice, returnTo, onOpenChat, onHome }: Props) {
   const { tokens } = useAuth()
   const signedIn = tokens !== null
   const guarded = page === 'me' || page === 'history'
@@ -50,6 +52,7 @@ export function Account({ page, onNavigate, onSignedIn, notice, onOpenChat, onHo
         mode={mode}
         notice={notice ?? (page === 'me' ? '내 정보는 로그인한 뒤에 볼 수 있어요.' : page === 'history' ? '내 작업은 로그인한 뒤에 볼 수 있어요.' : undefined)}
         onSwitch={() => onNavigate(mode === 'signup' ? 'login' : 'signup')}
+        returnTo={returnTo}
       />
     )
   }

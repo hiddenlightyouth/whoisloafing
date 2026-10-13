@@ -16,6 +16,11 @@ export interface Me {
   name: string
   role: string
   registeredAt: string | null
+  /** 연결된 GitHub 아이디. 연결하지 않았으면 없어요. */
+  githubLogin?: string | null
+  /** GitHub 계정, 카카오 계정이 연결되어 있는지 */
+  github?: boolean
+  kakao?: boolean
 }
 
 export interface AuthState {
@@ -67,6 +72,11 @@ export type AuthOutcome = { ok: true } | { ok: false; message: string }
 const ERROR_MESSAGES: Record<string, string> = {
   C4012: '비밀번호가 맞지 않아요.',
   C4014: '로그인 시간이 지났어요. 처음부터 다시 시도해 주세요.',
+  C4015: '계정을 확인하지 못했어요. 처음부터 다시 시도해 주세요.',
+  C4016: 'GitHub 계정에 인증된 이메일이 없어요. GitHub에서 이메일을 인증한 뒤에 다시 시도해 주세요.',
+  C4045: '지금은 이 방법으로 로그인할 수 없어요.',
+  C4092: '이미 이메일로 가입한 계정이에요. 이메일로 로그인한 뒤, 내 정보에서 계정을 연결해 주세요.',
+  C4093: '이미 다른 계정에 연결되어 있어요.',
   C4034: '정지된 계정이에요. 관리자에게 문의해 주세요.',
   C4041: '가입하지 않은 이메일이에요.',
   C4091: '이미 가입한 이메일이에요.',
@@ -267,6 +277,26 @@ export const signIn = (email: string, password: string) => submitCredentials('/a
 
 export const signUp = (email: string, name: string, password: string) =>
   submitCredentials('/auth/signup', { email, name, password })
+
+/** 소셜 서비스(GitHub, 카카오)에서 받은 코드로 로그인해요. 처음이면 가입까지 돼요. */
+export const signInSocial = (provider: string, code: string, redirectUri: string) =>
+  submitCredentials(`/auth/social/${provider}`, { code, redirectUri })
+
+/** 로그인한 내 계정에 소셜 계정을 연결해요. */
+export async function linkSocial(provider: string, code: string, redirectUri: string): Promise<AuthOutcome> {
+  try {
+    const result = await authFetch<null>(`/auth/social/${provider}/link`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, redirectUri }),
+    })
+    if (!result.ok) return { ok: false, message: messageOf(result.code) }
+    await loadMe()
+    return { ok: true }
+  } catch {
+    return { ok: false, message: NETWORK_MESSAGE }
+  }
+}
 
 /** 브라우저에서 로그인한 채로, 앱에 로그인을 넘겨줄 일회용 코드를 받아요. */
 export async function createAppLoginCode(challenge: string): Promise<string | null> {

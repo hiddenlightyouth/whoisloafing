@@ -1,0 +1,132 @@
+import { useEffect, useState } from 'react'
+import { track } from '../lib/analytics'
+import { loadConfig } from '../lib/api'
+import { finishSocial, SOCIAL_LABELS, startSocial, type SocialMode, type SocialProvider, type SocialResult } from '../lib/social'
+
+/** 서버가 켜 둔 소셜 로그인과 그 공개 값. 아직 모르면 null이에요. */
+export function useSocialClients(): Partial<Record<SocialProvider, string>> | null {
+  const [clients, setClients] = useState<Partial<Record<SocialProvider, string>> | null>(null)
+  useEffect(() => {
+    let stale = false
+    void loadConfig().then((config) => {
+      if (stale) return
+      setClients({ ...(config.githubClientId ? { github: config.githubClientId } : {}), ...(config.kakaoClientId ? { kakao: config.kakaoClientId } : {}) })
+    })
+    return () => {
+      stale = true
+    }
+  }, [])
+  return clients
+}
+
+function GitHubMark() {
+  return (
+    <svg viewBox="0 0 16 16" fill="currentColor" className="size-[18px]" aria-hidden="true">
+      <path d="M8 .2a8 8 0 0 0-2.53 15.59c.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.93-.89-1.17-.89-1.17-.73-.5.05-.49.05-.49.8.06 1.23.83 1.23.83.72 1.22 1.88.87 2.33.66.07-.52.28-.87.5-1.07-1.77-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.83-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.6 7.6 0 0 1 4 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.52.56.83 1.28.83 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 8 .2Z" />
+    </svg>
+  )
+}
+
+function KakaoMark() {
+  return (
+    <svg viewBox="0 0 18 18" fill="currentColor" className="size-[18px]" aria-hidden="true">
+      <path d="M9 1.5C4.58 1.5 1 4.3 1 7.76c0 2.23 1.5 4.19 3.75 5.3l-.95 3.47c-.08.3.27.55.54.37l4.16-2.74c.16.01.33.02.5.02 4.42 0 8-2.8 8-6.42S13.42 1.5 9 1.5Z" />
+    </svg>
+  )
+}
+
+const base = 'flex h-12 w-full items-center justify-center gap-2.5 rounded-full text-[15px] font-semibold transition-colors disabled:opacity-60'
+
+interface ButtonsProps {
+  mode: SocialMode
+  /** 끝나면 돌아갈 주소 */
+  returnTo: string
+  /** 보여줄 서비스. 넘기지 않으면 서버가 켜 둔 것을 모두 보여줘요. */
+  only?: SocialProvider
+  /** 버튼 글자. 넘기지 않으면 "GitHub로 계속하기"처럼 적어요. */
+  label?: (name: string) => string
+}
+
+/**
+ * GitHub와 카카오로 가는 버튼이에요. 서버가 켜 둔 서비스만 보여주고, 하나도 없으면 아무것도 그리지 않아요.
+ * 카카오 버튼은 카카오의 안내대로 노란 바탕에 검은 글자예요. 메인 컬러 규칙의 예외예요.
+ */
+export function SocialButtons({ mode, returnTo, only, label = (name) => `${name}로 계속하기` }: ButtonsProps) {
+  const clients = useSocialClients()
+  const [going, setGoing] = useState(false)
+  if (!clients) return null
+  const providers = (['github', 'kakao'] as const).filter((provider) => clients[provider] && (!only || only === provider))
+  if (providers.length === 0) return null
+
+  return (
+    <div className="space-y-2.5">
+      {providers.map((provider) => (
+        <button
+          key={provider}
+          type="button"
+          disabled={going}
+          onClick={() => {
+            setGoing(true)
+            track('auth_social_click', { provider, mode })
+            startSocial(provider, clients[provider] ?? '', mode, returnTo)
+          }}
+          className={`${base} ${provider === 'kakao' ? '' : 'border border-gray-200 bg-white text-gray-900 hover:border-gray-300'}`}
+          style={provider === 'kakao' ? { background: '#FEE500', color: '#191919' } : undefined}
+        >
+          {provider === 'kakao' ? <KakaoMark /> : <GitHubMark />}
+          {label(SOCIAL_LABELS[provider])}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// 개발 모드에서는 화면이 두 번 그려져요. 받은 코드는 한 번만 쓸 수 있어서, 요청을 한 번만 보내고 결과를 나눠 써요.
+let finishing: Promise<SocialResult> | null = null
+
+/** GitHub나 카카오에서 돌아온 화면이에요. 받은 코드로 로그인하거나 계정에 연결하고, 원래 가려던 화면으로 보내요. */
+export function SocialCallback({ provider }: { provider: SocialProvider }) {
+  const [failed, setFailed] = useState<SocialResult | null>(null)
+
+  useEffect(() => {
+    let stale = false
+    finishing ??= finishSocial(provider)
+    void finishing.then((result) => {
+      track('auth_social', { provider, mode: result.mode, success: result.outcome.ok })
+      if (result.outcome.ok) window.location.replace(result.returnTo)
+      else if (!stale) setFailed(result)
+    })
+    return () => {
+      stale = true
+    }
+  }, [provider])
+
+  if (!failed) {
+    return (
+      <main className="flex h-dvh items-center justify-center bg-white px-5" aria-busy="true">
+        <p className="text-[14px] text-gray-500">{SOCIAL_LABELS[provider]} 계정을 확인하고 있어요.</p>
+      </main>
+    )
+  }
+
+  // 앱 로그인을 하던 중이었으면 그 화면으로, 계정에 연결하던 중이었으면 내 정보로 돌아가요.
+  const back = failed.mode === 'link' ? '/me' : failed.returnTo.startsWith('/app-login') ? failed.returnTo : '/login'
+
+  return (
+    <main className="flex h-dvh items-center justify-center bg-white px-5">
+      <div className="w-full max-w-sm animate-rise text-center">
+        <h1 className="text-[20px] font-semibold text-gray-900">{failed.mode === 'link' ? '연결하지 못했어요' : '로그인하지 못했어요'}</h1>
+        <p role="alert" className="mt-3 break-keep text-[14px] leading-relaxed text-gray-600">
+          {failed.outcome.ok ? '' : failed.outcome.message}
+        </p>
+        <button
+          type="button"
+          onClick={() => window.location.replace(back)}
+          className="mt-7 h-11 rounded-full bg-brand px-6 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover"
+        >
+          {failed.mode === 'link' ? '내 정보로 돌아가기' : '로그인 화면으로 돌아가기'}
+        </button>
+      </div>
+    </main>
+  )
+}

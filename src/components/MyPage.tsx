@@ -12,7 +12,10 @@ import {
   type LoginRecord,
 } from '../lib/auth'
 import { formatDate, formatDateTime, parseServerTime } from '../lib/format'
+import { isApp } from '../lib/app'
+import { SOCIAL_LABELS, type SocialProvider } from '../lib/social'
 import { IpPlace } from './IpPlace'
+import { SocialButtons, useSocialClients } from './Social'
 import { Bone } from './Skeleton'
 
 interface Props {
@@ -48,6 +51,42 @@ function SkeletonRows({ count, action }: { count: number; action?: boolean }) {
         </li>
       ))}
     </ul>
+  )
+}
+
+/**
+ * 내 계정에 연결된 GitHub와 카카오 계정이에요. 연결해 두면 그 계정으로도 로그인할 수 있어요.
+ * 서버가 켜 둔 서비스만 보여주고, 하나도 없으면 묶음을 통째로 숨겨요.
+ */
+function Connections() {
+  const { me } = useAuth()
+  const clients = useSocialClients()
+  const providers = (['github', 'kakao'] as const).filter((provider) => clients?.[provider])
+  if (providers.length === 0) return null
+
+  const linked = (provider: SocialProvider) => (provider === 'github' ? me?.github === true : me?.kakao === true)
+
+  return (
+    <Section title="연결된 계정">
+      <ul className="divide-y divide-gray-100 border-y border-gray-100">
+        {providers.map((provider) => (
+          <li key={provider} className="flex items-center justify-between gap-4 py-3.5 text-[14px]">
+            <div className="min-w-0">
+              <p className="font-medium text-gray-900">{SOCIAL_LABELS[provider]}</p>
+              <p className="mt-0.5 truncate text-[13px] text-gray-500">
+                {!me ? '' : linked(provider) ? (provider === 'github' && me.githubLogin ? `${me.githubLogin} 계정으로 연결했어요.` : '연결했어요.') : '연결하면 이 계정으로도 로그인할 수 있어요.'}
+              </p>
+            </div>
+            {me && !linked(provider) && !isApp && (
+              <div className="w-28 shrink-0 [&_button]:h-9 [&_button]:text-[13px]">
+                <SocialButtons mode="link" returnTo="/me" only={provider} label={() => '연결하기'} />
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      {isApp && providers.some((provider) => !linked(provider)) && <p className="mt-3 text-[13px] text-gray-500">계정 연결은 브라우저의 내 정보에서 할 수 있어요.</p>}
+    </Section>
   )
 }
 
@@ -220,6 +259,8 @@ export function MyPage({ onSignedOut }: Props) {
             </button>
           </div>
         </Section>
+
+        <Connections />
 
         <Section title="로그인한 기기">
           <Sessions />

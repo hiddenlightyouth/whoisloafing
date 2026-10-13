@@ -19,6 +19,7 @@ import { fetchChat, fetchConfig, shareChat } from './lib/api'
 import { isApp, isMac, MAC_DOWNLOAD_OPEN } from './lib/app'
 import './lib/theme'
 import { claimChats, isAdmin, loadMe, useAuth } from './lib/auth'
+import { socialFromPath } from './lib/social'
 import { setFeedbackReady, shouldAskFeedback, useFeedback } from './lib/feedback'
 import { useShortcuts } from './lib/shortcuts'
 import { showToast } from './lib/toast'
@@ -80,6 +81,7 @@ const AppLogin = lazy(() => import('./components/AppLogin').then((module) => ({ 
 const CaptureShield = lazy(() => import('./components/CaptureShield').then((module) => ({ default: module.CaptureShield })))
 
 // 탐색 목록은 앱의 새 분석 화면에서만 쓰여서, 그때만 받아요.
+const SocialCallback = lazy(() => import('./components/Social').then((module) => ({ default: module.SocialCallback })))
 const Explore = lazy(() => import('./components/Explore').then((module) => ({ default: module.Explore })))
 const ExplorePreview = lazy(() => import('./components/Explore').then((module) => ({ default: module.ExplorePreview })))
 
@@ -179,6 +181,8 @@ export default function App() {
   const [about, setAbout] = useState(aboutFromPath)
   /** 앱이 브라우저로 열어 준 앱 로그인 화면(/app-login)을 보고 있는지 */
   const [appLogin, setAppLogin] = useState(appLoginFromPath)
+  /** 소셜 로그인에서 돌아온 주소면 어느 서비스인지. 이 화면은 끝나면 페이지를 새로 여니, 처음 한 번만 읽어요. */
+  const [social] = useState(socialFromPath)
   /** 앱의 사이드바를 펴 뒀는지. 다음에 켰을 때도 그대로 둬요. */
   const [sidebarOpen, setSidebarOpen] = useState(() => !sidebarClosed())
   const { tokens, me } = useAuth()
@@ -658,6 +662,15 @@ export default function App() {
     !(isApp && tokens === null) && !appLogin,
   )
 
+  // GitHub나 카카오에서 돌아온 주소면 다른 화면 대신 로그인을 마무리하는 화면만 보여줘요.
+  if (social) {
+    return (
+      <Suspense fallback={<div className="h-dvh bg-white" />}>
+        <SocialCallback provider={social} />
+      </Suspense>
+    )
+  }
+
   if (isApp && tokens === null) {
     return (
       <Suspense fallback={<div data-app-drag className="h-dvh bg-white" />}>
@@ -745,6 +758,7 @@ export default function App() {
             onNavigate={openAccount}
             onSignedIn={handleSignedIn}
             notice={loginReturn.current?.notice}
+            returnTo={loginReturn.current ? `/c/${loginReturn.current.id}` : undefined}
             onOpenChat={(id) => {
               track('history_chat_open')
               openChat(id)

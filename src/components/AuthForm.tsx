@@ -1,11 +1,20 @@
 import { useState, type FormEvent, type InputHTMLAttributes } from 'react'
 import { track } from '../lib/analytics'
 import { signIn, signUp } from '../lib/auth'
+import { SocialButtons, useSocialClients } from './Social'
 
 interface Props {
   mode: 'login' | 'signup'
   notice?: string
   onSwitch: () => void
+  /** 소셜 로그인을 마치고 돌아갈 주소. 넘기지 않으면 보던 화면이나 내 작업으로 가요. */
+  returnTo?: string
+}
+
+/** 소셜 로그인을 마치고 돌아갈 주소를 정해요. 앱 로그인, 내 정보, 내 작업처럼 로그인 화면이 대신 떠 있던 주소면 그 주소로 돌아가요. */
+function defaultReturn(): string {
+  const { pathname, search } = window.location
+  return pathname === '/login' || pathname === '/signup' ? '/history' : `${pathname}${search}`
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -25,7 +34,9 @@ function Field({ label, ...input }: { label: string } & InputHTMLAttributes<HTML
   )
 }
 
-export function AuthForm({ mode, notice, onSwitch }: Props) {
+export function AuthForm({ mode, notice, onSwitch, returnTo }: Props) {
+  const social = useSocialClients()
+  const hasSocial = social !== null && Object.keys(social).length > 0
   const signup = mode === 'signup'
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
@@ -125,6 +136,17 @@ export function AuthForm({ mode, notice, onSwitch }: Props) {
             {working ? '처리 중' : signup ? '가입하기' : '로그인'}
           </button>
         </form>
+
+        {hasSocial && (
+          <>
+            <div className="my-6 flex items-center gap-3 text-[12px] text-gray-400" aria-hidden="true">
+              <span className="h-px flex-1 bg-gray-200" />
+              또는
+              <span className="h-px flex-1 bg-gray-200" />
+            </div>
+            <SocialButtons mode="login" returnTo={returnTo ?? defaultReturn()} />
+          </>
+        )}
 
         <p className="mt-6 text-center text-[13px] text-gray-500">
           {signup ? '이미 계정이 있나요?' : '아직 계정이 없나요?'}{' '}

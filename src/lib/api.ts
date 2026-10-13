@@ -17,6 +17,10 @@ export interface ServerConfig {
   feedback: boolean
   /** 서버의 탐색에 연합 동아리와 커뮤니티 목록이 있는지. 없으면 탐색을 갈래로 나누지 않고 GitHub 목록만 보여줘요. */
   clubs: boolean
+  /** GitHub 로그인에 쓰는 공개 값. 서버가 GitHub 로그인을 켜 두지 않았으면 null이에요. */
+  githubClientId: string | null
+  /** 카카오 로그인에 쓰는 공개 값. 서버가 카카오 로그인을 켜 두지 않았으면 null이에요. */
+  kakaoClientId: string | null
 }
 
 /** 서버가 어떤 기능을 지원하는지 물어봐요. */
@@ -31,10 +35,20 @@ export async function fetchConfig(): Promise<ServerConfig> {
       pin: result.ok && result.data?.pin === true,
       feedback: result.ok && result.data?.feedback === true,
       clubs: result.ok && result.data?.clubs === true,
+      githubClientId: (result.ok && result.data?.githubClientId) || null,
+      kakaoClientId: (result.ok && result.data?.kakaoClientId) || null,
     }
   } catch {
-    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false, clubs: false }
+    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false, clubs: false, githubClientId: null, kakaoClientId: null }
   }
+}
+
+let configOnce: Promise<ServerConfig> | null = null
+
+/** 서버가 지원하는 기능을 한 번만 물어보고 나눠 써요. 로그인 화면과 내 정보처럼 따로 뜨는 화면에서 써요. */
+export function loadConfig(): Promise<ServerConfig> {
+  configOnce ??= fetchConfig()
+  return configOnce
 }
 
 /** popular와 rising은 GitHub 전체에서 고른 레포, clubs는 IT 연합 동아리와 커뮤니티의 레포예요. */

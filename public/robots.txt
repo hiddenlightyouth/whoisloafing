@@ -5,6 +5,7 @@ Disallow: /c/
 Disallow: /me
 Disallow: /history
 Disallow: /app-login
+Disallow: /auth/
 Disallow: /deep
 Disallow: /explore
 Disallow: /admin
