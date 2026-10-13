@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import type { Result } from '../lib/admin'
 import type { Slice } from '../lib/auth'
 import { tag, toolButton } from './DeepParts'
@@ -127,9 +128,10 @@ export function ConfirmDialog({ title, body, confirm, danger = false, working, o
     return () => document.removeEventListener('keydown', onKeyDown, true)
   }, [onCancel])
 
-  return (
+  // 화면 맨 바깥(body)에 그려요. 움직이는 요소 안에 두면 그 요소 크기만큼만 덮여서, 막과 블러가 화면 일부에만 깔려요.
+  return createPortal(
     <div
-      className="fixed inset-0 animate-fade z-40 flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
+      className="fixed inset-0 z-40 animate-fade flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
       onPointerDown={(event) => {
         if (event.target === event.currentTarget) onCancel()
       }}
@@ -156,7 +158,8 @@ export function ConfirmDialog({ title, body, confirm, danger = false, working, o
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
