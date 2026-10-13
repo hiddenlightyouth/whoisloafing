@@ -605,28 +605,20 @@ function Loading({ section }: { section: DeepSection }) {
 
   if (section === 'activity') {
     return (
-      <div className="min-h-0 flex-1 overflow-hidden bg-gray-50 p-4" aria-busy="true">
+      <div className="relative min-h-0 flex-1 overflow-hidden bg-gray-50" aria-busy="true">
         <span className="sr-only">분석하고 있어요.</span>
-        <div className="space-y-4" aria-hidden>
-          <div className={`h-9 w-[104px] ${shade}`} />
-          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-gray-200 bg-gray-200 lg:grid-cols-3 2xl:grid-cols-6">
-            {Array.from({ length: 6 }, (_, item) => (
-              <div key={item} className="bg-white px-5 py-4">
-                <Bone className="h-3 w-16" />
-                <Bone className="mt-2.5 h-4 w-24" />
+        <div aria-hidden>
+          <div className={`absolute top-3.5 left-4 h-9 w-[104px] ${shade}`} />
+          <div className="absolute inset-x-4 top-16 bottom-24 flex items-center justify-center gap-1 overflow-hidden">
+            {Array.from({ length: 16 }, (_, week) => (
+              <div key={week} className="flex shrink-0 flex-col gap-1">
+                {Array.from({ length: 7 }, (_, day) => (
+                  <div key={day} className={`size-9 ${shade}`} />
+                ))}
               </div>
             ))}
           </div>
-          <div className="flex flex-wrap items-start gap-4">
-            <div className={`w-[640px] max-w-full ${card}`}>
-              <Bone className="h-3 w-16" />
-              <div className={`mt-4 h-[420px] ${shade}`} />
-            </div>
-            <div className={`w-[520px] max-w-full ${card}`}>
-              <Bone className="h-3 w-16" />
-              <div className={`mt-4 h-[152px] ${shade}`} />
-            </div>
-          </div>
+          <div className={`absolute bottom-4 left-4 h-[70px] w-72 ${shade}`} />
         </div>
       </div>
     )
