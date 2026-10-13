@@ -7,6 +7,7 @@ import { ChatSkeleton, ExploreSkeleton } from './components/Skeleton'
 import { Header } from './components/Header'
 import { AppNudge } from './components/AppNudge'
 import { Hero } from './components/Hero'
+import { DeepNudge, shouldNudgeDeep } from './components/DeepNudge'
 import { BugReport, FeedbackPrompt } from './components/Feedback'
 import { LeaveDialog } from './components/LeaveDialog'
 import { LoginNudge } from './components/LoginNudge'
@@ -185,6 +186,11 @@ export default function App() {
   /** 분석이 어땠는지 묻는 카드가 떠 있는지. 아주 가끔만 띄워요. */
   const [askingFeedback, setAskingFeedback] = useState(false)
   const wasBusy = useRef(false)
+  /** 앱에서 심층 분석을 권하고 있는 채팅의 ID. 채팅마다 기본 분석이 끝났을 때 한 번만 권해요. */
+  const [deepNudge, setDeepNudge] = useState<string | null>(null)
+  const deepNudged = useRef<string | null>(null)
+  /** 채팅에서 심층 분석으로 넘어갔는지. 그러면 심층 분석의 채팅 버튼 아래에 안내를 잠깐 띄워요. */
+  const [deepChatHint, setDeepChatHint] = useState(false)
   /** 진행 중인 채팅을 두고 다른 화면으로 가려고 할 때, 정말 떠날지 묻는 창과 가려던 곳 */
   const [leaveTo, setLeaveTo] = useState<LeaveTarget | null>(null)
   const confirmingLeave = leaveTo !== null
@@ -414,8 +420,9 @@ export default function App() {
 
   /** 앱의 심층 분석을 열어요. repo(소유자/레포)가 없으면 레포를 고르는 화면이에요. */
   const openDeep = useCallback(
-    (repo: string | null) => {
+    (repo: string | null, fromChat = false) => {
       loginReturn.current = null
+      setDeepChatHint(fromChat)
       // 돌던 분석은 서버가 끝까지 마쳐서 저장하니, 기다리지 않고 바로 옮겨요.
       abandon()
       window.history.pushState(null, '', repo ? `/deep/${repo}` : '/deep')
@@ -527,9 +534,17 @@ export default function App() {
   useEffect(() => {
     const finished = wasBusy.current && !busy
     wasBusy.current = busy
-    if (!finished || !feedback.ready || readOnly || !messages.some((message) => message.from === 'bot')) return
-    if (shouldAskFeedback()) setAskingFeedback(true)
-  }, [busy, feedback.ready, messages, readOnly])
+    if (!finished || readOnly || !messages.some((message) => message.from === 'bot')) return
+    if (feedback.ready && shouldAskFeedback()) setAskingFeedback(true)
+    // 앱에서는 레포의 기본 분석(첫 답)이 끝났을 때, 같은 레포를 심층 분석으로 볼 수 있다고 한 번 알려줘요.
+    const last = messages[messages.length - 1]
+    const failed = last?.from === 'bot' && last.event.type === 'error'
+    const id = chatId.current
+    if (isApp && deep && id && deepNudged.current !== id && !failed && shouldNudgeDeep()) {
+      deepNudged.current = id
+      setDeepNudge(id)
+    }
+  }, [busy, chatId, deep, feedback.ready, messages, readOnly])
   // 내가 진행 중인 채팅이 화면에 있으면, 떠나기 전에 항상 물어봐요. 분석이 잠깐 멈춰 있을 때(질문을 기다리는 중)도 마찬가지예요.
   const working = busy || (messages.length > 0 && !readOnly)
   // 로그인하지 않고 분석하는 동안, 첫 말풍선이 나온 뒤에 로그인을 권해요.
@@ -670,7 +685,7 @@ export default function App() {
           isApp && deep && messages.length > 0 && !account && chatRepo?.includes('/')
             ? () => {
                 track('deep_open', { from: 'chat', repo: chatRepo })
-                openDeep(chatRepo)
+                openDeep(chatRepo, true)
               }
             : undefined
         }
@@ -697,7 +712,7 @@ export default function App() {
         </Suspense>
       ) : deepPage ? (
         <Suspense fallback={<main className="flex-1" />}>
-          <Deep repo={deepPage.repo} onOpen={openDeep} onNew={goHome} refreshKey={chatsVersion} />
+          <Deep repo={deepPage.repo} onOpen={(repo) => openDeep(repo)} onNew={goHome} refreshKey={chatsVersion} chatHint={deepChatHint} />
         </Suspense>
       ) : explorePage ? (
         <Suspense fallback={<main className="flex-1" />}>
@@ -788,6 +803,16 @@ export default function App() {
       {isApp && <ShortcutTip />}
       {askingFeedback && messages.length > 0 && !account && !confirmingLeave && !(nudging && !nudgeClosed) && (
         <FeedbackPrompt chatId={chatId.current} onClose={() => setAskingFeedback(false)} />
+      )}
+      {deepNudge && deepNudge === chatId.current && messages.length > 0 && !account && !askingFeedback && chatRepo?.includes('/') && (
+        <DeepNudge
+          onClose={() => setDeepNudge(null)}
+          onDeep={() => {
+            setDeepNudge(null)
+            track('deep_open', { from: 'nudge', repo: chatRepo })
+            openDeep(chatRepo, true)
+          }}
+        />
       )}
       {feedback.bugOpen && <BugReport chatId={messages.length > 0 ? chatId.current : null} />}
       <Toast />

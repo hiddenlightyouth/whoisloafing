@@ -27,7 +27,12 @@ interface Props {
   onNew: () => void
   /** 사이드바에서 채팅을 지우면 값이 바뀌어요. 내 작업을 다시 받아서 갤러리와 채팅 칸을 맞춰요. */
   refreshKey: number
+  /** 채팅에서 넘어왔는지. 그러면 채팅 버튼 아래에 여기서도 채팅을 이어 갈 수 있다고 잠깐 알려줘요. */
+  chatHint?: boolean
 }
+
+/** 채팅 버튼 아래의 안내를 이만큼 보여주고 치워요. */
+const CHAT_HINT_MS = 6000
 
 const SECTION_LABELS: Record<DeepSection, string> = {
   structure: '프로젝트 구조',
@@ -80,11 +85,11 @@ interface RepoCard {
  * 앱에서만 쓰는 심층 분석 화면이에요. 채팅처럼 말풍선이 쌓이지 않고, 레포 하나를 탭으로 나눠 한 화면에서 살펴봐요.
  * 탭은 처음 열 때 한 번만 받아 두고, 다른 탭에 다녀와도 다시 받지 않아요.
  */
-export function Deep({ repo, onOpen, onNew, refreshKey }: Props) {
+export function Deep({ repo, onOpen, onNew, refreshKey, chatHint = false }: Props) {
   // 채팅을 지우면 갤러리를 처음부터 다시 받아요.
   if (!repo) return <Gallery key={refreshKey} onOpen={onOpen} onNew={onNew} />
   // 레포가 바뀌면 받아 둔 내용과 보던 탭을 처음으로 되돌려요.
-  return <Dashboard key={repo} repo={repo} onOpen={onOpen} refreshKey={refreshKey} />
+  return <Dashboard key={repo} repo={repo} onOpen={onOpen} refreshKey={refreshKey} chatHint={chatHint} />
 }
 
 /** 링크를 다시 적지 않고, 채팅으로 분석해 둔 레포 중에서 골라요. */
@@ -199,11 +204,20 @@ function Gallery({ onOpen, onNew }: { onOpen: (repo: string) => void; onNew: () 
 /** 채팅으로 이동 버튼에 쓸 채팅을 찾을 때, 내 작업을 이만큼까지만 넘겨 봐요. */
 const CHAT_LOOKUP_PAGES = 3
 
-function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: string | null) => void; refreshKey: number }) {
+function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpen: (repo: string | null) => void; refreshKey: number; chatHint: boolean }) {
   /** 이 레포를 가장 최근에 분석한 채팅. 찾지 못하면 채팅으로 이동 버튼을 숨겨요. */
   const [chatId, setChatId] = useState<string | null>(null)
   /** 오른쪽의 채팅 칸을 열어 뒀는지 */
   const [chatOpen, setChatOpen] = useState(false)
+  /** 채팅에서 넘어왔을 때 채팅 버튼 아래에 잠깐 띄우는 안내가 보이는지 */
+  const [hinting, setHinting] = useState(chatHint)
+
+  // 채팅 버튼이 나타난 뒤부터 세서, 잠깐 보여주고 치워요. 채팅 칸을 열면 바로 치워요.
+  useEffect(() => {
+    if (!hinting || !chatId) return
+    const timer = window.setTimeout(() => setHinting(false), CHAT_HINT_MS)
+    return () => window.clearTimeout(timer)
+  }, [hinting, chatId])
 
   useEffect(() => {
     let stale = false
@@ -311,21 +325,30 @@ function Dashboard({ repo, onOpen, refreshKey }: { repo: string; onOpen: (repo: 
           </div>
         </div>
         {chatId && (
-          <button
-            type="button"
-            aria-pressed={chatOpen}
-            onClick={() => {
-              track('deep_chat_toggle', { repo, open: !chatOpen })
-              setChatOpen((value) => !value)
-            }}
-            className={`relative ${toolButton} ${chatOpen ? 'border-brand text-brand-hover hover:border-brand hover:text-brand-hover' : ''}`}
-          >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
-              <path d="M2.5 4.5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H7l-3 2.5V11.5h-.5a1 1 0 0 1-1-1z" />
-            </svg>
-            채팅
-            <Kbd corner>C</Kbd>
-          </button>
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              aria-pressed={chatOpen}
+              onClick={() => {
+                track('deep_chat_toggle', { repo, open: !chatOpen })
+                setHinting(false)
+                setChatOpen((value) => !value)
+              }}
+              className={`relative ${toolButton} ${chatOpen ? 'border-brand text-brand-hover hover:border-brand hover:text-brand-hover' : ''}`}
+            >
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
+                <path d="M2.5 4.5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H7l-3 2.5V11.5h-.5a1 1 0 0 1-1-1z" />
+              </svg>
+              채팅
+              <Kbd corner>C</Kbd>
+            </button>
+            {hinting && !chatOpen && (
+              <p role="status" className="pointer-events-none absolute top-full right-0 z-30 mt-2 animate-rise whitespace-nowrap rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-medium text-white">
+                <span aria-hidden className="absolute -top-1 right-6 size-2 rotate-45 bg-brand" />
+                여기서 채팅을 계속 이용할 수 있어요
+              </p>
+            )}
+          </div>
         )}
       </div>
 
