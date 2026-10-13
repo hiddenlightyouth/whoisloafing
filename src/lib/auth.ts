@@ -21,6 +21,8 @@ export interface Me {
   /** GitHub 계정, 카카오 계정이 연결되어 있는지 */
   github?: boolean
   kakao?: boolean
+  /** 이메일과 비밀번호로 로그인할 수 있는지. 소셜 로그인으로 가입했으면 false예요. */
+  passwordSet?: boolean
 }
 
 export interface AuthState {
@@ -78,6 +80,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   C4045: '지금은 이 방법으로 로그인할 수 없어요.',
   C4092: '이미 이메일로 가입한 계정이에요. 이메일로 로그인한 뒤, 내 정보에서 계정을 연결해 주세요.',
   C4093: '이미 다른 계정에 연결되어 있어요.',
+  C4094: '로그인할 방법이 하나는 남아 있어야 해서 해제할 수 없어요.',
   C4034: '정지된 계정이에요. 관리자에게 문의해 주세요.',
   C4041: '가입하지 않은 이메일이에요.',
   C4091: '이미 가입한 이메일이에요.',
@@ -293,6 +296,30 @@ export async function linkSocial(provider: string, code: string, redirectUri: st
     })
     if (!result.ok) return { ok: false, message: messageOf(result.code) }
     await loadMe()
+    return { ok: true }
+  } catch {
+    return { ok: false, message: NETWORK_MESSAGE }
+  }
+}
+
+/** 내 계정에서 소셜 계정 연결을 해제해요. */
+export async function unlinkSocial(provider: string): Promise<AuthOutcome> {
+  try {
+    const result = await authFetch<null>(`/auth/social/${provider}/link`, { method: 'DELETE' })
+    if (!result.ok) return { ok: false, message: messageOf(result.code) }
+    await loadMe()
+    return { ok: true }
+  } catch {
+    return { ok: false, message: NETWORK_MESSAGE }
+  }
+}
+
+/** 회원 탈퇴해요. 서버에서 계정과 채팅을 모두 지우고, 이 브라우저의 로그인도 지워요. */
+export async function withdraw(): Promise<AuthOutcome> {
+  try {
+    const result = await authFetch<null>('/users/me', { method: 'DELETE' })
+    if (!result.ok) return { ok: false, message: messageOf(result.code) }
+    clearAuth()
     return { ok: true }
   } catch {
     return { ok: false, message: NETWORK_MESSAGE }

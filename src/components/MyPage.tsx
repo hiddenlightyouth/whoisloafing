@@ -7,12 +7,16 @@ import {
   loadMe,
   revokeSession,
   signOut,
+  unlinkSocial,
+  withdraw,
   useAuth,
   type DeviceSession,
   type LoginRecord,
 } from '../lib/auth'
 import { formatDate, formatDateTime, parseServerTime } from '../lib/format'
 import { loadConfig } from '../lib/api'
+import { showToast } from '../lib/toast'
+import { ConfirmDialog } from './AdminParts'
 import { isApp } from '../lib/app'
 import { SOCIAL_LABELS, type SocialProvider } from '../lib/social'
 import { IpPlace } from './IpPlace'
@@ -65,10 +69,18 @@ function Connections() {
   const providers = (['github', 'kakao'] as const).filter((provider) => clients?.[provider])
   /** 앱에서는 연결이 브라우저에서 마무리돼요. 그 API가 없는 예전 서버에서는 앱에 연결 버튼을 두지 않아요. */
   const [appLink, setAppLink] = useState(false)
+  /** 서버에 연결 해제 API가 있는지 */
+  const [unlinkReady, setUnlinkReady] = useState(false)
+  /** 해제할지 물어보고 있는 서비스 */
+  const [unlinking, setUnlinking] = useState<SocialProvider | null>(null)
+  const [working, setWorking] = useState(false)
 
   useEffect(() => {
+    void loadConfig().then((config) => {
+      setAppLink(config.socialAppLink)
+      setUnlinkReady(config.socialUnlink)
+    })
     if (!isApp) return
-    void loadConfig().then((config) => setAppLink(config.socialAppLink))
     // 브라우저에서 연결을 마치고 앱으로 돌아오면 바로 보이게, 창에 다시 들어올 때 내 정보를 새로 받아요.
     const refresh = () => void loadMe()
     window.addEventListener('focus', refresh)
@@ -77,6 +89,18 @@ function Connections() {
 
   if (providers.length === 0) return null
   const canLink = !isApp || appLink
+  // 로그인할 방법이 하나는 남아야 해요. 비밀번호가 없는 계정(소셜 로그인으로 가입)은 다른 소셜 계정이 연결되어 있을 때만 해제할 수 있어요.
+  const canUnlink = (provider: SocialProvider) =>
+    unlinkReady && (me?.passwordSet !== false || (provider === 'github' ? me?.kakao === true : me?.github === true))
+
+  async function unlink(provider: SocialProvider) {
+    setWorking(true)
+    const outcome = await unlinkSocial(provider)
+    track('auth_social_unlink', { provider, success: outcome.ok })
+    setWorking(false)
+    setUnlinking(null)
+    showToast(outcome.ok ? `${SOCIAL_LABELS[provider]} 연결을 해제했어요.` : outcome.message)
+  }
 
   const linked = (provider: SocialProvider) => (provider === 'github' ? me?.github === true : me?.kakao === true)
 
@@ -95,6 +119,11 @@ function Connections() {
                   <path d="M3.5 8.5l3 3 6-7" />
                 </svg>
                 등록 됨
+                {canUnlink(provider) && (
+                  <button type="button" onClick={() => setUnlinking(provider)} className={`${quiet} ml-1.5 bg-gray-100 text-gray-700 hover:text-red-500`}>
+                    해제
+                  </button>
+                )}
               </p>
             )}
             {me && !linked(provider) && canLink && (
@@ -106,6 +135,17 @@ function Connections() {
         ))}
       </ul>
       {isApp && canLink && me && providers.some((provider) => !linked(provider)) && <p className="mt-3 text-[13px] text-gray-500">연결을 누르면 브라우저가 열려요. 거기서 마무리하면 돼요.</p>}
+      {unlinking && (
+        <ConfirmDialog
+          title={`${SOCIAL_LABELS[unlinking]} 연결을 해제할까요?`}
+          body={`해제하면 ${SOCIAL_LABELS[unlinking]} 계정으로는 이 계정에 로그인할 수 없어요. 나중에 다시 연결할 수 있어요.`}
+          confirm="해제"
+          danger
+          working={working}
+          onCancel={() => setUnlinking(null)}
+          onConfirm={() => void unlink(unlinking)}
+        />
+      )}
     </Section>
   )
 }
@@ -234,10 +274,30 @@ function LoginHistory() {
 export function MyPage({ onSignedOut }: Props) {
   const { me } = useAuth()
   const [leaving, setLeaving] = useState(false)
+  /** 서버에 회원 탈퇴 API가 있는지 */
+  const [withdrawReady, setWithdrawReady] = useState(false)
+  /** 탈퇴할지 물어보고 있는지 */
+  const [askingWithdraw, setAskingWithdraw] = useState(false)
+  const [withdrawing, setWithdrawing] = useState(false)
 
   useEffect(() => {
     void loadMe()
+    void loadConfig().then((config) => setWithdrawReady(config.withdraw))
   }, [])
+
+  async function handleWithdraw() {
+    setWithdrawing(true)
+    const outcome = await withdraw()
+    track('auth_withdraw', { success: outcome.ok })
+    setWithdrawing(false)
+    setAskingWithdraw(false)
+    if (!outcome.ok) {
+      showToast(outcome.message)
+      return
+    }
+    showToast('탈퇴했어요. 그동안 써 주셔서 고마워요.')
+    onSignedOut()
+  }
 
   async function handleSignOut() {
     setLeaving(true)
@@ -289,6 +349,28 @@ export function MyPage({ onSignedOut }: Props) {
         <Section title="로그인 기록">
           <LoginHistory />
         </Section>
+
+        {withdrawReady && (
+          <Section title="회원 탈퇴">
+            <div className="flex items-center justify-between gap-4 border-y border-gray-100 py-4">
+              <p className="min-w-0 break-keep text-[13px] leading-relaxed text-gray-500">탈퇴하면 계정과 분석한 채팅이 모두 지워지고 되돌릴 수 없어요.</p>
+              <button type="button" onClick={() => setAskingWithdraw(true)} className={`${quiet} bg-gray-100 text-gray-700 hover:text-red-500`}>
+                탈퇴하기
+              </button>
+            </div>
+          </Section>
+        )}
+        {askingWithdraw && (
+          <ConfirmDialog
+            title="정말 탈퇴할까요?"
+            body="계정과 로그인 기록, 분석한 채팅과 공유한 링크가 모두 지워져요. 지운 뒤에는 되돌릴 수 없어요."
+            confirm="탈퇴하기"
+            danger
+            working={withdrawing}
+            onCancel={() => setAskingWithdraw(false)}
+            onConfirm={() => void handleWithdraw()}
+          />
+        )}
       </div>
     </main>
   )

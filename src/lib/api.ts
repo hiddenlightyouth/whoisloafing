@@ -23,6 +23,10 @@ export interface ServerConfig {
   kakaoClientId: string | null
   /** 앱에서 시작한 계정 연결을 브라우저에서 마무리하는 API가 서버에 있는지. 없으면 앱의 내 정보에서 연결 버튼을 숨겨요. */
   socialAppLink: boolean
+  /** 서버에 소셜 계정 연결 해제 API가 있는지. 없으면 내 정보에서 해제 버튼을 숨겨요. */
+  socialUnlink: boolean
+  /** 서버에 회원 탈퇴 API가 있는지. 없으면 내 정보에서 회원 탈퇴를 숨겨요. */
+  withdraw: boolean
 }
 
 /** 서버가 어떤 기능을 지원하는지 물어봐요. */
@@ -40,9 +44,11 @@ export async function fetchConfig(): Promise<ServerConfig> {
       githubClientId: (result.ok && result.data?.githubClientId) || null,
       kakaoClientId: (result.ok && result.data?.kakaoClientId) || null,
       socialAppLink: result.ok && result.data?.socialAppLink === true,
+      socialUnlink: result.ok && result.data?.socialUnlink === true,
+      withdraw: result.ok && result.data?.withdraw === true,
     }
   } catch {
-    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false, clubs: false, githubClientId: null, kakaoClientId: null, socialAppLink: false }
+    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false, clubs: false, githubClientId: null, kakaoClientId: null, socialAppLink: false, socialUnlink: false, withdraw: false }
   }
 }
 
