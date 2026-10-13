@@ -174,7 +174,7 @@ export function Explore({ onPick, clubs: hasClubs = false }: Props) {
 
       {kind === 'clubs' && Array.isArray(loaded) && sorted.length > 0 && (
         <div className="mt-5 flex items-center justify-between gap-3">
-          <p className="text-[13px] text-gray-500 tabular-nums">레포 {sorted.length.toLocaleString('ko-KR')}개</p>
+          <p className="text-[13px] text-gray-500 tabular-nums">{sorted.length.toLocaleString('ko-KR')}개의 항목</p>
           <div role="radiogroup" aria-label="순서" className="flex items-center gap-3">
             {SORTS.map(([value, label]) => (
               <button
