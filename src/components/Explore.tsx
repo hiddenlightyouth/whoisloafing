@@ -272,9 +272,17 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
     for (const item of clubRepos ?? []) if (item.club) map.set(item.club, (map.get(item.club) ?? 0) + 1)
     return map
   }, [clubRepos])
+  /** 고른 동아리 안에서 고른 학교. 학교마다 조직이 따로 있는 동아리(멋쟁이사자처럼)에서만 써요. null이면 모든 학교예요. */
+  const [group, setGroup] = useState<string | null>(null)
+  /** 고른 동아리의 학교 이름과 학교마다의 레포 수. 가나다순이에요. 학교로 나뉘지 않는 동아리는 비어 있어요. */
+  const groups = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const item of clubRepos ?? []) if (club && item.club === club && item.group) map.set(item.group, (map.get(item.group) ?? 0) + 1)
+    return [...map].sort(([a], [b]) => a.localeCompare(b, 'ko'))
+  }, [clubRepos, club])
   const sorted = useMemo(
-    () => (clubRepos ? clubRepos.filter((item) => !club || item.club === club).sort(SORTERS[sort]) : []),
-    [clubRepos, club, sort],
+    () => (clubRepos ? clubRepos.filter((item) => (!club || item.club === club) && (!club || !group || item.group === group)).sort(SORTERS[sort]) : []),
+    [clubRepos, club, group, sort],
   )
   const list = clubRepos ? sorted.slice(0, shown) : loaded
   const more = clubRepos ? sorted.length - shown : 0
@@ -320,6 +328,7 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
                 onClick={() => {
                   track('explore_club_select', { club: name ?? 'all' })
                   setClub(name)
+                  setGroup(null)
                   setShown(PAGE_SIZE)
                 }}
                 className={`${clubButton} ${club === name ? 'border-brand bg-brand-soft text-brand-hover' : 'border-gray-200 bg-white text-gray-800 hover:border-gray-300 hover:text-gray-950'}`}
@@ -327,6 +336,31 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
                 {name ?? '전체'}
                 <span className={`text-[12px] font-normal tabular-nums ${club === name ? 'text-brand' : 'text-gray-400'}`}>
                   {(name ? (counts.get(name) ?? 0) : clubRepos.length).toLocaleString('ko-KR')}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* 학교마다 조직이 따로 있는 동아리를 고르면, 학교를 한 번 더 고를 수 있어요. */}
+        {category === 'clubs' && club && groups.length > 1 && (
+          <div role="radiogroup" aria-label="학교" className="mb-3 flex animate-rise flex-wrap gap-2">
+            {[null, ...groups.map(([name]) => name)].map((name) => (
+              <button
+                key={name ?? ''}
+                type="button"
+                role="radio"
+                aria-checked={group === name}
+                onClick={() => {
+                  track('explore_group_select', { club, group: name ?? 'all' })
+                  setGroup(name)
+                  setShown(PAGE_SIZE)
+                }}
+                className={`${clubButton} ${group === name ? 'border-brand bg-brand-soft text-brand-hover' : 'border-gray-200 bg-white text-gray-800 hover:border-gray-300 hover:text-gray-950'}`}
+              >
+                {name ?? '전체'}
+                <span className={`text-[12px] font-normal tabular-nums ${group === name ? 'text-brand' : 'text-gray-400'}`}>
+                  {(name ? (groups.find(([key]) => key === name)?.[1] ?? 0) : (counts.get(club) ?? 0)).toLocaleString('ko-KR')}
                 </span>
               </button>
             ))}

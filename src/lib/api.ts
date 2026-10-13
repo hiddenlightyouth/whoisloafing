@@ -73,6 +73,8 @@ export interface ExploreRepo {
   avatarUrl?: string
   /** 어느 동아리나 커뮤니티의 레포인지. clubs 목록에서만 와요. */
   club?: string
+  /** 학교마다 조직이 따로 있는 동아리에서, 이 레포가 어느 학교 것인지. 그런 동아리의 레포에만 와요. */
+  group?: string
   /** 마지막으로 푸시한 때. clubs 목록에서만 와요. */
   pushedAt?: string
 }
