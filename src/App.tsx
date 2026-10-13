@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import type { AccountPage } from './components/Account'
 import type { AdminTab } from './components/Admin'
+import type { ExploreCategory } from './components/Explore'
 import { Chat } from './components/Chat'
 import { ChatSkeleton, ExploreSkeleton } from './components/Skeleton'
 import { Header } from './components/Header'
@@ -53,6 +54,14 @@ function deepFromPath(): { repo: string | null } | null {
   return match ? { repo: match[1] ? `${match[1]}/${match[2]}` : null } : null
 }
 
+const EXPLORE_PATH = /^\/explore(?:\/(clubs))?\/?$/
+
+/** 탐색 화면 주소면 보고 있는 갈래를 돌려줘요. */
+function exploreFromPath(): ExploreCategory | null {
+  const match = EXPLORE_PATH.exec(window.location.pathname)
+  return match ? (match[1] ? 'clubs' : 'github') : null
+}
+
 const ADMIN_PATH = /^\/admin(?:\/(users|chats|feedback|ai))?\/?$/
 
 /** 관리자 화면 주소면 보고 있는 탭을 돌려줘요. */
@@ -71,6 +80,7 @@ const CaptureShield = lazy(() => import('./components/CaptureShield').then((modu
 
 // 탐색 목록은 앱의 새 분석 화면에서만 쓰여서, 그때만 받아요.
 const Explore = lazy(() => import('./components/Explore').then((module) => ({ default: module.Explore })))
+const ExplorePreview = lazy(() => import('./components/Explore').then((module) => ({ default: module.ExplorePreview })))
 
 // 심층 분석 대시보드는 앱에서만 쓰는 화면이라, 열 때만 받아요.
 const Deep = lazy(() => import('./components/Deep').then((module) => ({ default: module.Deep })))
@@ -145,6 +155,8 @@ export default function App() {
   const [clubsReady, setClubsReady] = useState(false)
   /** 앱의 심층 분석 화면을 보고 있는지. repo가 null이면 레포를 고르는 화면이에요. */
   const [deepPage, setDeepPage] = useState(() => (isApp ? deepFromPath() : null))
+  /** 앱의 탐색 화면에서 보고 있는 갈래. 탐색 화면이 아니면 null이에요. */
+  const [explorePage, setExplorePage] = useState(() => (isApp ? exploreFromPath() : null))
   /** 앱의 설정 창이 떠 있는지 */
   const [settingsOpen, setSettingsOpen] = useState(false)
   /** 서버에 관리자 API가 있는지. 없으면 관리자 화면에서 AI 사용량만 보여줘요. */
@@ -217,6 +229,17 @@ export default function App() {
       setChat(null)
       setOpening(false)
       trackPageView('deep', { repo: nextDeep.repo ?? undefined })
+      return
+    }
+    // 탐색 화면도 앱에서만 써요.
+    const nextExplore = exploreFromPath()
+    if (nextExplore && !isApp) window.history.replaceState(null, '', '/')
+    setExplorePage(isApp ? nextExplore : null)
+    if (nextExplore && isApp) {
+      reset()
+      setChat(null)
+      setOpening(false)
+      trackPageView('explore', { category: nextExplore })
       return
     }
     // 관리자 화면도 앱에서만 써요. 권한은 서버가 확인하고, 관리자가 아니면 화면이 안내만 보여줘요.
@@ -332,6 +355,7 @@ export default function App() {
     setAbout(false)
     setAppLogin(false)
     setDeepPage(null)
+    setExplorePage(null)
     setAdminPage(null)
     if (window.location.pathname !== '/') window.history.pushState(null, '', '/')
     trackPageView('home')
@@ -347,6 +371,7 @@ export default function App() {
       setAccount(null)
       setAppLogin(false)
       setDeepPage(null)
+      setExplorePage(null)
       setAdminPage(null)
       setAbout(false)
       setArticle({ slug })
@@ -376,6 +401,7 @@ export default function App() {
       setArticle(null)
       setAppLogin(false)
       setDeepPage(null)
+      setExplorePage(null)
       setAdminPage(null)
       setAbout(false)
       setAccount(page)
@@ -393,6 +419,17 @@ export default function App() {
       // 돌던 분석은 서버가 끝까지 마쳐서 저장하니, 기다리지 않고 바로 옮겨요.
       abandon()
       window.history.pushState(null, '', repo ? `/deep/${repo}` : '/deep')
+      void openFromLocation()
+    },
+    [abandon, openFromLocation],
+  )
+
+  /** 앱의 탐색 화면을 열어요. 갈래마다 주소가 달라서 뒤로 가기로 앞의 갈래에 돌아가요. */
+  const openExplore = useCallback(
+    (category: ExploreCategory = 'github') => {
+      loginReturn.current = null
+      abandon()
+      window.history.pushState(null, '', category === 'clubs' ? '/explore/clubs' : '/explore')
       void openFromLocation()
     },
     [abandon, openFromLocation],
@@ -600,6 +637,7 @@ export default function App() {
       KeyA: () => leaveFor('articles'),
       Slash: () => document.querySelector<HTMLInputElement>('input[aria-label="GitHub 레포 링크"]')?.focus(),
       KeyD: isApp && deep ? () => openDeep(null) : undefined,
+      KeyT: isApp && exploreReady ? () => openExplore() : undefined,
       KeyB: isApp ? () => toggleSidebar(!sidebarOpen) : undefined,
     },
     !(isApp && tokens === null) && !appLogin,
@@ -619,7 +657,7 @@ export default function App() {
       <Header
         app={isApp}
         onHome={handleHome}
-        home={messages.length === 0 && !article && !account && !about && !appLogin && !deepPage && !adminPage && !opening && !missing}
+        home={messages.length === 0 && !article && !account && !about && !appLogin && !deepPage && !explorePage && !adminPage && !opening && !missing}
         inChat={messages.length > 0 && !readOnly && !account}
         storage={storage}
         busy={busy}
@@ -660,6 +698,18 @@ export default function App() {
       ) : deepPage ? (
         <Suspense fallback={<main className="flex-1" />}>
           <Deep repo={deepPage.repo} onOpen={openDeep} onNew={goHome} refreshKey={chatsVersion} />
+        </Suspense>
+      ) : explorePage ? (
+        <Suspense fallback={<main className="flex-1" />}>
+          <Explore
+            category={explorePage}
+            onCategory={openExplore}
+            clubs={clubsReady}
+            onPick={(repo) => {
+              setExplorePage(null)
+              handleSubmit(`https://github.com/${repo}`)
+            }}
+          />
         </Suspense>
       ) : adminPage ? (
         <Suspense fallback={<main className="flex-1" />}>
@@ -711,7 +761,7 @@ export default function App() {
             // 탐색이 있는지 아직 모를 때도 뼈대로 자리를 잡아 둬서, 입력창이 가운데에 있다가 위로 튀어 오르지 않게 해요.
             !isApp || exploreReady === false ? undefined : exploreReady ? (
               <Suspense fallback={<ExploreSkeleton />}>
-                <Explore clubs={clubsReady} onPick={(repo) => handleSubmit(`https://github.com/${repo}`)} />
+                <ExplorePreview clubs={clubsReady} onMore={openExplore} onPick={(repo) => handleSubmit(`https://github.com/${repo}`)} />
               </Suspense>
             ) : (
               <ExploreSkeleton />
@@ -765,9 +815,10 @@ export default function App() {
       {sidebarOpen && (
         <Suspense fallback={<aside data-app-drag className="w-64 shrink-0 border-r border-gray-200 bg-gray-50" />}>
           <AppSidebar
-            activeChatId={account || article || deepPage || adminPage ? null : chatIdFromPath()}
-            page={deepPage ? 'deep' : adminPage ? 'admin' : account === 'me' ? 'me' : article ? 'articles' : null}
+            activeChatId={account || article || deepPage || explorePage || adminPage ? null : chatIdFromPath()}
+            page={deepPage ? 'deep' : explorePage ? 'explore' : adminPage ? 'admin' : account === 'me' ? 'me' : article ? 'articles' : null}
             onDeep={deep ? () => openDeep(null) : undefined}
+            onExplore={exploreReady ? () => openExplore() : undefined}
             onDeepRepo={
               deep
                 ? (repo) => {
@@ -779,10 +830,10 @@ export default function App() {
             onSettings={openSettings}
             settingsOpen={settingsOpen}
             onAdmin={isAdmin(me) ? () => openAdmin() : undefined}
-            refreshKey={`${busy}:${account ?? ''}:${deepPage ? 'deep' : ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`}
+            refreshKey={`${busy}:${account ?? ''}:${deepPage ? 'deep' : ''}:${explorePage ? 'explore' : ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`}
             onNew={handleHome}
             onOpenChat={(id) => {
-              if (id === chatId.current && !account && !article && !deepPage && !adminPage) return
+              if (id === chatId.current && !account && !article && !deepPage && !explorePage && !adminPage) return
               track('history_chat_open', { from: 'sidebar' })
               // 돌던 분석은 서버가 끝까지 마쳐서 저장하니, 기다리지 않고 바로 다른 채팅을 열어요.
               abandon()

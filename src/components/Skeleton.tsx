@@ -25,12 +25,19 @@ export function ChatSkeleton() {
 }
 
 /** 탐색의 레포 카드와 같은 크기와 배치의 뼈대예요. 목록을 받는 동안 보여줘요. */
-export function ExploreCardsSkeleton() {
+export function ExploreCardsSkeleton({ row = false }: { row?: boolean }) {
   return (
-    <ul className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-3" aria-busy="true">
+    <ul
+      className={
+        row
+          ? 'mt-3 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] auto-rows-[0px] grid-rows-[auto] gap-x-4 overflow-hidden'
+          : 'mt-4 grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4'
+      }
+      aria-busy="true"
+    >
       <li className="sr-only">불러오고 있어요.</li>
-      {Array.from({ length: 12 }, (_, item) => (
-        <li key={item} aria-hidden className="flex h-[168px] flex-col rounded-2xl border border-gray-200 bg-white p-4">
+      {Array.from({ length: row ? 8 : 12 }, (_, item) => (
+        <li key={item} aria-hidden className="flex h-[176px] min-h-0 flex-col rounded-2xl border border-gray-200 bg-white p-5">
           <div className="flex items-center gap-3">
             <Bone className="size-12 shrink-0" />
             <div className="min-w-0 flex-1">
@@ -52,15 +59,19 @@ export function ExploreCardsSkeleton() {
   )
 }
 
-/** 탐색 전체의 뼈대예요. 서버가 탐색을 지원하는지 아직 모를 때와 탐색 코드를 받는 동안, 같은 자리를 미리 잡아 둬요. */
+/** 새 분석 화면 아래에 붙는 탐색 맛보기의 뼈대예요. 서버가 탐색을 지원하는지 아직 모를 때와 탐색 코드를 받는 동안, 같은 자리를 미리 잡아 둬요. */
 export function ExploreSkeleton() {
   return (
-    <section aria-hidden>
-      <div className="flex items-center justify-between gap-4">
-        <Bone className="h-4 w-10" />
-        <div className="h-9 w-[138px] rounded-lg bg-gray-100 motion-safe:animate-pulse" />
-      </div>
-      <ExploreCardsSkeleton />
-    </section>
+    <div aria-hidden className="flex flex-col gap-9">
+      {[0, 1].map((row) => (
+        <section key={row}>
+          <div className="flex h-8 items-center justify-between gap-4">
+            <Bone className="h-4 w-24" />
+            <Bone className="h-3.5 w-14" />
+          </div>
+          <ExploreCardsSkeleton row />
+        </section>
+      ))}
+    </div>
   )
 }
