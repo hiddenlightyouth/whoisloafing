@@ -85,11 +85,8 @@
       opacity: 0;
       scale: 0.92;
     }
-    55% {
-      opacity: 1;
-    }
+    /* 끝의 투명도는 적지 않아요. 흐리게 둔 것(맵에서 손대지 않은 폴더 등)이 제 투명도로 돌아가야 해요. */
     to {
-      opacity: 1;
       scale: 1;
     }
   }
@@ -109,9 +106,6 @@
   @keyframes fade {
     from {
       opacity: 0;
-    }
-    to {
-      opacity: 1;
     }
   }
 

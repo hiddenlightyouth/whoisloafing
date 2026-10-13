@@ -235,6 +235,13 @@ export function StructureMap({ name, repo, root }: Props) {
   const [mode, setMode] = useState<'main' | 'source' | 'all' | 'none' | null>('source')
   const [selected, setSelected] = useState<string | null>(null)
   const [view, setView] = useState({ x: 24, y: 24, k: 1 })
+  /** 처음 그릴 때는 가지가 뿌리에서부터 차례로 뻗어 나오게, 깊은 칸일수록 조금 늦게 나타나요. 그 뒤에 펼친 칸은 바로 나타나요. */
+  const [settled, setSettled] = useState(false)
+  useEffect(() => {
+    const timer = window.setTimeout(() => setSettled(true), 900)
+    return () => window.clearTimeout(timer)
+  }, [])
+  const appearDelay = (depth: number) => (settled ? undefined : `${Math.min(depth, 8) * 55}ms`)
   const frameRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; moved: boolean } | null>(null)
   /** 끌고 있는 칸. 칸을 누른 채로 움직이면 맵이 아니라 그 칸이 움직여요. */
@@ -711,13 +718,13 @@ export function StructureMap({ name, repo, root }: Props) {
               const fromY = item.parent.y + nodeH
               const toX = item.x + NODE_W / 2
               const mid = (fromY + item.y) / 2
-              return <path key={keyOf(item)} d={`M${fromX} ${fromY} C${fromX} ${mid}, ${toX} ${mid}, ${toX} ${item.y}`} />
+              return <path key={keyOf(item)} className="animate-fade" style={{ animationDelay: appearDelay(item.depth) }} d={`M${fromX} ${fromY} C${fromX} ${mid}, ${toX} ${mid}, ${toX} ${item.y}`} />
             }
             const fromX = item.parent.x + NODE_W
             const fromY = item.parent.y + nodeH / 2
             const toY = item.y + nodeH / 2
             const mid = (fromX + item.x) / 2
-            return <path key={keyOf(item)} d={`M${fromX} ${fromY} C${mid} ${fromY}, ${mid} ${toY}, ${item.x} ${toY}`} />
+            return <path key={keyOf(item)} className="animate-fade" style={{ animationDelay: appearDelay(item.depth) }} d={`M${fromX} ${fromY} C${mid} ${fromY}, ${mid} ${toY}, ${item.x} ${toY}`} />
           })}
         </svg>
 
@@ -739,7 +746,7 @@ export function StructureMap({ name, repo, root }: Props) {
               key={keyOf(item)}
               type="button"
               data-no-press
-              style={{ ...style, ...tint, opacity: touched === 0 ? 0.4 : undefined }}
+              style={{ ...style, ...tint, opacity: touched === 0 ? 0.4 : undefined, animationDelay: appearDelay(item.depth) }}
               aria-expanded={expandable ? expanded : undefined}
               onPointerDown={(event) => {
                 // 칸을 누른 채로 끌면 맵 대신 이 칸이 움직여요. 뿌리 칸을 끌면 맵 전체가 따라와요.
@@ -753,7 +760,7 @@ export function StructureMap({ name, repo, root }: Props) {
               onClick={() => {
                 if (!suppressClick.current) toggle(item)
               }}
-              className={`absolute flex items-center gap-2 overflow-hidden rounded-xl border pr-2.5 pl-3 text-left transition-colors ${
+              className={`absolute flex animate-pop items-center gap-2 overflow-hidden rounded-xl border pr-2.5 pl-3 text-left transition-colors ${
                 isRoot
                   ? 'border-brand bg-brand text-white'
                   : active || picked.has(node.path)
@@ -806,7 +813,7 @@ export function StructureMap({ name, repo, root }: Props) {
       {focus && (
         <aside
           onPointerDown={(event) => event.stopPropagation()}
-          className="absolute bottom-4 left-4 w-72 cursor-default rounded-xl border border-gray-200 bg-white p-4 select-text"
+          className="absolute bottom-4 left-4 w-72 origin-bottom-left animate-pop cursor-default rounded-xl border border-gray-200 bg-white p-4 select-text"
         >
           <p className="font-mono text-[12.5px] font-semibold tracking-normal break-all text-gray-900">{focus.node.path}</p>
           {focus.node.role && <p className="mt-1 text-[12.5px] leading-snug text-gray-600">{focus.node.role}</p>}

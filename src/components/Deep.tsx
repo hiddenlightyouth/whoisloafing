@@ -160,10 +160,11 @@ function Gallery({ onOpen, onNew }: { onOpen: (repo: string) => void; onNew: () 
       ) : (
         <>
           <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
-            {cards.map((card) => {
+            {cards.map((card, order) => {
               const [owner, name] = card.repo.split('/')
               return (
-                <li key={card.repo}>
+                // 카드는 앞에서부터 조금씩 늦게 떠올라요.
+                <li key={card.repo} className="animate-rise" style={{ animationDelay: `${Math.min(order % 20, 14) * 28}ms` }}>
                   <button
                     type="button"
                     onClick={() => {
@@ -463,7 +464,7 @@ function SideChat({ chatId, onClose }: { chatId: string; onClose: () => void }) 
   }, [abandon, chatId, load])
 
   return (
-    <aside className="flex w-[400px] shrink-0 flex-col border-l border-gray-200 bg-white pt-14">
+    <aside className="flex w-[400px] shrink-0 animate-slide-in flex-col border-l border-gray-200 bg-white pt-14">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-100 py-2.5 pr-3 pl-4">
         <h2 className="text-[14px] font-semibold text-gray-900">채팅</h2>
         <button
@@ -518,7 +519,7 @@ function Report({ report, name }: { report: DeepReport; name: string }) {
   if (workflows.length === 0 && templates.length === 0 && labels.length === 0) {
     return (
       <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center bg-gray-50 px-6">
-        <p className="max-w-md text-center text-[14px] leading-relaxed text-balance text-gray-600">
+        <p className="max-w-md animate-rise text-center text-[14px] leading-relaxed text-balance text-gray-600">
           <RichText text={report.summary} />
         </p>
       </div>
@@ -527,7 +528,7 @@ function Report({ report, name }: { report: DeepReport; name: string }) {
 
   return (
     <div className="relative min-h-0 min-w-0 flex-1 bg-gray-50">
-      <div className={`h-full overflow-auto px-4 pb-4 ${menu ? 'pt-16' : 'pt-4'}`}>
+      <div className={`h-full animate-rise overflow-auto px-4 pb-4 ${menu ? 'pt-16' : 'pt-4'}`}>
         {report.section === 'pipeline' ? (
           <Pipeline workflow={workflows[picked]} />
         ) : (
