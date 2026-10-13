@@ -1,8 +1,9 @@
+import { Activity } from './Activity'
 import { useEffect, useState } from 'react'
 import { DEEP_SECTIONS, type DeepReport, type DeepSection } from '../../shared/types'
 import { track } from '../lib/analytics'
 import { useAnalysis } from '../hooks/useAnalysis'
-import { fetchChat, fetchDeepReport } from '../lib/api'
+import { fetchChat, fetchDeepReport, loadConfig } from '../lib/api'
 import { fetchMyChats } from '../lib/auth'
 import { useShortcuts } from '../lib/shortcuts'
 import { formatDateTime, formatWhen } from '../lib/format'
@@ -39,6 +40,7 @@ const SECTION_LABELS: Record<DeepSection, string> = {
   pipeline: 'CI/CD',
   issues: 'Issues',
   pulls: 'Pull requests',
+  activity: '활동',
 }
 
 type Loaded = 'loading' | { report: DeepReport } | { error: string }
@@ -210,6 +212,12 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
   const [chatId, setChatId] = useState<string | null>(null)
   /** 오른쪽의 채팅 칸을 열어 뒀는지 */
   const [chatOpen, setChatOpen] = useState(false)
+  /** 서버에 활동 탭이 있는지. 없는 예전 서버에서는 탭을 숨겨요. */
+  const [activityReady, setActivityReady] = useState(false)
+  useEffect(() => {
+    void loadConfig().then((config) => setActivityReady(config.deepActivity))
+  }, [])
+  const sections = DEEP_SECTIONS.filter((item) => item !== 'activity' || activityReady)
   /** 채팅에서 넘어왔을 때 채팅 버튼 아래에 잠깐 띄우는 안내가 보이는지 */
   const [hinting, setHinting] = useState(chatHint)
 
@@ -289,6 +297,7 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
     Digit2: () => setSection('pipeline'),
     Digit3: () => setSection('issues'),
     Digit4: () => setSection('pulls'),
+    Digit5: activityReady ? () => setSection('activity') : undefined,
     // R은 구조 맵의 사각형 도구가 쓰고 있어서, 재분석 요청은 Shift와 같이 눌러요.
     'Shift+KeyR': ready ? () => setAsking(true) : undefined,
     KeyC: chatId ? () => setChatOpen((value) => !value) : undefined,
@@ -354,7 +363,7 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
       </div>
 
       <div role="tablist" aria-label="심층 분석" className="mt-4 flex shrink-0 gap-1 border-b border-gray-200">
-        {DEEP_SECTIONS.map((item) => (
+        {sections.map((item) => (
           <button
             key={item}
             type="button"
@@ -369,7 +378,7 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
             }`}
           >
             {SECTION_LABELS[item]}
-            <Kbd corner>{String(DEEP_SECTIONS.indexOf(item) + 1)}</Kbd>
+            <Kbd corner>{String(sections.indexOf(item) + 1)}</Kbd>
           </button>
         ))}
         {/* 저장해 둔 결과를 보고 있을 때만, 레포가 바뀌었으면 새로 받을 수 있게 해요. */}
@@ -501,6 +510,10 @@ function SideChat({ chatId, onClose }: { chatId: string; onClose: () => void }) 
 function Report({ report, name }: { report: DeepReport; name: string }) {
   const [index, setIndex] = useState(0)
 
+  if (report.section === 'activity' && report.activity) {
+    return <Activity activity={report.activity} repo={report.repo} />
+  }
+
   if (report.section === 'structure' && report.structure) {
     return (
       <div className="min-h-0 min-w-0 flex-1">
@@ -585,6 +598,43 @@ function Loading({ section }: { section: DeepSection }) {
             ))}
           </div>
           <div className={`absolute right-4 bottom-4 h-10 w-[218px] ${shade}`} />
+        </div>
+      </div>
+    )
+  }
+
+  if (section === 'activity') {
+    return (
+      <div className="min-h-0 flex-1 overflow-hidden bg-gray-50 p-4" aria-busy="true">
+        <span className="sr-only">분석하고 있어요.</span>
+        <div className="space-y-4" aria-hidden>
+          <div className={`h-9 w-[104px] ${shade}`} />
+          <div className={card}>
+            <Bone className="h-4 w-20" />
+            <div className="mt-5 grid grid-cols-3 gap-6 2xl:grid-cols-6">
+              {Array.from({ length: 6 }, (_, item) => (
+                <div key={item}>
+                  <Bone className="h-3 w-16" />
+                  <Bone className="mt-2 h-5 w-24" />
+                </div>
+              ))}
+            </div>
+          </div>
+          {[112, 176].map((height) => (
+            <div key={height} className={card}>
+              <Bone className="h-4 w-28" />
+              <Bone className="mt-2 h-3 w-56" />
+              <div className={`mt-4 ${shade}`} style={{ height }} />
+            </div>
+          ))}
+          <div className="grid gap-4 xl:grid-cols-2">
+            {[0, 1].map((item) => (
+              <div key={item} className={card}>
+                <Bone className="h-4 w-24" />
+                <div className={`mt-4 h-44 ${shade}`} />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )

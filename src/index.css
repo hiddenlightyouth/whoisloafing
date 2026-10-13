@@ -20,6 +20,7 @@
   --animate-slide-in: slide-in 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-fade: fade 0.2s ease-out both;
   --animate-grow: grow 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-grow-up: grow-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-shimmer: shimmer 1.8s linear infinite;
   --animate-shake: shake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
   --animate-word: word 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
@@ -113,6 +114,16 @@
   @keyframes grow {
     from {
       scale: 0 1;
+    }
+    to {
+      scale: 1 1;
+    }
+  }
+
+  /* 세로 막대가 아래에서부터 자라나요. */
+  @keyframes grow-up {
+    from {
+      scale: 1 0;
     }
     to {
       scale: 1 1;

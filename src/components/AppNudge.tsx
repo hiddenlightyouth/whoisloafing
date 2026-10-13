@@ -10,7 +10,7 @@ interface Props {
 const CLOSED_KEY = 'whoisloafing:app-nudge-closed'
 
 /** 웹에서는 못 쓰고 앱에서만 쓸 수 있는 기능이에요. 앱의 심층 분석 탭과 맞춰요. */
-const FEATURES = ['프로젝트 구조를 맵으로 둘러보기', 'CI/CD가 도는 순서 한눈에 보기', '이슈와 PR 템플릿 모아 보기', '참여자가 고친 폴더 살펴보기']
+const FEATURES = ['프로젝트 구조를 맵으로 둘러보기', 'CI/CD가 도는 순서 한눈에 보기', '이슈와 PR 템플릿 모아 보기', '참여자가 고친 폴더 살펴보기', '커밋 흐름을 달력으로 보기']
 
 function closedBefore(): boolean {
   try {
