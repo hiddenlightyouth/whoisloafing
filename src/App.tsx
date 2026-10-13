@@ -830,7 +830,7 @@ export default function App() {
         aria-label={sidebarOpen ? '사이드바 닫기' : '사이드바 열기'}
         aria-expanded={sidebarOpen}
         onClick={() => toggleSidebar(!sidebarOpen)}
-        className="absolute top-0.5 left-[78px] z-30 flex size-7 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-200/70 hover:text-gray-900"
+        className="absolute top-0.5 left-[78px] z-[31] flex size-7 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-200/70 hover:text-gray-900"
       >
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" className="size-4" aria-hidden="true">
           <rect x="2" y="3" width="12" height="10" rx="2.5" />
