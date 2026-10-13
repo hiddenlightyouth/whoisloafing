@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { track } from '../lib/analytics'
 import { fetchExplore, type ExploreKind, type ExploreRepo } from '../lib/api'
 import { Avatar } from './History'
-import { MapMenu } from './DeepParts'
+import { MapMenu, toolButton } from './DeepParts'
 import { ExploreCardsSkeleton } from './Skeleton'
 
 /** 탐색의 큰 갈래. GitHub는 GitHub 전체에서 인기 있는 레포, 동아리는 IT 연합 동아리와 커뮤니티가 만든 레포예요. */
@@ -304,7 +304,32 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 px-6 pt-4 pb-16 md:px-10">
-        {/* 갈래 안에서 한 번 더 골라요. 심층 분석과 같은 드롭다운 메뉴를 써요. */}
+        {/* 동아리는 메뉴에 넣지 않고 한눈에 보이게 늘어놓아요. */}
+        {category === 'clubs' && clubRepos && (
+          <div role="radiogroup" aria-label="동아리" className="mb-3 flex flex-wrap gap-2">
+            {[null, ...clubs].map((name) => (
+              <button
+                key={name ?? ''}
+                type="button"
+                role="radio"
+                aria-checked={club === name}
+                onClick={() => {
+                  track('explore_club_select', { club: name ?? 'all' })
+                  setClub(name)
+                  setShown(PAGE_SIZE)
+                }}
+                className={`${toolButton} ${club === name ? 'border-brand text-brand-hover hover:border-brand hover:text-brand-hover' : ''}`}
+              >
+                {name ?? '전체'}
+                <span className="text-[12px] font-normal text-gray-400 tabular-nums">
+                  {(name ? (counts.get(name) ?? 0) : clubRepos.length).toLocaleString('ko-KR')}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* 목록 종류와 순서는 심층 분석과 같은 드롭다운 메뉴로 골라요. */}
         <div className="flex flex-wrap items-center gap-2">
           {category === 'github' ? (
             <MapMenu
@@ -325,28 +350,6 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
             />
           ) : (
             <>
-              <MapMenu
-                label="동아리"
-                value={club ?? '전체'}
-                active={club !== null}
-                groups={[
-                  {
-                    loading: !clubRepos && loaded === undefined,
-                    items: clubRepos
-                      ? [null, ...clubs].map((name) => ({
-                          label: name ?? '전체',
-                          hint: `${(name ? (counts.get(name) ?? 0) : clubRepos.length).toLocaleString('ko-KR')}개`,
-                          checked: club === name,
-                          onSelect: () => {
-                            track('explore_club_select', { club: name ?? 'all' })
-                            setClub(name)
-                            setShown(PAGE_SIZE)
-                          },
-                        }))
-                      : [],
-                  },
-                ]}
-              />
               <MapMenu
                 label="정렬"
                 value={SORTS.find(([value]) => value === sort)?.[1]}
