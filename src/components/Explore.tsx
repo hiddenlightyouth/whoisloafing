@@ -3,7 +3,7 @@ import { track } from '../lib/analytics'
 import { createPortal } from 'react-dom'
 import { fetchExplore, type ExploreKind, type ExploreRepo } from '../lib/api'
 import { Avatar } from './History'
-import { MapMenu, toolButton } from './DeepParts'
+import { MapMenu } from './DeepParts'
 import { ExploreCardsSkeleton } from './Skeleton'
 
 /** 탐색의 큰 갈래. GitHub는 GitHub 전체에서 인기 있는 레포, 동아리는 IT 연합 동아리와 커뮤니티가 만든 레포예요. */
@@ -104,6 +104,9 @@ function Stars({ count }: { count: number }) {
 const cardsGrid = 'grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4'
 /** 한 줄만 보여주는 카드 줄. 둘째 줄부터는 높이를 0으로 두고 잘라서, 화면 폭에 들어가는 만큼만 보여요. */
 const cardsRow = 'grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] auto-rows-[0px] grid-rows-[auto] gap-x-4 overflow-hidden'
+
+/** 동아리 버튼의 모양. 심층 분석의 버튼과 같은 크기예요. 색은 골랐는지에 따라 따로 붙여요. 같은 속성의 색 클래스를 겹쳐 적으면 어느 쪽이 이길지 알 수 없어서 나눠 둬요. */
+const clubButton = 'flex h-9 items-center gap-2 rounded-lg border px-3.5 text-[13px] font-medium transition-colors'
 
 /** 카드는 앞에서부터 조금씩 늦게 떠올라요. 뒤쪽 카드는 더 늦추지 않아요. */
 const STAGGER_MS = 28
@@ -319,10 +322,10 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
                   setClub(name)
                   setShown(PAGE_SIZE)
                 }}
-                className={`${toolButton} ${club === name ? 'border-brand text-brand-hover hover:border-brand hover:text-brand-hover' : ''}`}
+                className={`${clubButton} ${club === name ? 'border-brand bg-brand-soft text-brand-hover' : 'border-gray-200 bg-white text-gray-800 hover:border-gray-300 hover:text-gray-950'}`}
               >
                 {name ?? '전체'}
-                <span className="text-[12px] font-normal text-gray-400 tabular-nums">
+                <span className={`text-[12px] font-normal tabular-nums ${club === name ? 'text-brand' : 'text-gray-400'}`}>
                   {(name ? (counts.get(name) ?? 0) : clubRepos.length).toLocaleString('ko-KR')}
                 </span>
               </button>

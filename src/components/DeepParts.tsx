@@ -129,7 +129,7 @@ export function MapMenu({ label, value, active = false, groups, onOpen }: {
           if (!open) onOpen?.()
           setOpen((value) => !value)
         }}
-        className={`${toolButton} ${active ? 'border-brand text-brand-hover hover:border-brand hover:text-brand-hover' : ''}`}
+        className={`${toolButton} ${active ? 'border-brand! text-brand-hover!' : ''}`}
       >
         {label && <span className="text-gray-500">{label}</span>}
         {value && <span className="max-w-40 truncate">{value}</span>}

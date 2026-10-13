@@ -335,7 +335,7 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
                 setHinting(false)
                 setChatOpen((value) => !value)
               }}
-              className={`relative ${toolButton} ${chatOpen ? 'border-brand text-brand-hover hover:border-brand hover:text-brand-hover' : ''}`}
+              className={`relative ${toolButton} ${chatOpen ? 'border-brand! text-brand-hover!' : ''}`}
             >
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
                 <path d="M2.5 4.5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H7l-3 2.5V11.5h-.5a1 1 0 0 1-1-1z" />
