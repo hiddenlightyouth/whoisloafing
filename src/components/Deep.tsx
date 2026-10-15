@@ -5,15 +5,15 @@ import { useAnalysis } from '../hooks/useAnalysis'
 import { fetchChat, fetchDeepReport, loadConfig } from '../lib/api'
 import { fetchMyChats } from '../lib/auth'
 import { useShortcuts } from '../lib/shortcuts'
-import { formatDateTime, formatWhen } from '../lib/format'
+import { formatDateTime } from '../lib/format'
 import { showToast } from '../lib/toast'
 import { Chat } from './Chat'
 import { ConfirmDialog } from './AdminParts'
 import { MapMenu, toolButton } from './DeepParts'
 import { Forms } from './Forms'
-import { Avatar } from './History'
 import { Kbd } from './Shortcuts'
 import { Pipeline } from './Pipeline'
+import { RepoGallery } from './RepoGallery'
 import { RichText } from './RichText'
 import { Bone } from './Skeleton'
 import { Stack } from './Stack'
@@ -77,131 +77,27 @@ function writeSaved(repo: string, section: DeepSection, report: DeepReport) {
   }
 }
 
-/** 갤러리에 보여줄 레포 하나. 같은 레포를 여러 번 분석했으면 가장 최근 것 하나만 남겨요. */
-interface RepoCard {
-  repo: string
-  updatedAt: string
-}
-
 /**
  * 앱에서만 쓰는 심층 분석 화면이에요. 채팅처럼 말풍선이 쌓이지 않고, 레포 하나를 탭으로 나눠 한 화면에서 살펴봐요.
  * 탭은 처음 열 때 한 번만 받아 두고, 다른 탭에 다녀와도 다시 받지 않아요.
  */
 export function Deep({ repo, onOpen, onNew, refreshKey, chatHint = false }: Props) {
   // 채팅을 지우면 갤러리를 처음부터 다시 받아요.
-  if (!repo) return <Gallery key={refreshKey} onOpen={onOpen} onNew={onNew} />
+  if (!repo) {
+    return (
+      <RepoGallery
+        key={refreshKey}
+        title="심층 분석"
+        onNew={onNew}
+        onOpen={(picked) => {
+          track('deep_repo_select', { repo: picked })
+          onOpen(picked)
+        }}
+      />
+    )
+  }
   // 레포가 바뀌면 받아 둔 내용과 보던 탭을 처음으로 되돌려요.
   return <Dashboard key={repo} repo={repo} onOpen={onOpen} refreshKey={refreshKey} chatHint={chatHint} />
-}
-
-/** 링크를 다시 적지 않고, 채팅으로 분석해 둔 레포 중에서 골라요. */
-function Gallery({ onOpen, onNew }: { onOpen: (repo: string) => void; onNew: () => void }) {
-  const [cards, setCards] = useState<RepoCard[] | null>(null)
-  const [nextPage, setNextPage] = useState<number | null>(0)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-
-  async function load(page: number) {
-    setLoading(true)
-    const result = await fetchMyChats(page)
-    setLoading(false)
-    if (!result.ok) {
-      setError(result.message)
-      return
-    }
-    setError('')
-    setCards((prev) => {
-      const seen = new Set((prev ?? []).map((card) => card.repo))
-      const added = result.data.items
-        .filter((chat) => chat.repoName.includes('/'))
-        .map((chat) => ({ repo: chat.repoName, updatedAt: chat.updatedAt }))
-        .filter((card) => !seen.has(card.repo) && seen.add(card.repo))
-      return [...(prev ?? []), ...added]
-    })
-    setNextPage(result.data.hasNext ? page + 1 : null)
-  }
-
-  useEffect(() => {
-    void load(0)
-  }, [])
-
-  return (
-    <main className="min-h-0 flex-1 overflow-y-auto px-6 pt-14 pb-10 md:px-10">
-      <div className="flex items-center justify-between gap-4 pt-6">
-        <h1 className="text-[22px] leading-snug font-semibold text-gray-900">심층 분석</h1>
-        <button type="button" onClick={onNew} className={toolButton}>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
-            <path d="M8 3v10M3 8h10" />
-          </svg>
-          새 분석
-        </button>
-      </div>
-
-      {cards === null ? (
-        error ? (
-          <p className="mt-8 text-[14px] text-gray-500">{error}</p>
-        ) : (
-          <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3" aria-busy="true">
-            <li className="sr-only">불러오고 있어요.</li>
-            {[0, 1, 2, 3, 4, 5].map((item) => (
-              <li key={item} aria-hidden className="h-[132px] rounded-2xl bg-gray-100 motion-safe:animate-pulse" />
-            ))}
-          </ul>
-        )
-      ) : cards.length === 0 ? (
-        <div className="mt-16 flex flex-col items-center gap-4 text-center">
-          <p className="text-[14px] leading-relaxed text-gray-600">
-            아직 분석한 레포가 없어요.
-            <br />
-            새 분석으로 레포를 먼저 분석하면 여기에서 고를 수 있어요.
-          </p>
-          <button type="button" onClick={onNew} className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover">
-            새 분석 시작하기
-          </button>
-        </div>
-      ) : (
-        <>
-          <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
-            {cards.map((card, order) => {
-              const [owner, name] = card.repo.split('/')
-              return (
-                // 카드는 앞에서부터 조금씩 늦게 떠올라요.
-                <li key={card.repo} className="animate-rise" style={{ animationDelay: `${Math.min(order % 20, 14) * 28}ms` }}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      track('deep_repo_select', { repo: card.repo })
-                      onOpen(card.repo)
-                    }}
-                    className="flex h-[132px] w-full flex-col justify-between rounded-2xl border border-gray-200 bg-white p-4 text-left transition-colors hover:border-brand"
-                  >
-                    <Avatar owner={owner} />
-                    <span className="min-w-0">
-                      <span className="block truncate text-[14.5px] font-semibold text-gray-900">{name}</span>
-                      <span className="mt-0.5 flex items-center justify-between gap-2 text-[12px] text-gray-400">
-                        <span className="min-w-0 truncate">{owner}</span>
-                        <span className="shrink-0">{formatWhen(card.updatedAt)}</span>
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-          {nextPage !== null && (
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => void load(nextPage)}
-              className="mt-4 h-9 rounded-full bg-gray-100 px-4 text-[13px] font-medium text-gray-700 transition-colors hover:text-brand disabled:text-gray-400"
-            >
-              {loading ? '처리 중' : '더 보기'}
-            </button>
-          )}
-        </>
-      )}
-    </main>
-  )
 }
 
 /** 채팅으로 이동 버튼에 쓸 채팅을 찾을 때, 내 작업을 이만큼까지만 넘겨 봐요. */
