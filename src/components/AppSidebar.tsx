@@ -13,12 +13,14 @@ interface Props {
   /** 지금 열려 있는 채팅. 목록에서 강조해요. */
   activeChatId: string | null
   /** 지금 보고 있는 화면. 아래쪽 링크를 강조해요. */
-  page: 'deep' | 'explore' | 'articles' | 'me' | 'admin' | null
+  page: 'deep' | 'portfolio' | 'explore' | 'articles' | 'me' | 'admin' | null
   /** 값이 바뀌면 목록을 다시 받아요. */
   refreshKey: string
   onNew: () => void
   /** 심층 분석 화면을 열어요. 서버에 심층 분석 API가 없으면 넘기지 않고, 그때는 버튼을 숨겨요. */
   onDeep?: () => void
+  /** 포트폴리오 만들기 화면을 열어요. 서버에 포트폴리오 API가 없으면 넘기지 않고, 그때는 버튼을 숨겨요. */
+  onPortfolio?: () => void
   /** 탐색 화면을 열어요. 서버에 탐색 API가 없으면 넘기지 않고, 그때는 버튼을 숨겨요. */
   onExplore?: () => void
   /** 내 작업의 채팅에서 그 레포의 심층 분석으로 바로 가요. 서버에 심층 분석 API가 없으면 넘기지 않아요. */
@@ -185,7 +187,7 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
 }
 
 /** 앱 화면 왼쪽의 사이드바예요. 새 분석, 내 작업 목록과 관리, 아티클과 내 정보로 가는 링크가 있어요. */
-export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onExplore, onOpenChat, onDeepRepo, onChatChanged, onArticles, onMe, onSettings, settingsOpen, onAdmin }: Props) {
+export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPortfolio, onExplore, onOpenChat, onDeepRepo, onChatChanged, onArticles, onMe, onSettings, settingsOpen, onAdmin }: Props) {
   const { me } = useAuth()
   const [chats, setChats] = useState<ChatSummary[] | null>(null)
   const [nextPage, setNextPage] = useState<number | null>(null)
@@ -336,6 +338,25 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onEx
             </svg>
             <span className="flex-1">심층 분석</span>
             <Kbd>D</Kbd>
+          </a>
+        )}
+        {onPortfolio && (
+          <a
+            href="/portfolio"
+            aria-current={page === 'portfolio' ? 'page' : undefined}
+            onClick={(event) => {
+              if (!plain(event)) return
+              event.preventDefault()
+              track('portfolio_open', { from: 'sidebar' })
+              onPortfolio()
+            }}
+            className={`${link} mt-1.5 gap-2 ${tone(page === 'portfolio')}`}
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
+              <rect x="2" y="4.5" width="12" height="9" rx="1.5" />
+              <path d="M5.5 4.5v-1a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1M2 8.5h12" />
+            </svg>
+            <span className="flex-1">포트폴리오 만들기</span>
           </a>
         )}
       </div>

@@ -29,6 +29,8 @@ export interface ServerConfig {
   withdraw: boolean
   /** 서버의 심층 분석에 기술 스택 탭이 있는지. 없으면 그 탭을 숨겨요. */
   deepStack: boolean
+  /** 서버에 포트폴리오 만들기 API가 있는지. 없으면 앱의 사이드바에서 포트폴리오 만들기를 숨겨요. */
+  portfolio: boolean
 }
 
 /** 서버가 어떤 기능을 지원하는지 물어봐요. */
@@ -49,9 +51,10 @@ export async function fetchConfig(): Promise<ServerConfig> {
       socialUnlink: result.ok && result.data?.socialUnlink === true,
       withdraw: result.ok && result.data?.withdraw === true,
       deepStack: result.ok && result.data?.deepStack === true,
+      portfolio: result.ok && result.data?.portfolio === true,
     }
   } catch {
-    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false, clubs: false, githubClientId: null, kakaoClientId: null, socialAppLink: false, socialUnlink: false, withdraw: false, deepStack: false }
+    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false, clubs: false, githubClientId: null, kakaoClientId: null, socialAppLink: false, socialUnlink: false, withdraw: false, deepStack: false, portfolio: false }
   }
 }
 
@@ -92,7 +95,7 @@ export async function fetchExplore(kind: ExploreKind): Promise<ExploreRepo[] | n
   }
 }
 
-const DEEP_ERRORS: Record<string, string> = {
+export const DEEP_ERRORS: Record<string, string> = {
   C003: '레포 주소가 올바르지 않아요.',
   C4044: '찾을 수 없는 레포예요. 주소를 다시 확인해 주세요.',
   C4032: '비공개 레포는 분석할 수 없어요.',

@@ -29,6 +29,7 @@ const PURPOSE_LABELS: Record<string, string> = {
   REPO_SUMMARY: '레포 소개',
   CONTRIBUTOR_PROFILE: '참여자 분석',
   NARRATION: '해설',
+  PORTFOLIO: '포트폴리오',
 }
 
 const purposeLabel = (purpose: string) => PURPOSE_LABELS[purpose] ?? purpose
