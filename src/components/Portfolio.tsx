@@ -251,7 +251,7 @@ function Setup({ repo, onDone }: { repo: string; onDone: (saved: SavedPortfolio)
             ) : (
               <>
                 <h2 className="text-[19px] font-semibold text-gray-900">이 프로젝트에서 누구인가요?</h2>
-                <p className="mt-1.5 text-[13.5px] text-gray-500">고른 사람의 커밋과 PR로 맡은 역할을 써요. 고르지 않으면 팀 전체가 한 일로 써요.</p>
+                <p className="mt-1.5 text-[13.5px] text-gray-500">고른 사람의 커밋과 PR로 맡은 역할을 써요.</p>
                 <PeopleList people={people} person={person} onPick={setPerson} onRetry={() => void loadPeople()} />
               </>
             )}
@@ -270,7 +270,8 @@ function Setup({ repo, onDone }: { repo: string; onDone: (saved: SavedPortfolio)
             )}
             <button
               type="button"
-              disabled={picked.length === 0}
+              // 마지막 단계에서는 나를 골라야 만들 수 있어요.
+              disabled={picked.length === 0 || (last && person === null)}
               onClick={() => (last ? void create() : setStep(STEPS[index + 1].key))}
               className="h-9 rounded-lg bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover disabled:bg-gray-300"
             >
@@ -301,7 +302,7 @@ function Check({ on }: { on: boolean }) {
 function PeopleList({ people, person, onPick, onRetry }: {
   people: PortfolioPerson[] | 'loading' | { error: string } | null
   person: string | null
-  onPick: (id: string | null) => void
+  onPick: (id: string) => void
   onRetry: () => void
 }) {
   if (people === null || people === 'loading') {
@@ -328,22 +329,23 @@ function PeopleList({ people, person, onPick, onRetry }: {
     )
   }
 
-  const options: { id: string | null; name: string; detail: string; avatarUrl: string | null }[] = [
-    ...people.map((item) => ({
-      id: item.id,
-      name: item.name,
-      detail: `${item.login ? `@${item.login}, ` : ''}${item.commits.toLocaleString()}개의 커밋`,
-      avatarUrl: item.avatarUrl,
-    })),
-    { id: null, name: '고르지 않기', detail: '팀 전체가 한 일로 써요', avatarUrl: null },
-  ]
+  if (people.length === 0) {
+    return <p className="mt-8 text-center text-[14px] text-gray-600">아직 커밋한 참여자가 없는 레포예요.</p>
+  }
+
+  const options = people.map((item) => ({
+    id: item.id,
+    name: item.name,
+    detail: `${item.login ? `@${item.login}, ` : ''}${item.commits.toLocaleString()}개의 커밋`,
+    avatarUrl: item.avatarUrl,
+  }))
 
   return (
     <ul className="mt-5 grid gap-2" role="radiogroup" aria-label="나는 누구인가요">
       {options.map((item) => {
         const on = person === item.id
         return (
-          <li key={item.id ?? 'none'}>
+          <li key={item.id}>
             <button
               type="button"
               role="radio"
@@ -357,7 +359,7 @@ function PeopleList({ people, person, onPick, onRetry }: {
                 <img src={item.avatarUrl} alt="" width={32} height={32} className="size-8 shrink-0 rounded-full bg-gray-100" />
               ) : (
                 <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[13px] font-semibold text-gray-500">
-                  {item.id ? (item.name[0] ?? '?').toUpperCase() : '-'}
+                  {(item.name[0] ?? '?').toUpperCase()}
                 </span>
               )}
               <span className="min-w-0 flex-1">
