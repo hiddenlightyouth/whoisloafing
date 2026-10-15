@@ -7,6 +7,7 @@ Disallow: /history
 Disallow: /app-login
 Disallow: /auth/
 Disallow: /deep
+Disallow: /portfolio
 Disallow: /explore
 Disallow: /admin
 

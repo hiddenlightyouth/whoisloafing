@@ -56,6 +56,14 @@ function deepFromPath(): { repo: string | null } | null {
   return match ? { repo: match[1] ? `${match[1]}/${match[2]}` : null } : null
 }
 
+const PORTFOLIO_PATH = /^\/portfolio(?:\/([^/]+)\/([^/]+))?\/?$/
+
+/** 포트폴리오 만들기 주소면 고른 레포(소유자/레포)를 돌려줘요. repo가 null이면 레포를 고르는 화면이에요. */
+function portfolioFromPath(): { repo: string | null } | null {
+  const match = PORTFOLIO_PATH.exec(window.location.pathname)
+  return match ? { repo: match[1] ? `${match[1]}/${match[2]}` : null } : null
+}
+
 const EXPLORE_PATH = /^\/explore(?:\/(clubs))?\/?$/
 
 /** 탐색 화면 주소면 보고 있는 갈래를 돌려줘요. */
@@ -87,6 +95,9 @@ const ExplorePreview = lazy(() => import('./components/Explore').then((module) =
 
 // 심층 분석 대시보드는 앱에서만 쓰는 화면이라, 열 때만 받아요.
 const Deep = lazy(() => import('./components/Deep').then((module) => ({ default: module.Deep })))
+
+// 포트폴리오 만들기도 앱에서만 쓰는 화면이라, 열 때만 받아요.
+const Portfolio = lazy(() => import('./components/Portfolio').then((module) => ({ default: module.Portfolio })))
 
 // 설정 창은 앱에서만 쓰여서, 열 때만 받아요.
 const Settings = lazy(() => import('./components/Settings').then((module) => ({ default: module.Settings })))
@@ -158,6 +169,10 @@ export default function App() {
   const [clubsReady, setClubsReady] = useState(false)
   /** 앱의 심층 분석 화면을 보고 있는지. repo가 null이면 레포를 고르는 화면이에요. */
   const [deepPage, setDeepPage] = useState(() => (isApp ? deepFromPath() : null))
+  /** 서버에 포트폴리오 만들기 API가 있는지 */
+  const [portfolio, setPortfolio] = useState(false)
+  /** 앱의 포트폴리오 만들기 화면을 보고 있는지. repo가 null이면 레포를 고르는 화면이에요. */
+  const [portfolioPage, setPortfolioPage] = useState(() => (isApp ? portfolioFromPath() : null))
   /** 앱의 탐색 화면에서 보고 있는 갈래. 탐색 화면이 아니면 null이에요. */
   const [explorePage, setExplorePage] = useState(() => (isApp ? exploreFromPath() : null))
   /** 앱의 설정 창이 떠 있는지 */
@@ -241,6 +256,17 @@ export default function App() {
       trackPageView('deep', { repo: nextDeep.repo ?? undefined })
       return
     }
+    // 포트폴리오 만들기도 앱에서만 써요.
+    const nextPortfolio = portfolioFromPath()
+    if (nextPortfolio && !isApp) window.history.replaceState(null, '', '/')
+    setPortfolioPage(isApp ? nextPortfolio : null)
+    if (nextPortfolio && isApp) {
+      reset()
+      setChat(null)
+      setOpening(false)
+      trackPageView('portfolio', { repo: nextPortfolio.repo ?? undefined })
+      return
+    }
     // 탐색 화면도 앱에서만 써요.
     const nextExplore = exploreFromPath()
     if (nextExplore && !isApp) window.history.replaceState(null, '', '/')
@@ -318,6 +344,7 @@ export default function App() {
     void fetchConfig().then((config) => {
       setStorage(config.storage)
       setDeep(config.deep)
+      setPortfolio(config.portfolio)
       setExploreReady(config.explore)
       setClubsReady(config.clubs)
       setAdminApi(config.admin)
@@ -365,6 +392,7 @@ export default function App() {
     setAbout(false)
     setAppLogin(false)
     setDeepPage(null)
+    setPortfolioPage(null)
     setExplorePage(null)
     setAdminPage(null)
     if (window.location.pathname !== '/') window.history.pushState(null, '', '/')
@@ -381,6 +409,7 @@ export default function App() {
       setAccount(null)
       setAppLogin(false)
       setDeepPage(null)
+      setPortfolioPage(null)
       setExplorePage(null)
       setAdminPage(null)
       setAbout(false)
@@ -411,6 +440,7 @@ export default function App() {
       setArticle(null)
       setAppLogin(false)
       setDeepPage(null)
+      setPortfolioPage(null)
       setExplorePage(null)
       setAdminPage(null)
       setAbout(false)
@@ -430,6 +460,17 @@ export default function App() {
       // 돌던 분석은 서버가 끝까지 마쳐서 저장하니, 기다리지 않고 바로 옮겨요.
       abandon()
       window.history.pushState(null, '', repo ? `/deep/${repo}` : '/deep')
+      void openFromLocation()
+    },
+    [abandon, openFromLocation],
+  )
+
+  /** 앱의 포트폴리오 만들기를 열어요. repo(소유자/레포)가 없으면 레포를 고르는 화면이에요. */
+  const openPortfolio = useCallback(
+    (repo: string | null) => {
+      loginReturn.current = null
+      abandon()
+      window.history.pushState(null, '', repo ? `/portfolio/${repo}` : '/portfolio')
       void openFromLocation()
     },
     [abandon, openFromLocation],
@@ -685,7 +726,7 @@ export default function App() {
       <Header
         app={isApp}
         onHome={handleHome}
-        home={messages.length === 0 && !article && !account && !about && !appLogin && !deepPage && !explorePage && !adminPage && !opening && !missing}
+        home={messages.length === 0 && !article && !account && !about && !appLogin && !deepPage && !portfolioPage && !explorePage && !adminPage && !opening && !missing}
         inChat={messages.length > 0 && !readOnly && !account}
         storage={storage}
         busy={busy}
@@ -726,6 +767,10 @@ export default function App() {
       ) : deepPage ? (
         <Suspense fallback={<main className="flex-1" />}>
           <Deep repo={deepPage.repo} onOpen={(repo) => openDeep(repo)} onNew={goHome} refreshKey={chatsVersion} chatHint={deepChatHint} />
+        </Suspense>
+      ) : portfolioPage ? (
+        <Suspense fallback={<main className="flex-1" />}>
+          <Portfolio repo={portfolioPage.repo} onOpen={openPortfolio} onNew={goHome} refreshKey={chatsVersion} />
         </Suspense>
       ) : explorePage ? (
         <Suspense fallback={<main className="flex-1" />}>
@@ -854,10 +899,11 @@ export default function App() {
       {sidebarOpen && (
         <Suspense fallback={<aside data-app-drag className="w-64 shrink-0 border-r border-gray-200 bg-gray-50" />}>
           <AppSidebar
-            activeChatId={account || article || deepPage || explorePage || adminPage ? null : chatIdFromPath()}
-            page={deepPage ? 'deep' : explorePage ? 'explore' : adminPage ? 'admin' : account === 'me' ? 'me' : article ? 'articles' : null}
+            activeChatId={account || article || deepPage || portfolioPage || explorePage || adminPage ? null : chatIdFromPath()}
+            page={deepPage ? 'deep' : portfolioPage ? 'portfolio' : explorePage ? 'explore' : adminPage ? 'admin' : account === 'me' ? 'me' : article ? 'articles' : null}
             onDeep={deep ? () => openDeep(null) : undefined}
             onExplore={exploreReady ? () => openExplore() : undefined}
+            onPortfolio={portfolio ? () => openPortfolio(null) : undefined}
             onDeepRepo={
               deep
                 ? (repo) => {
@@ -869,10 +915,10 @@ export default function App() {
             onSettings={openSettings}
             settingsOpen={settingsOpen}
             onAdmin={isAdmin(me) ? () => openAdmin() : undefined}
-            refreshKey={`${busy}:${account ?? ''}:${deepPage ? 'deep' : ''}:${explorePage ? 'explore' : ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`}
+            refreshKey={`${busy}:${account ?? ''}:${deepPage ? 'deep' : ''}:${portfolioPage ? 'portfolio' : ''}:${explorePage ? 'explore' : ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`}
             onNew={handleHome}
             onOpenChat={(id) => {
-              if (id === chatId.current && !account && !article && !deepPage && !explorePage && !adminPage) return
+              if (id === chatId.current && !account && !article && !deepPage && !portfolioPage && !explorePage && !adminPage) return
               track('history_chat_open', { from: 'sidebar' })
               // 돌던 분석은 서버가 끝까지 마쳐서 저장하니, 기다리지 않고 바로 다른 채팅을 열어요.
               abandon()
