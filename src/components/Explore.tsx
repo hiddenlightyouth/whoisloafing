@@ -337,7 +337,18 @@ function ClubGuide({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-[12.5px] text-white/70 select-none">
-          <input type="checkbox" checked={never} onChange={(event) => setNever(event.target.checked)} className="size-3.5 accent-white" />
+          {/* 기본 체크 칸은 파란 바탕에서 색이 어색하고 다크 모드에서 흰색 토큰이 뒤집혀서, 직접 그려요. */}
+          <span className="relative flex size-3.5 shrink-0 items-center justify-center">
+            <input
+              type="checkbox"
+              checked={never}
+              onChange={(event) => setNever(event.target.checked)}
+              className="peer size-3.5 cursor-pointer appearance-none rounded-[4px] border-[1.5px] border-[#ffffff]/70 transition-colors checked:border-[#ffffff] checked:bg-[#ffffff]"
+            />
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none absolute size-2.5 text-brand opacity-0 peer-checked:opacity-100" aria-hidden="true">
+              <path d="M3.5 8.5l3 3 6-7" />
+            </svg>
+          </span>
           {L.guideNever}
         </label>
       </div>
