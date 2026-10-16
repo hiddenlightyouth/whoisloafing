@@ -349,9 +349,13 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
   }, [clubRepos])
   /** 고른 동아리 안에서 고른 학교. 학교마다 조직이 따로 있는 동아리(멋쟁이사자처럼)에서만 써요. null이면 모든 학교예요. */
   const [group, setGroup] = useState<string | null>(null)
-  /** 고른 동아리의 "어떤 단체인가요?"를 펼쳐 뒀는지. 다른 동아리를 골라도 펼친 채로 둬요. */
+  /** 고른 동아리의 "어떤 단체인가요?" 툴팁이 떠 있는지 */
   const [aboutOpen, setAboutOpen] = useState(false)
   const about = club ? clubInfo(club) : null
+  const showAbout = (open: boolean) => {
+    if (open && !aboutOpen) track('explore_club_about', { club: club ?? '' })
+    setAboutOpen(open)
+  }
   /** 고른 동아리의 학교 이름과 학교마다의 레포 수. 가나다순이에요. 학교로 나뉘지 않는 동아리는 비어 있어요. */
   const groups = useMemo(() => {
     const map = new Map<string, number>()
@@ -448,16 +452,18 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
           </div>
         )}
 
-        {/* 낯선 동아리도 있어서, 고른 동아리가 어떤 단체인지 물음표 줄을 눌러 볼 수 있어요. */}
+        {/* 낯선 동아리도 있어서, 물음표 줄에 마우스를 올리거나 누르면 어떤 단체인지 툴팁으로 알려줘요. */}
         {clubRepos && about && (
-          <div className="mb-3">
+          <div className="relative mb-3 w-fit">
             <button
               type="button"
               aria-expanded={aboutOpen}
-              onClick={() => {
-                if (!aboutOpen) track('explore_club_about', { club: club ?? '' })
-                setAboutOpen(!aboutOpen)
-              }}
+              aria-describedby={aboutOpen ? 'explore-club-about' : undefined}
+              onMouseEnter={() => showAbout(true)}
+              onMouseLeave={() => showAbout(false)}
+              onFocus={() => showAbout(true)}
+              onBlur={() => showAbout(false)}
+              onClick={() => showAbout(!aboutOpen)}
               className="inline-flex items-center gap-1.5 text-[13px] text-gray-500 transition-colors hover:text-gray-700"
             >
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="size-3.5" aria-hidden="true">
@@ -467,7 +473,15 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
               </svg>
               {about.question}
             </button>
-            {aboutOpen && <p className="mt-1.5 max-w-[640px] animate-rise pl-5 text-[13px] leading-relaxed text-gray-500">{about.answer}</p>}
+            {aboutOpen && (
+              <p
+                id="explore-club-about"
+                role="tooltip"
+                className="absolute top-full left-0 z-20 mt-2 w-max max-w-[min(340px,calc(100vw-48px))] origin-top-left animate-pop rounded-lg bg-gray-900/90 px-3 py-2 text-[12.5px] leading-relaxed text-white"
+              >
+                {about.answer}
+              </p>
+            )}
           </div>
         )}
 
