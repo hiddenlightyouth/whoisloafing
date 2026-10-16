@@ -129,10 +129,9 @@ const TEXT = messages({
     restartTitle: '처음부터 다시 만들까요?',
     restartBody: '항목과 기획안부터 다시 골라서 새로 써요. 지금 포트폴리오는 지워지고 되돌릴 수 없어요.',
     restartConfirm: '다시 만들기',
-    steps: { sections: '항목 고르기', plan: '기획안 넣기', person: '나 고르기' } as Record<Step, string>,
+    steps: { sections: '항목 선택', plan: '추가 정보', person: '대상 선택' } as Record<Step, string>,
     stepsLabel: '진행 단계',
     sectionsTitle: '어떤 항목으로 포트폴리오를 만들까요?',
-    sectionsHint: '순서는 만든 뒤에 끌어서 바꿀 수 있어요.',
     planTitle: '참고할 기획안이 있나요?',
     planHint: '기획 배경과 목적은 기획안을 참고해서 써요. 없으면 비워 두고 넘어가도 괜찮아요.',
     planPlaceholder: '기획안이나 서비스 소개 글을 붙여 넣어 주세요',
@@ -172,10 +171,9 @@ const TEXT = messages({
     restartTitle: 'Start over?',
     restartBody: 'You will pick sections and a plan again and write it from scratch. The current portfolio will be deleted and cannot be restored.',
     restartConfirm: 'Start over',
-    steps: { sections: 'Sections', plan: 'Reference plan', person: 'Who are you?' },
+    steps: { sections: 'Sections', plan: 'Additional info', person: 'Select person' },
     stepsLabel: 'Steps',
     sectionsTitle: 'Which sections should your portfolio have?',
-    sectionsHint: 'You can drag to reorder them after it is written.',
     planTitle: 'Do you have a plan to reference?',
     planHint: 'Background and goals are taken from your plan. You can leave it empty and move on.',
     planPlaceholder: 'Paste a project plan or a description of the service',
@@ -295,7 +293,6 @@ function Setup({ repo, onDone }: { repo: string; onDone: (saved: SavedPortfolio)
             {step === 'sections' ? (
               <>
                 <h2 className="text-[19px] font-semibold text-gray-900">{L.sectionsTitle}</h2>
-                <p className="mt-1.5 text-[13.5px] text-gray-500">{L.sectionsHint}</p>
                 <ul className="mt-5 grid gap-2 sm:grid-cols-2">
                   {portfolioSections().map((item) => {
                     const on = picked.includes(item.key)
