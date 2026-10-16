@@ -37,6 +37,8 @@ const TEXT = messages({
     all: '전체',
     list: '목록',
     sort: '정렬',
+    region: '지역',
+    regions: { ko: '국내', en: '해외' } as Record<Lang, string>,
     items: (count: string) => `${count}개의 항목`,
     more: '더 보기',
     confirmTitle: '이 프로젝트를 분석할까요?',
@@ -58,6 +60,8 @@ const TEXT = messages({
     all: 'All',
     list: 'List',
     sort: 'Sort',
+    region: 'Region',
+    regions: { ko: 'Korea', en: 'International' },
     items: (count: string) => `${count} ${count === '1' ? 'item' : 'items'}`,
     more: 'Show more',
     confirmTitle: 'Analyze this project?',
@@ -69,8 +73,10 @@ const TEXT = messages({
 /** 숫자를 지금 언어에 맞게 적어요. */
 const number = (value: number) => value.toLocaleString(getLang() === 'ko' ? 'ko-KR' : 'en-US')
 
-/** 동아리 목록은 언어마다 달라요. 영어 화면에는 해외 학생 개발 동아리와 커뮤니티를 보여줘요. */
-const cacheKey = (kind: ExploreKind, lang: Lang) => (kind === 'clubs' ? `clubs:${lang}` : kind)
+/** 동아리 목록은 지역마다 달라요. ko는 한국 동아리, en은 해외 학생 개발 동아리와 커뮤니티예요. 화면 언어와 상관없이 둘 다 고를 수 있어요. */
+const cacheKey = (kind: ExploreKind, region: Lang) => (kind === 'clubs' ? `clubs:${region}` : kind)
+
+const REGIONS: Lang[] = ['ko', 'en']
 
 
 const repoName = (item: ExploreRepo) => item.repo.slice(item.repo.indexOf('/') + 1)
@@ -109,31 +115,31 @@ const subscribe = (listener: () => void) => {
   }
 }
 
-function load(kind: ExploreKind, lang: Lang) {
-  const key = cacheKey(kind, lang)
+function load(kind: ExploreKind, region: Lang) {
+  const key = cacheKey(kind, region)
   if (cache[key] !== undefined || pending.has(key)) return
   pending.add(key)
-  void fetchExplore(kind, lang).then((repos) => {
+  void fetchExplore(kind, region).then((repos) => {
     pending.delete(key)
     cache[key] = repos && repos.length > 0 ? repos : 'failed'
     listeners.forEach((listener) => listener())
   })
 }
 
-function retry(kind: ExploreKind) {
-  const lang = getLang()
-  delete cache[cacheKey(kind, lang)]
+function retry(kind: ExploreKind, region: Lang) {
+  delete cache[cacheKey(kind, region)]
   listeners.forEach((listener) => listener())
-  load(kind, lang)
+  load(kind, region)
 }
 
-/** 목록 하나를 받아서 돌려줘요. 받는 중이면 undefined예요. enabled가 false면 받지 않아요. */
-function useList(kind: ExploreKind, enabled = true): Loaded | undefined {
+/** 목록 하나를 받아서 돌려줘요. 받는 중이면 undefined예요. enabled가 false면 받지 않아요. 동아리 지역을 주지 않으면 화면 언어의 지역이에요. */
+function useList(kind: ExploreKind, enabled = true, region?: Lang): Loaded | undefined {
   const lang = useLang()
-  const list = useSyncExternalStore(subscribe, () => cache[cacheKey(kind, lang)])
+  const where = region ?? lang
+  const list = useSyncExternalStore(subscribe, () => cache[cacheKey(kind, where)])
   useEffect(() => {
-    if (enabled) load(kind, lang)
-  }, [kind, lang, enabled, list])
+    if (enabled) load(kind, where)
+  }, [kind, where, enabled, list])
   return list
 }
 
@@ -282,7 +288,7 @@ export function ExplorePreview({ onPick, clubs: hasClubs = false, onMore }: Prev
           {list === undefined ? (
             <ExploreCardsSkeleton row />
           ) : list === 'failed' ? (
-            <Failed compact onRetry={() => retry(kind)} />
+            <Failed compact onRetry={() => retry(kind, getLang())} />
           ) : (
             <ul className={`mt-3 ${cardsRow}`}>
               {list.map((item, order) => (
@@ -319,9 +325,13 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
   /** 고른 동아리. null이면 모든 동아리의 레포를 한데 모아서 보여줘요. */
   const [club, setClub] = useState<string | null>(null)
   const [sort, setSort] = useState<Sort>('stars')
+  /** 동아리를 보여줄 지역. 처음에는 화면 언어를 따르고, 메뉴로 바꾸면 언어와 상관없이 그 지역을 보여줘요. */
+  const lang = useLang()
+  const [picked, setRegion] = useState<Lang | null>(null)
+  const region = picked ?? lang
   /** 동아리 레포를 몇 개까지 그렸는지. 동아리나 순서를 바꾸면 처음으로 돌아가요. */
   const [shown, setShown] = useState(PAGE_SIZE)
-  const loaded = useList(kind)
+  const loaded = useList(kind, true, region)
   const clubRepos = category === 'clubs' && Array.isArray(loaded) ? loaded : null
   // 동아리 레포는 서버가 전부 한꺼번에 보내요. 동아리 이름은 가나다순으로 늘어놓고, 고르기와 순서 바꾸기는 여기서 해요.
   const clubs = useMemo(
@@ -451,6 +461,26 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
           ) : (
             <>
               <MapMenu
+                label={L.region}
+                value={L.regions[region]}
+                groups={[
+                  {
+                    items: REGIONS.map((value) => ({
+                      label: L.regions[value],
+                      checked: region === value,
+                      onSelect: () => {
+                        if (region === value) return
+                        track('explore_region_change', { region: value })
+                        setRegion(value)
+                        setClub(null)
+                        setGroup(null)
+                        setShown(PAGE_SIZE)
+                      },
+                    })),
+                  },
+                ]}
+              />
+              <MapMenu
                 label={L.sort}
                 value={L.sorts[sort]}
                 groups={[
@@ -475,7 +505,7 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
         {list === undefined ? (
           <ExploreCardsSkeleton />
         ) : list === 'failed' ? (
-          <Failed onRetry={() => retry(kind)} />
+          <Failed onRetry={() => retry(kind, region)} />
         ) : (
           <ul className={`mt-4 ${cardsGrid}`}>
             {list.map((item, order) => (
