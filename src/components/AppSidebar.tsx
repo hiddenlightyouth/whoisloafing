@@ -27,6 +27,7 @@ const TEXT = messages({
     signOut: '로그아웃',
     changePlan: '플랜 변경',
     weekly: (percent: number) => `이번 주 ${percent}% 사용`,
+    reset: (left: { days: number; hours: number }) => (left.days > 0 ? `${left.days}일 후 초기화돼요` : `${Math.max(1, left.hours)}시간 후 초기화돼요`),
     settings: '설정',
     bug: '버그 신고',
     login: '로그인',
@@ -45,12 +46,22 @@ const TEXT = messages({
     signOut: 'Sign out',
     changePlan: 'Change plan',
     weekly: (percent: number) => `${percent}% used this week`,
+    reset: (left: { days: number; hours: number }) =>
+      left.days > 0 ? `Resets in ${left.days} ${left.days === 1 ? 'day' : 'days'}` : `Resets in ${Math.max(1, left.hours)} ${left.hours > 1 ? 'hours' : 'hour'}`,
     settings: 'Settings',
     bug: 'Report a bug',
     login: 'Sign in',
     signedOut: 'Sign in to save your analyses',
   },
 })
+
+/** 사용량이 다시 채워질 때까지 남은 날과 시간이에요. 하루가 넘게 남으면 날로, 하루 안이면 시간으로 적어요. */
+function resetLeft(value: string): { days: number; hours: number } | null {
+  const ms = new Date(value).getTime() - Date.now()
+  if (Number.isNaN(ms) || ms <= 0) return null
+  const hours = Math.ceil(ms / 3_600_000)
+  return { days: hours >= 24 ? Math.ceil(ms / 86_400_000) : 0, hours }
+}
 
 interface Props {
   /** 지금 열려 있는 채팅. 목록에서 강조해요. */
@@ -559,6 +570,7 @@ function AccountMenu({
               <div className="h-1.5 overflow-hidden rounded-full bg-gray-100" aria-hidden>
                 <div className="h-full bg-brand" style={{ width: `${Math.min(100, (usage.used / usage.limit) * 100)}%` }} />
               </div>
+              {resetLeft(usage.resetAt) && <p className="mt-1.5 text-[11.5px] text-gray-400">{text.reset(resetLeft(usage.resetAt)!)}</p>}
             </div>
           )}
 

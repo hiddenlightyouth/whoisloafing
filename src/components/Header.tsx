@@ -6,6 +6,7 @@ import { LANG_NAMES, localizePath, messages, pick, setLang, useLang, useMessages
 import { showToast } from '../lib/toast'
 import type { AccountPage } from './Account'
 import { Logo } from './Logo'
+import { ModelMenu } from './ModelMenu'
 
 interface Props {
   onHome: () => void
@@ -330,6 +331,9 @@ export function Header({
               {text.tryApp}
             </a>
           )}
+
+          {/* 채팅에서도 고른 모델을 보여줘요. 이어서 묻는 질문에 이 모델이 쓰여요. */}
+          {inChat && !shared && <ModelMenu />}
 
           {onDeep && (
             <button type="button" onClick={onDeep} className={`${quiet} bg-gray-100 text-gray-700 hover:text-brand`}>

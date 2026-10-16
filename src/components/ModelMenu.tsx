@@ -1,67 +1,35 @@
 import { useEffect, useRef, useState } from 'react'
 import { useDismiss } from '../hooks/useDismiss'
 import { track } from '../lib/analytics'
-import { messages, useLang, useMessages, type Lang } from '../lib/i18n'
-import { modelsOf, openPlans, percentOf, PROVIDERS, providerOf, refreshUsage, setModel, useModel, useUsage, type Usage } from '../lib/usage'
+import { messages, useMessages } from '../lib/i18n'
+import { modelsOf, PROVIDERS, providerOf, refreshUsage, setModel, useModel, useUsage } from '../lib/usage'
 
 const TEXT = messages({
   ko: {
     model: '모델 고르기',
     soon: '준비 중',
     multiplier: (times: number) => `사용량 ${times}배`,
-    usage: '이번 주 사용량',
-    used: (percent: number) => `${percent}% 사용`,
-    plans: '플랜 변경',
   },
   en: {
     model: 'Choose a model',
     soon: 'Coming soon',
     multiplier: (times: number) => `${times}x usage`,
-    usage: 'Usage this week',
-    used: (percent: number) => `${percent}% used`,
-    plans: 'Change plan',
   },
 })
 
-export const RESET_TEXT = messages({
-  ko: { reset: (when: string) => `${when}에 다시 채워져요.` },
-  en: { reset: (when: string) => `Refills ${when}.` },
-})
-
-/** 다시 채워지는 때를 "10월 20일 (월) 0시"처럼 적어요. */
-export function formatReset(value: string, lang: Lang): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  if (lang === 'en') {
-    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', weekday: 'short', hour: 'numeric', minute: '2-digit' }).format(date)
-  }
-  // 한국어는 "오전 12:00" 대신 "0시"로 적어요.
-  return new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric', weekday: 'short', hour: 'numeric', hourCycle: 'h23' }).format(date)
-}
-
-/** 이번 주 사용량 막대 */
-export function UsageBar({ usage, className = 'h-2' }: { usage: Usage; className?: string }) {
-  return (
-    <div className={`overflow-hidden rounded-full bg-gray-100 ${className}`} aria-hidden>
-      <div className="h-full origin-left animate-grow bg-brand" style={{ width: `${Math.min(100, (usage.used / usage.limit) * 100)}%` }} />
-    </div>
-  )
-}
-
 /**
- * 분석에 쓸 모델을 고르는 작은 메뉴예요. 다른 AI 서비스처럼 입력창이나 만들기 버튼 옆에 두고, 누르면 모델 목록과 이번 주 사용량이 펼쳐져요.
+ * 분석에 쓸 모델을 고르는 작은 메뉴예요. 다른 AI 서비스처럼 입력창이나 만들기 버튼 옆에 두고, 누르면 모델 목록이 펼쳐져요. 사용량은 사이드바의 계정 메뉴에서 봐요.
  * 모델은 회사(Claude, GPT, Gemini)마다 묶어서 보여주고, 이름 옆에 사용량 배수를 적어요. 지금은 Claude Haiku만 고를 수 있고 나머지는 준비 중으로 흐리게 둬요. 고른 모델은 저장돼서 분석 요청에 같이 실려요.
  */
 export function ModelMenu({ up = false, className = '' }: { /** 위로 펼쳐요. 화면 아래쪽 줄에 둘 때 켜요. */ up?: boolean; className?: string }) {
   const L = useMessages(TEXT)
-  const R = useMessages(RESET_TEXT)
-  const lang = useLang()
   const usage = useUsage()
   const model = useModel()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useDismiss(open, ref, () => setOpen(false))
 
+  // 모델마다 쓸 수 있는지 서버의 /usage가 알려 줘서, 열 때마다 새로 받아요.
   useEffect(() => {
     if (open) void refreshUsage()
   }, [open])
@@ -136,26 +104,6 @@ export function ModelMenu({ up = false, className = '' }: { /** 위로 펼쳐요
             ))}
           </div>
 
-          {usage && (
-            <div className="mt-1 border-t border-gray-100 px-2.5 pt-2.5 pb-1.5">
-              <div className="mb-1.5 flex items-baseline justify-between text-[12px]">
-                <span className="text-gray-500">{L.usage}</span>
-                <span className="text-gray-500 tabular-nums">{L.used(percentOf(usage.used, usage.limit))}</span>
-              </div>
-              <UsageBar usage={usage} className="h-1.5" />
-              <p className="mt-2 text-[11.5px] text-gray-400">{R.reset(formatReset(usage.resetAt, lang))}</p>
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false)
-                  openPlans('model')
-                }}
-                className="mt-1.5 text-[12px] font-medium text-brand hover:text-brand-hover"
-              >
-                {L.plans}
-              </button>
-            </div>
-          )}
         </div>
       )}
     </div>
