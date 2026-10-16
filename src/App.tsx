@@ -728,7 +728,7 @@ export default function App() {
   useShortcuts(
     {
       KeyN: handleHome,
-      KeyA: () => leaveFor('articles'),
+      KeyA: isApp ? undefined : () => leaveFor('articles'),
       Slash: () => document.querySelector<HTMLInputElement>('input[data-repo-input]')?.focus(),
       KeyD: isApp && deep ? () => openDeep(null) : undefined,
       KeyT: isApp && exploreReady ? () => openExplore() : undefined,
@@ -967,7 +967,6 @@ export default function App() {
                 goHome()
               }
             }}
-            onArticles={() => leaveFor('articles')}
             onMe={() => {
               if (account !== 'me') leaveFor('me')
             }}

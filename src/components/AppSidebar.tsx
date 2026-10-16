@@ -19,7 +19,6 @@ const TEXT = messages({
     explore: '탐색',
     portfolio: '포트폴리오 만들기',
     me: '내 정보',
-    articles: '아티클',
     admin: '관리자',
     signOut: '로그아웃',
     settings: '설정',
@@ -33,7 +32,6 @@ const TEXT = messages({
     explore: 'Explore',
     portfolio: 'Build a portfolio',
     me: 'Account',
-    articles: 'Articles',
     admin: 'Admin',
     signOut: 'Sign out',
     settings: 'Settings',
@@ -60,7 +58,6 @@ interface Props {
   onOpenChat: (id: string) => void
   /** 목록에서 공유를 취소하거나 지웠을 때 불러요. 열려 있는 채팅이면 화면도 맞춰요. */
   onChatChanged: (id: string, change: 'unshared' | 'deleted') => void
-  onArticles: () => void
   onMe: () => void
   /** 앱의 설정 창을 띄워요. */
   onSettings: () => void
@@ -221,7 +218,7 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
 }
 
 /** 앱 화면 왼쪽의 사이드바예요. 새 분석, 내 작업 목록과 관리, 아티클과 내 정보로 가는 링크가 있어요. */
-export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPortfolio, onExplore, onOpenChat, onDeepRepo, onChatChanged, onArticles, onMe, onSettings, settingsOpen, onAdmin }: Props) {
+export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPortfolio, onExplore, onOpenChat, onDeepRepo, onChatChanged, onMe, onSettings, settingsOpen, onAdmin }: Props) {
   const { me } = useAuth()
   const list = useMessages(CHAT_LIST_TEXT)
   const text = useMessages(TEXT)
@@ -448,7 +445,7 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
         )}
       </nav>
 
-      <AccountMenu me={me} page={page} onArticles={onArticles} onMe={onMe} onSettings={onSettings} settingsOpen={settingsOpen} onAdmin={onAdmin} />
+      <AccountMenu me={me} page={page} onMe={onMe} onSettings={onSettings} settingsOpen={settingsOpen} onAdmin={onAdmin} />
 
       {deleting && <DeleteDialog chat={deleting} working={working} onCancel={cancelDelete} onConfirm={() => void remove(deleting)} />}
     </aside>
@@ -462,7 +459,7 @@ const menuIcon = 'size-4 shrink-0 text-gray-500'
  * 사이드바 맨 아래의 계정 버튼이에요. 누르면 위로 메뉴가 펼쳐져서 내 정보, 아티클, 관리자 화면으로 가거나 로그아웃해요. 오른쪽에는 설정과 버그 신고 버튼이 있어요.
  * 바깥을 누르거나 Esc를 누르면 닫혀요.
  */
-function AccountMenu({ me, page, onArticles, onMe, onSettings, settingsOpen, onAdmin }: { me: Me | null; page: Props['page']; onArticles: () => void; onMe: () => void; onSettings: () => void; settingsOpen: boolean; onAdmin?: () => void }) {
+function AccountMenu({ me, page, onMe, onSettings, settingsOpen, onAdmin }: { me: Me | null; page: Props['page']; onMe: () => void; onSettings: () => void; settingsOpen: boolean; onAdmin?: () => void }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const { ready: canReport } = useFeedback()
@@ -502,13 +499,6 @@ function AccountMenu({ me, page, onArticles, onMe, onSettings, settingsOpen, onA
               <path d="M3 13.5c.6-2.2 2.6-3.5 5-3.5s4.4 1.3 5 3.5" strokeLinecap="round" />
             </svg>
             {text.me}
-          </button>
-          <button type="button" role="menuitem" onClick={go(onArticles)} className={menuRow}>
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className={menuIcon} aria-hidden="true">
-              <path d="M3.5 2.5h6l3 3v8h-9z" />
-              <path d="M5.5 8h5M5.5 10.5h5" strokeLinecap="round" />
-            </svg>
-            {text.articles}
           </button>
           {onAdmin && (
             <button type="button" role="menuitem" onClick={go(onAdmin)} className={menuRow}>
