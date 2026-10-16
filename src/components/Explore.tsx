@@ -5,6 +5,7 @@ import { Avatar } from './History'
 import { Modal, primaryButton, quietButton } from './Dialog'
 import { MapMenu } from './DeepParts'
 import { ExploreCardsSkeleton } from './Skeleton'
+import { clubInfo } from '../lib/clubs'
 import { getLang, messages, useMessages, type Lang } from '../lib/i18n'
 
 /** 탐색의 큰 갈래. GitHub는 GitHub 전체에서 인기 있는 레포, 동아리는 IT 연합 동아리와 커뮤니티가 만든 레포예요. */
@@ -348,6 +349,9 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
   }, [clubRepos])
   /** 고른 동아리 안에서 고른 학교. 학교마다 조직이 따로 있는 동아리(멋쟁이사자처럼)에서만 써요. null이면 모든 학교예요. */
   const [group, setGroup] = useState<string | null>(null)
+  /** 고른 동아리의 "어떤 단체인가요?"를 펼쳐 뒀는지. 다른 동아리를 골라도 펼친 채로 둬요. */
+  const [aboutOpen, setAboutOpen] = useState(false)
+  const about = club ? clubInfo(club) : null
   /** 고른 동아리의 학교 이름과 학교마다의 레포 수. 가나다순이에요. 학교로 나뉘지 않는 동아리는 비어 있어요. */
   const groups = useMemo(() => {
     const map = new Map<string, number>()
@@ -441,6 +445,29 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
                 </span>
               </button>
             ))}
+          </div>
+        )}
+
+        {/* 낯선 동아리도 있어서, 고른 동아리가 어떤 단체인지 물음표 줄을 눌러 볼 수 있어요. */}
+        {clubRepos && about && (
+          <div className="mb-3">
+            <button
+              type="button"
+              aria-expanded={aboutOpen}
+              onClick={() => {
+                if (!aboutOpen) track('explore_club_about', { club: club ?? '' })
+                setAboutOpen(!aboutOpen)
+              }}
+              className="inline-flex items-center gap-1.5 text-[13px] text-gray-500 transition-colors hover:text-gray-700"
+            >
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="size-3.5" aria-hidden="true">
+                <circle cx="8" cy="8" r="6.3" />
+                <path d="M6.3 6.2a1.75 1.75 0 0 1 3.4.55c0 1.15-1.7 1.5-1.7 2.5" />
+                <path d="M8 11.4h.01" strokeWidth="1.8" />
+              </svg>
+              {about.question}
+            </button>
+            {aboutOpen && <p className="mt-1.5 max-w-[640px] animate-rise pl-5 text-[13px] leading-relaxed text-gray-500">{about.answer}</p>}
           </div>
         )}
 

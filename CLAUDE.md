@@ -107,6 +107,7 @@ src/
   components/RepoGallery.tsx 분석해 둔 레포를 고르는 갤러리. 심층 분석과 포트폴리오 만들기가 같이 써요
   components/Portfolio.tsx   앱의 포트폴리오 만들기 (/portfolio). 항목, 기획안, 나를 고르는 단계와, 항목을 고치는 칸과 마크다운 미리보기로 나눈 화면
   lib/portfolio.ts    포트폴리오 항목과 고치기 요청 목록, API 호출, 이 기기에 저장, 마크다운으로 잇기
+  lib/clubs.ts        탐색의 동아리마다 "어떤 단체인가요?" 설명 (한국어, 영어)
   components/Explore.tsx     앱의 탐색 화면(/explore)과 새 분석 화면 아래에 붙는 맛보기. GitHub와 연합 동아리의 레포를 골라 분석을 시작해요
   components/Admin.tsx       앱의 관리자 화면 (/admin). 관리자 계정만 보고, 탭으로 나눠요
   components/AdminOverview.tsx  관리자 화면의 현황 탭 (회원, 사용 기기, 채팅 합계와 날짜별 그래프, 많이 분석한 레포)
@@ -376,6 +377,7 @@ AI 사용량 탭(`AdminUsage`)
   - "정렬" 메뉴에서 "스타순"(처음 상태), "최근 업데이트순", "이름순" 중에 골라요.
   - 한 번에 48개만 그리고 "더 보기"로 48개씩 이어서 보여줘요. 동아리나 순서를 바꾸면 처음 48개로 돌아가요.
   - 학교마다 GitHub 조직이 따로 있는 동아리(멋쟁이사자처럼, GDG on Campus, UMC, 9oormthonUNIV)를 고르면, 동아리 버튼 줄 아래에 학교 버튼 줄이 한 줄 더 나와요. "전체"와 학교 이름(강남대, 경북대 등)이 가나다순으로 있고, 고르면 그 학교의 레포만 보여줘요. 다른 동아리를 고르면 학교는 "전체"로 돌아가요. 학교 이름은 서버가 레포마다 `group`으로 보내고, 화면은 그 값으로 버튼을 만들어요. 학교가 둘 이상 잡힌 동아리에만 이 줄이 나오고, 동아리를 고르지 않았을 때(전체)는 나오지 않아요. 중앙 조직의 레포처럼 학교가 없는 레포는 "전체"에서만 보여요.
+  - 동아리를 고르면 버튼 줄 아래에 물음표 아이콘과 함께 "넥스터즈는 어떤 단체인가요?"(영어는 "What is Hack4Impact?")라는 회색 줄이 나오고, 누르면 그 아래에 한두 문장의 설명이 회색으로 펼쳐져요. 해외 동아리는 우리나라 사람에게 낯설어서 넣었고, 국내 동아리에도 똑같이 있어요. 펼친 상태는 다른 동아리를 골라도 그대로예요. 설명은 `src/lib/clubs.ts`에 동아리 이름으로 적어 두고, 설명이 없는 동아리는 이 줄을 띄우지 않아요. 서버에 동아리를 더하면 여기에도 설명을 더해요. 조사(은, 는)는 한글 이름이면 받침으로 고르고, 영어 이름은 읽었을 때 받침이 있는 것만 `EUN`에 적어 둬요.
   - 어떤 동아리의 어떤 조직을 읽는지, 조직이 어느 학교인지는 서버의 `ExploreClubs`에 있어서, 동아리나 학교를 더하거나 뺄 때 화면은 고치지 않아요.
   - 해외 동아리 & 커뮤니티(Hack4Impact, Blueprint, ACM, Cornell DTI, Penn Labs, Hack Club, MLH Fellowship 등)는 화면 언어와 상관없이 요청에 `lang=en`을 붙여서 받고, 연합 동아리 & 커뮤니티는 `lang=ko`로 받아요. 받은 목록은 갈래마다 따로 적어 둬요. 갈래를 바꾸면 동아리와 학교는 "전체"로 돌아가요. 지역을 메뉴로 고르게 해 봤다가 갈래를 따로 두는 것으로 바꿨어요.
   - 영어 화면에서는 갈래 이름이 "Korean clubs & communities"와 "Student clubs & communities"이고, 학교 버튼 줄은 "Chapters"예요.
@@ -616,6 +618,7 @@ Claude 호출 기록은 백엔드 서버가 남기고, 관리자 API(`/api/v1/ai
 | `list_copy` | 팀 규칙 문서 복사하기를 눌렀을 때 | `repo`, `success` |
 | `explore_kind_change` | 앱의 탐색에서 갈래 탭(GitHub, 연합 동아리 & 커뮤니티, 해외 동아리 & 커뮤니티)이나 목록 메뉴의 인기와 요즘 뜨는 사이를 바꿨을 때 | `kind`(popular, rising, clubs, global) |
 | `explore_club_select` | 탐색의 동아리 탭에서 동아리를 골랐을 때 | `club`(동아리 이름, 전체는 all) |
+| `explore_club_about` | 탐색에서 동아리의 "어떤 단체인가요?"를 펼쳤을 때 | `club` |
 | `explore_group_select` | 탐색에서 동아리 안의 학교를 골랐을 때 | `club`, `group`(학교 이름, 전체는 all) |
 | `explore_sort_change` | 탐색의 동아리 탭에서 레포 순서를 바꿨을 때 | `sort`(stars, recent, name) |
 | `explore_open` | 앱 사이드바의 탐색을 눌렀을 때 | `from`(sidebar) |
