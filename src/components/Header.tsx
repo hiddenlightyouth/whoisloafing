@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
 import { track } from '../lib/analytics'
 import { MAC_DOWNLOAD, MAC_DOWNLOAD_OPEN, MAC_SUPPORT } from '../lib/app'
+import { LANG_NAMES, localizePath, messages, pick, setLang, useLang, useMessages } from '../lib/i18n'
 import { showToast } from '../lib/toast'
 import type { AccountPage } from './Account'
 import { Logo } from './Logo'
@@ -33,6 +34,82 @@ interface Props {
   home?: boolean
 }
 
+const TEXT = messages({
+  ko: {
+    shareFailed: '공유하지 못했어요. 잠시 뒤에 다시 시도해 주세요.',
+    copied: '링크를 복사했어요.',
+    copyFailed: '링크를 복사하지 못했어요.',
+    history: '내 작업',
+    me: '내 정보',
+    login: '로그인',
+    about: '소개',
+    download: '앱 다운로드',
+    appTip: '앱에서 더 많은 기능 사용하기',
+    soon: '준비 중',
+    articles: '아티클',
+    deep: '심층 분석',
+    copyLink: '링크 복사',
+    stop: '중단하기',
+    share: '공유하기',
+    noStorage: '저장 기능이 꺼져 있어서 공유할 수 없어요.',
+    shareTitle: '이 채팅을 저장하고 공유할까요?',
+    shareBody: '내 작업에 저장되고, 링크를 아는 사람은 누구나 볼 수 있어요. 공유하는 동안에는 분석을 더 이어갈 수 없고, 내 작업에서 언제든 공유를 취소할 수 있어요.',
+    shareLoginBody: '로그인하여 이 분석을 저장하고, 링크로 다른 사람에게 공유할 수 있어요.',
+    cancel: '취소',
+    working: '처리 중',
+    closeMenu: '메뉴 닫기',
+    openMenu: '메뉴 열기',
+    language: '언어',
+  },
+  en: {
+    shareFailed: "Couldn't share. Please try again in a moment.",
+    copied: 'Link copied.',
+    copyFailed: "Couldn't copy the link.",
+    history: 'My chats',
+    me: 'Account',
+    login: 'Sign in',
+    about: 'About',
+    download: 'Get the app',
+    appTip: 'Do more in the Mac app',
+    soon: 'Coming soon',
+    articles: 'Articles',
+    deep: 'Deep dive',
+    copyLink: 'Copy link',
+    stop: 'Stop',
+    share: 'Share',
+    noStorage: "Sharing isn't available because saving is turned off.",
+    shareTitle: 'Save and share this chat?',
+    shareBody: "It will be saved to My chats, and anyone with the link can view it. While it's shared, the analysis can't be continued. You can stop sharing anytime from My chats.",
+    shareLoginBody: 'Sign in to save this analysis and share it with others through a link.',
+    cancel: 'Cancel',
+    working: 'Working',
+    closeMenu: 'Close menu',
+    openMenu: 'Open menu',
+    language: 'Language',
+  },
+})
+
+/** 다른 언어로 바꾸는 링크예요. 바꿀 언어의 이름을 그 언어로 적어요. */
+function LangSwitch({ className, onSwitch }: { className: string; onSwitch?: () => void }) {
+  const lang = useLang()
+  const other = lang === 'ko' ? 'en' : 'ko'
+  return (
+    <button
+      type="button"
+      lang={other}
+      aria-label={`${pick(TEXT).language}: ${LANG_NAMES[other]}`}
+      onClick={() => {
+        track('language_change', { lang: other, from: 'header' })
+        setLang(other)
+        onSwitch?.()
+      }}
+      className={className}
+    >
+      {LANG_NAMES[other]}
+    </button>
+  )
+}
+
 const quiet = 'h-8 rounded-full px-3 text-[13px] font-medium transition-colors'
 
 export function Header({
@@ -53,6 +130,7 @@ export function Header({
   app = false,
   home = false,
 }: Props) {
+  const text = useMessages(TEXT)
   const [confirming, setConfirming] = useState(false)
   const [working, setWorking] = useState(false)
   const actionsRef = useRef<HTMLDivElement>(null)
@@ -77,20 +155,20 @@ export function Header({
     const ok = await onShare()
     setWorking(false)
     setConfirming(false)
-    if (!ok) showToast('공유하지 못했어요. 잠시 뒤에 다시 시도해 주세요.')
+    if (!ok) showToast(pick(TEXT).shareFailed)
   }
 
   async function copy() {
-    showToast((await onCopyLink()) ? '링크를 복사했어요.' : '링크를 복사하지 못했어요.')
+    showToast((await onCopyLink()) ? pick(TEXT).copied : pick(TEXT).copyFailed)
   }
 
   const accountLinks = onAccount
     ? signedIn
       ? ([
-          ['history', '내 작업'],
-          ['me', '내 정보'],
+          ['history', text.history],
+          ['me', text.me],
         ] as const)
-      : ([['login', '로그인']] as const)
+      : ([['login', text.login]] as const)
     : []
 
   function goAbout(event: MouseEvent<HTMLAnchorElement>) {
@@ -141,8 +219,8 @@ export function Header({
 
         <div ref={actionsRef} className="relative flex items-center gap-1 sm:gap-2">
           <nav className={app ? 'hidden' : 'hidden items-center gap-1 sm:flex sm:gap-2'}>
-            <a href="/about" onClick={goAbout} className={`${quiet} inline-flex items-center text-gray-600 hover:text-gray-900`}>
-              소개
+            <a href={localizePath('/about')} onClick={goAbout} className={`${quiet} inline-flex items-center text-gray-600 hover:text-gray-900`}>
+              {text.about}
             </a>
 
             <div ref={downloadRef} className="relative">
@@ -153,7 +231,7 @@ export function Header({
                 onClick={() => setDownloadOpen((open) => !open)}
                 className={`${quiet} inline-flex items-center gap-1 text-gray-600 hover:text-gray-900`}
               >
-                앱 다운로드
+                {text.download}
                 <Caret open={downloadOpen} />
               </button>
               {MAC_DOWNLOAD_OPEN && home && !downloadOpen && (
@@ -163,7 +241,7 @@ export function Header({
                 >
                   {/* 앱 다운로드를 가리키는 말풍선 꼬리 */}
                   <span className="absolute -top-1 left-1/2 size-2 -translate-x-1/2 rotate-45 rounded-[1px] bg-brand" aria-hidden="true" />
-                  앱에서 더 많은 기능 사용하기
+                  {text.appTip}
                 </p>
               )}
               {downloadOpen && (
@@ -176,7 +254,7 @@ export function Header({
                       <AppleLogo />
                       <span>
                         <span className="block text-[13px] font-medium">macOS</span>
-                        <span className="block text-[11.5px]">준비 중</span>
+                        <span className="block text-[11.5px]">{text.soon}</span>
                       </span>
                     </div>
                   )}
@@ -212,7 +290,7 @@ export function Header({
                     <WindowsLogo />
                     <span>
                       <span className="block text-[13px] font-medium">Windows</span>
-                      <span className="block text-[11.5px]">준비 중</span>
+                      <span className="block text-[11.5px]">{text.soon}</span>
                     </span>
                   </div>
                 </div>
@@ -220,8 +298,8 @@ export function Header({
             </div>
 
             {onArticles && (
-              <a href="/articles" onClick={goArticles} className={`${quiet} inline-flex items-center text-gray-600 hover:text-gray-900`}>
-                아티클
+              <a href={localizePath('/articles')} onClick={goArticles} className={`${quiet} inline-flex items-center text-gray-600 hover:text-gray-900`}>
+                {text.articles}
               </a>
             )}
 
@@ -235,23 +313,25 @@ export function Header({
                 {label}
               </a>
             ))}
+
+            <LangSwitch className={`${quiet} inline-flex items-center text-gray-400 hover:text-gray-900`} onSwitch={() => setDownloadOpen(false)} />
           </nav>
 
           {onDeep && (
             <button type="button" onClick={onDeep} className={`${quiet} bg-gray-100 text-gray-700 hover:text-brand`}>
-              심층 분석
+              {text.deep}
             </button>
           )}
 
           {shared ? (
             <button type="button" onClick={copy} className={`${quiet} bg-brand-soft text-brand-hover hover:bg-brand hover:text-white`}>
-              링크 복사
+              {text.copyLink}
             </button>
           ) : (
             inChat &&
             (busy ? (
               <button type="button" onClick={onStop} className={`${quiet} bg-gray-100 text-gray-700 hover:text-red-500`}>
-                중단하기
+                {text.stop}
               </button>
             ) : (
               <button
@@ -259,7 +339,7 @@ export function Header({
                 aria-expanded={confirming}
                 onClick={() => {
                   if (!storage) {
-                    showToast('저장 기능이 꺼져 있어서 공유할 수 없어요.')
+                    showToast(pick(TEXT).noStorage)
                     return
                   }
                   if (!confirming) track('share_open', { signed_in: signedIn })
@@ -267,18 +347,16 @@ export function Header({
                 }}
                 className={`${quiet} bg-gray-100 text-gray-700 hover:text-brand`}
               >
-                공유하기
+                {text.share}
               </button>
             ))
           )}
 
           {confirming && !shared && !busy && (
             <div className="absolute top-full right-0 mt-2 w-64 origin-top-right animate-pop rounded-2xl border border-gray-200 bg-white p-4">
-              <p className="text-[14px] font-semibold text-gray-900">{signedIn ? '이 채팅을 저장하고 공유할까요?' : '공유하기'}</p>
+              <p className="text-[14px] font-semibold text-gray-900">{signedIn ? text.shareTitle : text.share}</p>
               <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">
-                {signedIn
-                  ? '내 작업에 저장되고, 링크를 아는 사람은 누구나 볼 수 있어요. 공유하는 동안에는 분석을 더 이어갈 수 없고, 내 작업에서 언제든 공유를 취소할 수 있어요.'
-                  : '로그인하여 이 분석을 저장하고, 링크로 다른 사람에게 공유할 수 있어요.'}
+                {signedIn ? text.shareBody : text.shareLoginBody}
               </p>
               <div className="mt-3.5 flex justify-end gap-2">
                 <button
@@ -289,7 +367,7 @@ export function Header({
                   }}
                   className={`${quiet} text-gray-600 hover:text-gray-900`}
                 >
-                  취소
+                  {text.cancel}
                 </button>
                 {signedIn ? (
                   <button
@@ -298,7 +376,7 @@ export function Header({
                     onClick={share}
                     className={`${quiet} bg-brand text-white hover:bg-brand-hover disabled:bg-gray-200 disabled:text-gray-400`}
                   >
-                    {working ? '처리 중' : '공유하기'}
+                    {working ? text.working : text.share}
                   </button>
                 ) : (
                   <button
@@ -311,7 +389,7 @@ export function Header({
                     }}
                     className={`${quiet} bg-brand text-white hover:bg-brand-hover`}
                   >
-                    공유하기
+                    {text.share}
                   </button>
                 )}
               </div>
@@ -320,7 +398,7 @@ export function Header({
 
           <button
             type="button"
-            aria-label={menuOpen ? '메뉴 닫기' : '메뉴 열기'}
+            aria-label={menuOpen ? text.closeMenu : text.openMenu}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
             className={`relative ml-1 size-8 items-center justify-center rounded-full text-gray-700 transition-colors hover:bg-gray-100 sm:hidden ${app ? 'hidden' : 'flex'}`}
@@ -344,8 +422,8 @@ export function Header({
           }}
         >
           <nav className="flex flex-col px-4 pt-2 pb-6">
-            <a href="/about" onClick={goAbout} className={mobileItem}>
-              소개
+            <a href={localizePath('/about')} onClick={goAbout} className={mobileItem}>
+              {text.about}
             </a>
 
             <button
@@ -354,7 +432,7 @@ export function Header({
               onClick={() => setMobileDownloadOpen((open) => !open)}
               className={`${mobileItem} flex items-center justify-between`}
             >
-              앱 다운로드
+              {text.download}
               <Caret open={mobileDownloadOpen} />
             </button>
             {mobileDownloadOpen && (
@@ -364,7 +442,7 @@ export function Header({
                     <AppleLogo />
                     <span>
                       <span className="block text-[15px]">macOS</span>
-                      <span className="block text-[12px]">준비 중</span>
+                      <span className="block text-[12px]">{text.soon}</span>
                     </span>
                   </div>
                 )}
@@ -379,15 +457,15 @@ export function Header({
                   <WindowsLogo />
                   <span>
                     <span className="block text-[15px]">Windows</span>
-                    <span className="block text-[12px]">준비 중</span>
+                    <span className="block text-[12px]">{text.soon}</span>
                   </span>
                 </div>
               </div>
             )}
 
             {onArticles && (
-              <a href="/articles" onClick={goArticles} className={mobileItem}>
-                아티클
+              <a href={localizePath('/articles')} onClick={goArticles} className={mobileItem}>
+                {text.articles}
               </a>
             )}
 
@@ -396,6 +474,8 @@ export function Header({
                 {label}
               </a>
             ))}
+
+            <LangSwitch className={`${mobileItem} text-gray-500`} onSwitch={() => setMenuOpen(false)} />
           </nav>
         </div>
       )}

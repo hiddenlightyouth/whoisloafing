@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { messages, useLang } from '../lib/i18n'
 
 const CELL = 14
 const GAP = 5
@@ -13,41 +14,77 @@ const WORM_LENGTH = 7
  * 지렁이가 돌아가면서 한마디씩 하는 말이에요. 이 서비스에서 볼 수 있는 것을 알려 주는 말과,
  * 지렁이답게 툭 던지는 혼잣말을 섞어 뒀어요. 들어올 때마다 순서를 섞어서 보여줘요.
  */
-const WORM_LINES = [
-  // 이 서비스에서 볼 수 있는 것
-  '링크 하나면 분석해 줘요',
-  '누가 제일 많이 커밋했을까요?',
-  '어떤 기술로 만들었는지 정리해 줘요',
-  '누가 어떤 기능을 맡았는지 알려줘요',
-  '코드 스타일도 한 사람씩 봐 줘요',
-  '새벽형 팀인지 아침형 팀인지 볼까요?',
-  '막판에 몰아서 한 사람도 찾아줘요',
-  '커밋 메시지 규칙은 잘 지켰을까요?',
-  '분석 결과는 링크로 공유할 수 있어요',
-  '잘하는 팀의 협업 방식, 훔쳐 가세요',
-  'PR 템플릿도 그대로 복사해 가요',
-  '이슈는 어떻게 관리했는지도 봐요',
-  '팀 규칙 문서도 한 번에 만들어 줘요',
-  'PR은 누가 제일 많이 올렸을까요?',
-  '프로젝트가 흘러온 길도 보여줘요',
-  '로그인 없이 바로 써요',
-  '공개 레포면 어디든 괜찮아요',
-  // 지렁이의 혼잣말
-  '이 칸은 누구 커밋일까요, 냠',
-  '잔디가 참 맛있게 심어졌네요',
-  '저는 커밋은 안 하고 먹기만 해요',
-  '오늘 잔디는 심으셨나요?',
-  '커밋 한 줄도 소중한 기여예요',
-  '우리 팀 MVP, 궁금하지 않아요?',
-  '무임승차는 제가 찾아 드릴게요',
-  '숫자만 보면 재미없잖아요',
-  '팀플은 끝나도 기록은 남아요',
-  '회고할 때 꺼내 보기 좋아요',
-  '조용히 일한 사람도 다 보여요',
-  '리팩토링도 엄연한 기여예요',
-  '마감 전날 밤의 흔적이 보여요',
-  '기어가는 중이에요, 천천히 보세요',
-]
+const WORM_LINES = messages({
+  ko: [
+    // 이 서비스에서 볼 수 있는 것
+    '링크 하나면 분석해 줘요',
+    '누가 제일 많이 커밋했을까요?',
+    '어떤 기술로 만들었는지 정리해 줘요',
+    '누가 어떤 기능을 맡았는지 알려줘요',
+    '코드 스타일도 한 사람씩 봐 줘요',
+    '새벽형 팀인지 아침형 팀인지 볼까요?',
+    '막판에 몰아서 한 사람도 찾아줘요',
+    '커밋 메시지 규칙은 잘 지켰을까요?',
+    '분석 결과는 링크로 공유할 수 있어요',
+    '잘하는 팀의 협업 방식, 훔쳐 가세요',
+    'PR 템플릿도 그대로 복사해 가요',
+    '이슈는 어떻게 관리했는지도 봐요',
+    '팀 규칙 문서도 한 번에 만들어 줘요',
+    'PR은 누가 제일 많이 올렸을까요?',
+    '프로젝트가 흘러온 길도 보여줘요',
+    '로그인 없이 바로 써요',
+    '공개 레포면 어디든 괜찮아요',
+    // 지렁이의 혼잣말
+    '이 칸은 누구 커밋일까요, 냠',
+    '잔디가 참 맛있게 심어졌네요',
+    '저는 커밋은 안 하고 먹기만 해요',
+    '오늘 잔디는 심으셨나요?',
+    '커밋 한 줄도 소중한 기여예요',
+    '우리 팀 MVP, 궁금하지 않아요?',
+    '무임승차는 제가 찾아 드릴게요',
+    '숫자만 보면 재미없잖아요',
+    '팀플은 끝나도 기록은 남아요',
+    '회고할 때 꺼내 보기 좋아요',
+    '조용히 일한 사람도 다 보여요',
+    '리팩토링도 엄연한 기여예요',
+    '마감 전날 밤의 흔적이 보여요',
+    '기어가는 중이에요, 천천히 보세요',
+  ],
+  en: [
+    // 이 서비스에서 볼 수 있는 것
+    'One link is all it takes',
+    'Who made the most commits?',
+    'I can sum up the tech stack',
+    'I can tell who built which feature',
+    'Code style, one person at a time',
+    'Night owls or early birds?',
+    'Who did the last-minute push?',
+    'Did they follow commit conventions?',
+    'Share your analysis with a link',
+    "Borrow a great team's workflow",
+    'Copy their PR templates as is',
+    'See how they managed issues',
+    'Get a team rules doc in one go',
+    'Who opened the most PRs?',
+    'See how the project unfolded',
+    'No sign-in needed',
+    'Any public repo works',
+    // 지렁이의 혼잣말
+    'Whose commit is this square? Yum',
+    'This grass looks delicious',
+    "I don't commit, I just snack",
+    'Did you plant some grass today?',
+    'Every commit counts',
+    'Curious who built what?',
+    'Numbers alone are boring',
+    'The project ends, the history stays',
+    'Great for retrospectives',
+    'Quiet work shows up here too',
+    'Refactoring is real work too',
+    'I see traces of deadline nights',
+    "I'm crawling, take your time",
+  ],
+})
 /** 한 마리가 말하는 시간과, 다음 지렁이가 말하기까지 쉬는 시간 */
 const SPEECH_MS = 3800
 const SPEECH_GAP_MS = 1600
@@ -91,6 +128,7 @@ const DIRECTIONS = [
  */
 export function ContributionBackdrop() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const lang = useLang()
   const bubbleRefs = useRef<(HTMLDivElement | null)[]>([])
 
   useEffect(() => {
@@ -113,7 +151,7 @@ export function ContributionBackdrop() {
     let nextSpeechAt = 2200
     let lineIndex = 0
     // 들어올 때마다 다른 순서로 말하게 섞어 둬요. 한 바퀴를 다 돌기 전에는 같은 말이 다시 나오지 않아요.
-    const lines = [...WORM_LINES]
+    const lines = [...WORM_LINES[lang]]
     for (let index = lines.length - 1; index > 0; index--) {
       const swap = Math.floor(Math.random() * (index + 1))
       ;[lines[index], lines[swap]] = [lines[swap], lines[index]]
@@ -302,7 +340,7 @@ export function ContributionBackdrop() {
       cancelAnimationFrame(frame)
       window.removeEventListener('resize', onResize)
     }
-  }, [])
+  }, [lang])
 
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">

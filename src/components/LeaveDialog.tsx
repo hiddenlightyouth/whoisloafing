@@ -1,4 +1,32 @@
 import { useEffect } from 'react'
+import { messages, useMessages } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: {
+    close: '닫기',
+    saveTitle: '분석을 잃어버리지 마세요',
+    title: '작업을 잃어버릴 수 있어요',
+    saveBody: (home: boolean) =>
+      `지금 ${home ? '메인 화면' : '다른 화면'}으로 이동하면 진행 중인 작업을 되돌릴 수 없어요. 로그인하면 분석 중인 내용을 저장하고, 내 작업에서 언제든 이어갈 수 있어요.`,
+    body: (home: boolean) => `진행 중인 작업을 그만두고 ${home ? '메인 화면' : '다른 화면'}으로 이동할까요? 이 작업은 되돌릴 수 없어요.`,
+    skip: '괜찮아요',
+    save: '저장하기',
+    stay: '계속 분석하기',
+    leave: '그만두고 이동',
+  },
+  en: {
+    close: 'Close',
+    saveTitle: "Don't lose this analysis",
+    title: 'You may lose your work',
+    saveBody: (home: boolean) =>
+      `If you go to ${home ? 'the home page' : 'another page'} now, your current analysis can't be recovered. Sign in to save it and pick it up anytime from My chats.`,
+    body: (home: boolean) => `Stop this analysis and go to ${home ? 'the home page' : 'another page'}? This can't be undone.`,
+    skip: 'No thanks',
+    save: 'Save',
+    stay: 'Keep analyzing',
+    leave: 'Leave',
+  },
+})
 
 interface Props {
   /** 메인 화면으로 가려던 것인지. 아니면 다른 화면으로 간다고 안내해요. */
@@ -14,7 +42,7 @@ const primary = 'h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-w
 
 /** 진행 중인 채팅을 두고 헤더의 로고나 링크를 눌렀을 때, 그만두고 이동할지 묻는 창이에요. */
 export function LeaveDialog({ home, onStay, onLeave, onLogin }: Props) {
-  const place = home ? '메인 화면' : '다른 화면'
+  const text = useMessages(TEXT)
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onStay()
@@ -41,7 +69,7 @@ export function LeaveDialog({ home, onStay, onLeave, onLogin }: Props) {
         {onLogin && (
           <button
             type="button"
-            aria-label="닫기"
+            aria-label={text.close}
             onClick={onStay}
             className="absolute top-3 right-3 flex size-7 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
           >
@@ -51,29 +79,27 @@ export function LeaveDialog({ home, onStay, onLeave, onLogin }: Props) {
           </button>
         )}
         <h2 id="leave-dialog-title" className={`text-[15px] font-semibold text-gray-900 ${onLogin ? 'pr-7' : ''}`}>
-          {onLogin ? '분석을 잃어버리지 마세요' : '작업을 잃어버릴 수 있어요'}
+          {onLogin ? text.saveTitle : text.title}
         </h2>
         <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">
-          {onLogin
-            ? `지금 ${place}으로 이동하면 진행 중인 작업을 되돌릴 수 없어요. 로그인하면 분석 중인 내용을 저장하고, 내 작업에서 언제든 이어갈 수 있어요.`
-            : `진행 중인 작업을 그만두고 ${place}으로 이동할까요? 이 작업은 되돌릴 수 없어요.`}
+          {onLogin ? text.saveBody(home) : text.body(home)}
         </p>
         {onLogin ? (
           <div className="mt-4 flex justify-end gap-2">
             <button type="button" onClick={onLeave} className={quiet}>
-              괜찮아요
+              {text.skip}
             </button>
             <button type="button" autoFocus onClick={onLogin} className={primary}>
-              저장하기
+              {text.save}
             </button>
           </div>
         ) : (
           <div className="mt-4 flex justify-end gap-2">
             <button type="button" onClick={onStay} className={quiet}>
-              계속 분석하기
+              {text.stay}
             </button>
             <button type="button" autoFocus onClick={onLeave} className={primary}>
-              그만두고 이동
+              {text.leave}
             </button>
           </div>
         )}

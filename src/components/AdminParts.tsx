@@ -4,6 +4,9 @@ import type { Result } from '../lib/admin'
 import type { Slice } from '../lib/auth'
 import { tag, toolButton } from './DeepParts'
 import { Bone } from './Skeleton'
+import { messages, pick } from '../lib/i18n'
+
+const CANCEL = messages({ ko: '취소', en: 'Cancel' })
 
 export const card = 'rounded-2xl border border-gray-200 bg-white p-4'
 export const sectionTitle = 'text-[15px] font-semibold text-gray-900'
@@ -143,7 +146,7 @@ export function ConfirmDialog({ title, body, confirm, danger = false, working, o
         <p className="mt-1.5 text-[13px] leading-relaxed break-keep text-gray-500 [overflow-wrap:anywhere]">{body}</p>
         <div className="mt-4 flex justify-end gap-2">
           <button type="button" onClick={onCancel} className="h-9 rounded-full px-3.5 text-[13px] font-medium text-gray-600 transition-colors hover:text-gray-900">
-            취소
+            {pick(CANCEL)}
           </button>
           <button
             type="button"

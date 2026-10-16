@@ -1,24 +1,47 @@
 import type { ReactNode } from 'react'
 import { isApp } from '../lib/app'
+import { messages, useMessages } from '../lib/i18n'
 import { useAppSettings } from '../lib/theme'
 import { ContributionBackdrop } from './ContributionBackdrop'
 import { Footer } from './Footer'
 import { RepoInput } from './RepoInput'
 
-/** 타이틀을 어절 단위로 나눠요. 어절이 하나씩 흐릿하게 떠오르며 나타나요. */
-// 앱에서는 사이드바의 새 분석으로 들어오는 화면이라, 제목과 설명을 짧게 바꿔요.
-const TITLE = isApp ? '새 분석 시작하기' : '우리 프로젝트의 MVP는?'
-const TITLE_WORDS = TITLE.split(' ')
+/**
+ * 메인 화면의 문구예요. 앱에서는 사이드바의 새 분석으로 들어오는 화면이라, 제목과 설명을 짧게 바꿔요.
+ * 영어 문구는 누가 놀았는지 잡아내는 도구가 아니라, 누가 무엇을 만들었는지 읽어 주는 도구로 소개해요.
+ */
+const TEXT = messages({
+  ko: {
+    title: '우리 프로젝트의 MVP는?',
+    description: 'GitHub Repository 링크를 입력하여 누가 프로젝트에 가장 많이 기여했는지, 어떤 기능을 개발했는지 그리고 이 프로젝트의 협업 방식을 알아보거나 훔칠 수도 있답니다.',
+    appTitle: '새 분석 시작하기',
+    appDescription: 'GitHub Repository 링크를 입력하여 프로젝트에 대해 분석을 시작하세요',
+    exploreDescription: '원하는 깃허브 레포지토리 링크를 입력하거나, 아래에서 탐색하여 분석을 시작하세요',
+  },
+  en: {
+    title: 'Who built what in your GitHub repo?',
+    description:
+      'Paste a GitHub repository link and get a clear, conversational breakdown of the project, contributors, feature ownership, activity patterns, and collaboration style.',
+    appTitle: 'Start a new analysis',
+    appDescription: 'Paste a GitHub repository link to start analyzing the project',
+    exploreDescription: 'Paste a GitHub repository link, or pick one below to start an analysis',
+  },
+})
+
 const WORD_STAGGER_MS = 80
 
+/** 타이틀을 어절 단위로 나눠요. 어절이 하나씩 흐릿하게 떠오르며 나타나요. */
 function Title() {
+  const text = useMessages(TEXT)
+  const TITLE = isApp ? text.appTitle : text.title
+  const TITLE_WORDS = TITLE.split(' ')
   return (
     <h1
       aria-label={TITLE}
       className="text-balance text-center text-[24px] font-semibold leading-snug text-gray-900 sm:text-[30px]"
     >
       {TITLE_WORDS.map((word, index) => (
-        <span key={index} aria-hidden="true">
+        <span key={`${TITLE}:${index}`} aria-hidden="true">
           <span className="inline-block animate-word" style={{ animationDelay: `${index * WORD_STAGGER_MS}ms` }}>
             {word}
           </span>
@@ -37,6 +60,7 @@ interface Props {
 
 export function Hero({ onSubmit, below }: Props) {
   const { backdrop } = useAppSettings()
+  const text = useMessages(TEXT)
 
   if (below) {
     return (
@@ -49,7 +73,7 @@ export function Hero({ onSubmit, below }: Props) {
               className="mt-3 mb-7 animate-rise text-balance break-keep text-center text-[13px] leading-relaxed text-gray-500 sm:mb-8 sm:text-[14px]"
               style={{ animationDelay: '250ms' }}
             >
-              원하는 깃허브 레포지토리 링크를 입력하거나, 아래에서 탐색하여 분석을 시작하세요
+              {text.exploreDescription}
             </p>
             <div className="animate-rise" style={{ animationDelay: '350ms' }}>
               <RepoInput onSubmit={onSubmit} />
@@ -74,9 +98,7 @@ export function Hero({ onSubmit, below }: Props) {
           className="mt-3 mb-7 animate-rise text-balance break-keep text-center text-[13px] leading-relaxed text-gray-500 sm:mb-8 sm:text-[14px]"
           style={{ animationDelay: '250ms' }}
         >
-          {isApp
-            ? 'GitHub Repository 링크를 입력하여 프로젝트에 대해 분석을 시작하세요'
-            : 'GitHub Repository 링크를 입력하여 누가 프로젝트에 가장 많이 기여했는지, 어떤 기능을 개발했는지 그리고 이 프로젝트의 협업 방식을 알아보거나 훔칠 수도 있답니다.'}
+          {isApp ? text.appDescription : text.description}
         </p>
         <div className="animate-rise" style={{ animationDelay: '350ms' }}>
           <RepoInput onSubmit={onSubmit} />

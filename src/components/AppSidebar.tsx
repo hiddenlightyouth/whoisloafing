@@ -5,9 +5,41 @@ import { fetchMyChats, signOut, useAuth, type ChatSummary, type Me } from '../li
 import { openBugReport, useFeedback } from '../lib/feedback'
 import { formatWhen } from '../lib/format'
 import { showToast } from '../lib/toast'
-import { copyChatLink, DeleteDialog } from './History'
+import { CHAT_LIST_TEXT, copyChatLink, DeleteDialog } from './History'
 import { Kbd } from './Shortcuts'
 import { Bone } from './Skeleton'
+import { messages, pick, useMessages } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: {
+    sharedChat: '공유한 채팅',
+    deep: '심층 분석',
+    deepFor: (repo: string) => `${repo} 심층 분석`,
+    new: '새 분석',
+    explore: '탐색',
+    portfolio: '포트폴리오 만들기',
+    me: '내 정보',
+    articles: '아티클',
+    admin: '관리자',
+    signOut: '로그아웃',
+    settings: '설정',
+    bug: '버그 신고',
+  },
+  en: {
+    sharedChat: 'Shared chat',
+    deep: 'Deep dive',
+    deepFor: (repo: string) => `Deep dive into ${repo}`,
+    new: 'New analysis',
+    explore: 'Explore',
+    portfolio: 'Build a portfolio',
+    me: 'Account',
+    articles: 'Articles',
+    admin: 'Admin',
+    signOut: 'Sign out',
+    settings: 'Settings',
+    bug: 'Report a bug',
+  },
+})
 
 interface Props {
   /** 지금 열려 있는 채팅. 목록에서 강조해요. */
@@ -65,6 +97,8 @@ interface RowProps {
 function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onCloseMenu, onUnshare, onPin, onDeep, onDelete }: RowProps) {
   const [owner, repo] = chat.repoName.includes('/') ? chat.repoName.split('/') : ['', chat.repoName]
   const menuRef = useRef<HTMLLIElement>(null)
+  const list = useMessages(CHAT_LIST_TEXT)
+  const text = useMessages(TEXT)
 
   // 메뉴가 열려 있을 때 바깥을 누르거나 Esc를 누르면 닫아요.
   useEffect(() => {
@@ -97,13 +131,13 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
       >
         <p className="flex items-center gap-1.5 text-[13px] font-semibold text-gray-900">
           {chat.shared && (
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-3.5 shrink-0 text-brand" role="img" aria-label="공유한 채팅">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-3.5 shrink-0 text-brand" role="img" aria-label={text.sharedChat}>
               <path d="M6.8 9.2a2.6 2.6 0 0 0 3.7 0l2.2-2.2a2.6 2.6 0 0 0-3.7-3.7l-.8.8M9.2 6.8a2.6 2.6 0 0 0-3.7 0L3.3 9a2.6 2.6 0 0 0 3.7 3.7l.8-.8" strokeLinecap="round" />
             </svg>
           )}
           <span className="min-w-0 truncate">{repo}</span>
           {chat.pinned && (
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="size-3 shrink-0 text-gray-400" role="img" aria-label="고정한 채팅">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="size-3 shrink-0 text-gray-400" role="img" aria-label={list.pinned}>
                 <path d="M9.5 2.5l4 4-2 .5-2.2 2.2.2 2.8L4 6.5l2.8.2L9 4.5zM6.7 9.3L3 13" />
               </svg>
           )}
@@ -123,8 +157,8 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
         {onDeep && (
           <button
             type="button"
-            aria-label={`${chat.repoName} 심층 분석`}
-            title="심층 분석"
+            aria-label={text.deepFor(chat.repoName)}
+            title={text.deep}
             onClick={onDeep}
             className="flex size-7 shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-700"
           >
@@ -138,7 +172,7 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
         )}
         <button
           type="button"
-          aria-label={`${chat.repoName} 채팅 관리`}
+          aria-label={list.manage(chat.repoName)}
           aria-haspopup="menu"
           aria-expanded={menuOpen}
           onClick={onToggleMenu}
@@ -154,7 +188,7 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
         <div role="menu" className="absolute top-full right-1 z-10 -mt-1 w-36 origin-top-right animate-pop rounded-2xl border border-gray-200 bg-white p-1.5">
           {onPin && (
             <button type="button" role="menuitem" disabled={working} onClick={onPin} className={`${menuItem} text-gray-700`}>
-              {chat.pinned ? '고정 해제' : '상단에 고정'}
+              {chat.pinned ? list.unpin : list.pin}
             </button>
           )}
           {chat.shared && (
@@ -166,19 +200,19 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
                   onCloseMenu()
                   const ok = await copyChatLink(chat.id)
                   track('share_link_copy', { success: ok, is_owner: true, from: 'sidebar' })
-                  showToast(ok ? '링크를 복사했어요.' : '링크를 복사하지 못했어요.')
+                  showToast(ok ? pick(CHAT_LIST_TEXT).copied : pick(CHAT_LIST_TEXT).copyFailed)
                 }}
                 className={`${menuItem} text-gray-700`}
               >
-                링크 복사
+                {list.copyLink}
               </button>
               <button type="button" role="menuitem" disabled={working} onClick={onUnshare} className={`${menuItem} text-gray-700`}>
-                공유 취소
+                {list.unshare}
               </button>
             </>
           )}
           <button type="button" role="menuitem" disabled={working} onClick={onDelete} className={`${menuItem} text-red-500`}>
-            지우기
+            {list.delete}
           </button>
         </div>
       )}
@@ -189,6 +223,8 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
 /** 앱 화면 왼쪽의 사이드바예요. 새 분석, 내 작업 목록과 관리, 아티클과 내 정보로 가는 링크가 있어요. */
 export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPortfolio, onExplore, onOpenChat, onDeepRepo, onChatChanged, onArticles, onMe, onSettings, settingsOpen, onAdmin }: Props) {
   const { me } = useAuth()
+  const list = useMessages(CHAT_LIST_TEXT)
+  const text = useMessages(TEXT)
   const [chats, setChats] = useState<ChatSummary[] | null>(null)
   const [nextPage, setNextPage] = useState<number | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -245,12 +281,12 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
     setWorking(false)
     track('chat_unshare', { success: ok, from: 'sidebar' })
     if (!ok) {
-      showToast('공유를 취소하지 못했어요. 잠시 뒤에 다시 시도해 주세요.')
+      showToast(pick(CHAT_LIST_TEXT).unshareFailed)
       return
     }
     setChats((prev) => prev?.map((item) => (item.id === chat.id ? { ...item, shared: false } : item)) ?? null)
     onChatChanged(chat.id, 'unshared')
-    showToast('공유를 취소했어요. 이제 링크로 열 수 없어요.')
+    showToast(pick(CHAT_LIST_TEXT).unshared)
   }
 
   async function pin(chat: ChatSummary) {
@@ -261,11 +297,11 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
     setWorking(false)
     track('chat_pin', { pinned, success: ok, from: 'sidebar' })
     if (!ok) {
-      showToast(pinned ? '고정하지 못했어요. 잠시 뒤에 다시 시도해 주세요.' : '고정을 풀지 못했어요. 잠시 뒤에 다시 시도해 주세요.')
+      showToast(pinned ? pick(CHAT_LIST_TEXT).pinFailed : pick(CHAT_LIST_TEXT).unpinFailed)
       return
     }
     setChats((prev) => (prev ? reorderPinned(prev, chat.id, pinned) : prev))
-    showToast(pinned ? '맨 위에 고정했어요.' : '고정을 풀었어요.')
+    showToast(pinned ? pick(CHAT_LIST_TEXT).pinDone : pick(CHAT_LIST_TEXT).unpinDone)
   }
 
   async function remove(chat: ChatSummary) {
@@ -274,13 +310,13 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
     setWorking(false)
     track('chat_delete', { success: ok, shared: chat.shared, from: 'sidebar' })
     if (!ok) {
-      showToast('채팅을 지우지 못했어요. 잠시 뒤에 다시 시도해 주세요.')
+      showToast(pick(CHAT_LIST_TEXT).deleteFailed)
       return
     }
     setDeleting(null)
     setChats((prev) => prev?.filter((item) => item.id !== chat.id) ?? null)
     onChatChanged(chat.id, 'deleted')
-    showToast('채팅을 지웠어요.')
+    showToast(pick(CHAT_LIST_TEXT).deleted)
   }
 
   return (
@@ -296,7 +332,7 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-4" aria-hidden="true">
             <path d="M8 3v10M3 8h10" />
           </svg>
-          <span className="flex-1 text-left">새 분석</span>
+          <span className="flex-1 text-left">{text.new}</span>
           <Kbd>N</Kbd>
         </button>
         {onExplore && (
@@ -315,7 +351,7 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
               <circle cx="8" cy="8" r="5.5" />
               <path d="m10.2 5.8-1.3 3.1-3.1 1.3 1.3-3.1z" />
             </svg>
-            <span className="flex-1">탐색</span>
+            <span className="flex-1">{text.explore}</span>
             <Kbd>T</Kbd>
           </a>
         )}
@@ -336,7 +372,7 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
               <rect x="2.5" y="9" width="4.5" height="4.5" rx="1" />
               <rect x="9" y="9" width="4.5" height="4.5" rx="1" />
             </svg>
-            <span className="flex-1">심층 분석</span>
+            <span className="flex-1">{text.deep}</span>
             <Kbd>D</Kbd>
           </a>
         )}
@@ -356,12 +392,12 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
               <rect x="2" y="4.5" width="12" height="9" rx="1.5" />
               <path d="M5.5 4.5v-1a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1M2 8.5h12" />
             </svg>
-            <span className="flex-1">포트폴리오 만들기</span>
+            <span className="flex-1">{text.portfolio}</span>
           </a>
         )}
       </div>
 
-      <h2 className="mt-5 px-6 text-xs font-medium text-gray-400">내 작업</h2>
+      <h2 className="mt-5 px-6 text-xs font-medium text-gray-400">{list.title}</h2>
 
       <nav className="mt-1.5 min-h-0 flex-1 overflow-y-auto px-3 pb-3">
         {chats === null ? (
@@ -369,7 +405,7 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
             <p className="px-3 py-2 text-[13px] leading-relaxed text-gray-500">{error}</p>
           ) : (
             <ul aria-busy="true">
-              <li className="sr-only">불러오고 있어요.</li>
+              <li className="sr-only">{list.loading}</li>
               {SKELETON_ROWS.map((width, index) => (
                 <li key={index} aria-hidden className="px-3 py-2.5">
                   <Bone className={`h-3.5 ${width}`} />
@@ -379,7 +415,7 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
             </ul>
           )
         ) : chats.length === 0 ? (
-          <p className="px-3 py-2 text-[13px] leading-relaxed text-gray-500">아직 분석한 레포가 없어요.</p>
+          <p className="px-3 py-2 text-[13px] leading-relaxed text-gray-500">{list.none}</p>
         ) : (
           <ul className="space-y-0.5">
             {chats.map((chat) => (
@@ -404,7 +440,7 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
             {nextPage !== null && (
               <li>
                 <button type="button" disabled={loadingMore} onClick={() => void loadMore()} className={`${link} ${tone(false)} disabled:text-gray-400`}>
-                  {loadingMore ? '처리 중' : '더 보기'}
+                  {loadingMore ? list.working : list.more}
                 </button>
               </li>
             )}
@@ -430,7 +466,8 @@ function AccountMenu({ me, page, onArticles, onMe, onSettings, settingsOpen, onA
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const { ready: canReport } = useFeedback()
-  const name = me?.name || '내 정보'
+  const text = useMessages(TEXT)
+  const name = me?.name || text.me
 
   useEffect(() => {
     if (!open) return
@@ -464,21 +501,21 @@ function AccountMenu({ me, page, onArticles, onMe, onSettings, settingsOpen, onA
               <circle cx="8" cy="5.5" r="2.5" />
               <path d="M3 13.5c.6-2.2 2.6-3.5 5-3.5s4.4 1.3 5 3.5" strokeLinecap="round" />
             </svg>
-            내 정보
+            {text.me}
           </button>
           <button type="button" role="menuitem" onClick={go(onArticles)} className={menuRow}>
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className={menuIcon} aria-hidden="true">
               <path d="M3.5 2.5h6l3 3v8h-9z" />
               <path d="M5.5 8h5M5.5 10.5h5" strokeLinecap="round" />
             </svg>
-            아티클
+            {text.articles}
           </button>
           {onAdmin && (
             <button type="button" role="menuitem" onClick={go(onAdmin)} className={menuRow}>
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className={menuIcon} aria-hidden="true">
                 <path d="M8 2l4.5 1.7v3.6c0 2.9-1.8 5.3-4.5 6.4-2.7-1.1-4.5-3.5-4.5-6.4V3.7z" />
               </svg>
-              관리자
+              {text.admin}
             </button>
           )}
 
@@ -496,7 +533,7 @@ function AccountMenu({ me, page, onArticles, onMe, onSettings, settingsOpen, onA
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className={menuIcon} aria-hidden="true">
               <path d="M6.5 2.5h-2a1.5 1.5 0 0 0-1.5 1.5v8a1.5 1.5 0 0 0 1.5 1.5h2M10 5l3 3-3 3M13 8H6.5" />
             </svg>
-            로그아웃
+            {text.signOut}
           </button>
         </div>
       )}
@@ -525,8 +562,8 @@ function AccountMenu({ me, page, onArticles, onMe, onSettings, settingsOpen, onA
       {/* 설정 창을 띄우는 버튼이에요. 버그 신고 버튼 왼쪽에 둬요. */}
       <button
         type="button"
-        aria-label="설정"
-        title="설정"
+        aria-label={text.settings}
+        title={text.settings}
         aria-haspopup="dialog"
         aria-expanded={settingsOpen}
         onClick={onSettings}
@@ -542,8 +579,8 @@ function AccountMenu({ me, page, onArticles, onMe, onSettings, settingsOpen, onA
       {canReport && (
         <button
           type="button"
-          aria-label="버그 신고"
-          title="버그 신고"
+          aria-label={text.bug}
+          title={text.bug}
           onClick={openBugReport}
           className="flex size-9 shrink-0 items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-gray-200/50 hover:text-gray-700"
         >

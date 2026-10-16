@@ -3,12 +3,67 @@ import { track } from '../lib/analytics'
 import { appAtLeast, appVersion, postToApp, type AppTheme } from '../lib/app'
 import { setShortcutHintsPinned, useShortcutHintsPinned } from '../lib/shortcuts'
 import { setAppBackdrop, setAppShield, setAppTheme, useAppSettings } from '../lib/theme'
+import { LANG_NAMES, LANGS, messages, setLang, useLang, useMessages } from '../lib/i18n'
 
-const THEME_OPTIONS: [AppTheme, string][] = [
-  ['system', '시스템 설정'],
-  ['light', '라이트'],
-  ['dark', '다크'],
-]
+const THEMES: AppTheme[] = ['system', 'light', 'dark']
+
+/** 설정의 설명은 격식체로 써요. */
+const TEXT = messages({
+  ko: {
+    themes: { system: '시스템 설정', light: '라이트', dark: '다크' } as Record<AppTheme, string>,
+    title: '설정',
+    close: '닫기',
+    display: '화면',
+    theme: '화면 모드',
+    language: '언어',
+    backdrop: '역동적인 시작 화면',
+    hints: '단축키 항상 표시',
+    hintsNote: '단축키가 사용 가능한 메뉴에 어떤 단축키를 사용하는지 항상 표시합니다.',
+    privacy: '개인정보 보호',
+    shield: '화면 녹화 감지 시 가리기',
+    shieldNote: 'macOS에서 화면 녹화가 감지되면 해제 시까지 화면을 가립니다.',
+    app: '앱',
+    version: '버전',
+    update: '업데이트 확인',
+  },
+  en: {
+    themes: { system: 'System', light: 'Light', dark: 'Dark' },
+    title: 'Settings',
+    close: 'Close',
+    display: 'Display',
+    theme: 'Appearance',
+    language: 'Language',
+    backdrop: 'Animated start screen',
+    hints: 'Always show shortcuts',
+    hintsNote: 'Always show which keyboard shortcut each menu uses.',
+    privacy: 'Privacy',
+    shield: 'Hide screen while recording',
+    shieldNote: 'When screen recording is detected on macOS, the screen stays hidden until you reveal it.',
+    app: 'App',
+    version: 'Version',
+    update: 'Check for updates',
+  },
+})
+
+/** 오른쪽의 고르는 칸이에요. 고른 값은 흰 바탕으로 보여줘요. */
+function Segmented<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: [T, string][]; onChange: (next: T) => void }) {
+  return (
+    <div role="radiogroup" aria-label={label} className="inline-flex rounded-full bg-gray-100 p-1">
+      {options.map(([option, name]) => (
+        <button
+          key={option}
+          type="button"
+          role="radio"
+          aria-checked={value === option}
+          onClick={() => onChange(option)}
+          className={`h-8 rounded-full px-3.5 text-[13px] font-medium transition-colors ${value === option ? 'bg-white text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
+        >
+          {name}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -56,6 +111,8 @@ function Switch({ on, label, onChange }: { on: boolean; label: string; onChange:
 export function Settings({ onClose }: { onClose: () => void }) {
   const { theme, backdrop, shield } = useAppSettings()
   const hints = useShortcutHintsPinned()
+  const lang = useLang()
+  const text = useMessages(TEXT)
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -75,9 +132,9 @@ export function Settings({ onClose }: { onClose: () => void }) {
       <div role="dialog" aria-modal="true" aria-labelledby="settings-title" className="flex max-h-[85dvh] w-full max-w-lg animate-pop flex-col rounded-2xl border border-gray-200 bg-white">
         <div className="flex shrink-0 items-center justify-between px-6 pt-5 pb-4">
           <h2 id="settings-title" className="text-[17px] font-semibold text-gray-900">
-            설정
+            {text.title}
           </h2>
-          <button type="button" aria-label="닫기" onClick={onClose} className="-mr-2 flex size-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
+          <button type="button" aria-label={text.close} onClick={onClose} className="-mr-2 flex size-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-4" aria-hidden="true">
               <path d="M4 4l8 8M12 4l-8 8" />
             </svg>
@@ -85,40 +142,43 @@ export function Settings({ onClose }: { onClose: () => void }) {
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
 
-        <Section title="화면">
-          <Row label="화면 모드">
-            <div role="radiogroup" aria-label="화면 모드" className="inline-flex rounded-full bg-gray-100 p-1">
-              {THEME_OPTIONS.map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={theme === value}
-                  onClick={() => {
-                    track('app_theme_change', { theme: value })
-                    setAppTheme(value)
-                  }}
-                  className={`h-8 rounded-full px-3.5 text-[13px] font-medium transition-colors ${theme === value ? 'bg-white text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+        <Section title={text.display}>
+          <Row label={text.theme}>
+            <Segmented
+              label={text.theme}
+              value={theme}
+              options={THEMES.map((value) => [value, text.themes[value]])}
+              onChange={(value) => {
+                track('app_theme_change', { theme: value })
+                setAppTheme(value)
+              }}
+            />
           </Row>
-          <Row label="역동적인 시작 화면">
+          <Row label={text.language}>
+            <Segmented
+              label={text.language}
+              value={lang}
+              options={LANGS.map((value) => [value, LANG_NAMES[value]])}
+              onChange={(value) => {
+                track('language_change', { lang: value, from: 'settings' })
+                setLang(value)
+              }}
+            />
+          </Row>
+          <Row label={text.backdrop}>
             <Switch
               on={backdrop}
-              label="역동적인 시작 화면"
+              label={text.backdrop}
               onChange={(next) => {
                 track('app_backdrop_change', { on: next })
                 setAppBackdrop(next)
               }}
             />
           </Row>
-          <Row label="단축키 항상 표시" note="단축키가 사용 가능한 메뉴에 어떤 단축키를 사용하는지 항상 표시합니다.">
+          <Row label={text.hints} note={text.hintsNote}>
             <Switch
               on={hints}
-              label="단축키 항상 표시"
+              label={text.hints}
               onChange={(next) => {
                 track('app_shortcut_hints_change', { on: next })
                 setShortcutHintsPinned(next)
@@ -129,11 +189,11 @@ export function Settings({ onClose }: { onClose: () => void }) {
 
         {/* 화면 공유를 알아채는 것은 앱 1.2부터라, 그보다 낮은 앱에서는 보여주지 않아요. */}
         {appAtLeast('1.2') && (
-          <Section title="개인정보 보호">
-            <Row label="화면 녹화 감지 시 가리기" note="macOS에서 화면 녹화가 감지되면 해제 시까지 화면을 가립니다.">
+          <Section title={text.privacy}>
+            <Row label={text.shield} note={text.shieldNote}>
               <Switch
                 on={shield}
-                label="화면 녹화 감지 시 가리기"
+                label={text.shield}
                 onChange={(next) => {
                   track('app_shield_change', { on: next })
                   setAppShield(next)
@@ -143,8 +203,8 @@ export function Settings({ onClose }: { onClose: () => void }) {
           </Section>
         )}
 
-        <Section title="앱">
-          <Row label="버전">
+        <Section title={text.app}>
+          <Row label={text.version}>
             <span className="flex items-center gap-3">
               <span className="font-medium text-gray-900 tabular-nums">{appVersion}</span>
               {/* 예전 앱은 이 메시지를 받지 못해서, 받을 수 있는 버전에서만 버튼을 보여줘요. */}
@@ -157,7 +217,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
                   }}
                   className="h-8 rounded-full bg-gray-100 px-3.5 text-[13px] font-medium text-gray-700 transition-colors hover:text-brand"
                 >
-                  업데이트 확인
+                  {text.update}
                 </button>
               )}
             </span>

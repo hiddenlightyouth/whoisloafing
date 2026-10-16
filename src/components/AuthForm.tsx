@@ -2,6 +2,48 @@ import { useState, type FormEvent, type InputHTMLAttributes } from 'react'
 import { track } from '../lib/analytics'
 import { signIn, signUp } from '../lib/auth'
 import { SocialButtons, useSocialClients } from './Social'
+import { messages, useMessages } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: {
+    checkEmail: '이메일 주소를 확인해 주세요.',
+    needName: '이름을 적어 주세요.',
+    passwordLength: (min: number, max: number) => `비밀번호는 ${min}자 이상 ${max}자 이하로 정해 주세요.`,
+    needPassword: '비밀번호를 적어 주세요.',
+    mismatch: '비밀번호가 서로 달라요. 다시 확인해 주세요.',
+    signup: '회원가입',
+    login: '로그인',
+    email: '이메일',
+    name: '이름',
+    namePlaceholder: '홍길동',
+    password: '비밀번호',
+    passwordCheck: '비밀번호 확인',
+    working: '처리 중',
+    submitSignup: '가입하기',
+    or: '또는',
+    haveAccount: '이미 계정이 있나요?',
+    noAccount: '아직 계정이 없나요?',
+  },
+  en: {
+    checkEmail: 'Please check your email address.',
+    needName: 'Please enter your name.',
+    passwordLength: (min: number, max: number) => `Your password must be ${min} to ${max} characters.`,
+    needPassword: 'Please enter your password.',
+    mismatch: "The passwords don't match. Please check again.",
+    signup: 'Sign up',
+    login: 'Sign in',
+    email: 'Email',
+    name: 'Name',
+    namePlaceholder: 'Jane Doe',
+    password: 'Password',
+    passwordCheck: 'Confirm password',
+    working: 'Working',
+    submitSignup: 'Create account',
+    or: 'or',
+    haveAccount: 'Already have an account?',
+    noAccount: "Don't have an account?",
+  },
+})
 
 interface Props {
   mode: 'login' | 'signup'
@@ -38,6 +80,7 @@ export function AuthForm({ mode, notice, onSwitch, returnTo }: Props) {
   const social = useSocialClients()
   const hasSocial = social !== null && Object.keys(social).length > 0
   const signup = mode === 'signup'
+  const text = useMessages(TEXT)
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
@@ -46,13 +89,13 @@ export function AuthForm({ mode, notice, onSwitch, returnTo }: Props) {
   const [working, setWorking] = useState(false)
 
   function validate(): string {
-    if (!EMAIL_PATTERN.test(email.trim())) return '이메일 주소를 확인해 주세요.'
-    if (signup && !name.trim()) return '이름을 적어 주세요.'
+    if (!EMAIL_PATTERN.test(email.trim())) return text.checkEmail
+    if (signup && !name.trim()) return text.needName
     if (signup && (password.length < PASSWORD_MIN || password.length > PASSWORD_MAX)) {
-      return `비밀번호는 ${PASSWORD_MIN}자 이상 ${PASSWORD_MAX}자 이하로 정해 주세요.`
+      return text.passwordLength(PASSWORD_MIN, PASSWORD_MAX)
     }
-    if (!password) return '비밀번호를 적어 주세요.'
-    if (signup && password !== passwordCheck) return '비밀번호가 서로 달라요. 다시 확인해 주세요.'
+    if (!password) return text.needPassword
+    if (signup && password !== passwordCheck) return text.mismatch
     return ''
   }
 
@@ -75,12 +118,12 @@ export function AuthForm({ mode, notice, onSwitch, returnTo }: Props) {
   return (
     <main className="flex flex-1 overflow-y-auto">
       <div className="m-auto w-full max-w-sm px-5 pt-24 pb-16">
-        <h1 className="text-[24px] font-semibold leading-snug text-gray-900 sm:text-[28px]">{signup ? '회원가입' : '로그인'}</h1>
+        <h1 className="text-[24px] font-semibold leading-snug text-gray-900 sm:text-[28px]">{signup ? text.signup : text.login}</h1>
         {notice && <p className="mt-3 text-[14px] leading-relaxed text-gray-500">{notice}</p>}
 
         <form onSubmit={handleSubmit} noValidate className="mt-8 space-y-4">
           <Field
-            label="이메일"
+            label={text.email}
             type="email"
             inputMode="email"
             autoComplete="email"
@@ -93,16 +136,16 @@ export function AuthForm({ mode, notice, onSwitch, returnTo }: Props) {
           />
           {signup && (
             <Field
-              label="이름"
+              label={text.name}
               autoComplete="name"
               maxLength={NAME_MAX}
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="홍길동"
+              placeholder={text.namePlaceholder}
             />
           )}
           <Field
-            label="비밀번호"
+            label={text.password}
             type="password"
             autoComplete={signup ? 'new-password' : 'current-password'}
             maxLength={PASSWORD_MAX}
@@ -112,7 +155,7 @@ export function AuthForm({ mode, notice, onSwitch, returnTo }: Props) {
           />
           {signup && (
             <Field
-              label="비밀번호 확인"
+              label={text.passwordCheck}
               type="password"
               autoComplete="new-password"
               maxLength={PASSWORD_MAX}
@@ -133,7 +176,7 @@ export function AuthForm({ mode, notice, onSwitch, returnTo }: Props) {
             disabled={working}
             className="mt-2 h-12 w-full rounded-full bg-brand text-[15px] font-semibold text-white transition-colors hover:bg-brand-hover disabled:bg-gray-200 disabled:text-gray-400"
           >
-            {working ? '처리 중' : signup ? '가입하기' : '로그인'}
+            {working ? text.working : signup ? text.submitSignup : text.login}
           </button>
         </form>
 
@@ -141,7 +184,7 @@ export function AuthForm({ mode, notice, onSwitch, returnTo }: Props) {
           <>
             <div className="my-6 flex items-center gap-3 text-[12px] text-gray-400" aria-hidden="true">
               <span className="h-px flex-1 bg-gray-200" />
-              또는
+              {text.or}
               <span className="h-px flex-1 bg-gray-200" />
             </div>
             <SocialButtons mode="login" returnTo={returnTo ?? defaultReturn()} />
@@ -149,7 +192,7 @@ export function AuthForm({ mode, notice, onSwitch, returnTo }: Props) {
         )}
 
         <p className="mt-6 text-center text-[13px] text-gray-500">
-          {signup ? '이미 계정이 있나요?' : '아직 계정이 없나요?'}{' '}
+          {signup ? text.haveAccount : text.noAccount}{' '}
           <a
             href={signup ? '/login' : '/signup'}
             onClick={(event) => {
@@ -159,7 +202,7 @@ export function AuthForm({ mode, notice, onSwitch, returnTo }: Props) {
             }}
             className="font-medium text-brand transition-colors hover:text-brand-hover"
           >
-            {signup ? '로그인' : '회원가입'}
+            {signup ? text.login : text.signup}
           </a>
         </p>
       </div>

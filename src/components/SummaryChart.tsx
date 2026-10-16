@@ -1,5 +1,21 @@
 import type { ContributorStats } from '../../shared/types'
 import { Avatar } from './StatsCard'
+import { messages, useMessages } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: {
+    byCommits: '커밋 수 기준',
+    byLines: '라인 수 기준',
+    others: (count: number) => `기여도가 낮은 ${count.toLocaleString('ko-KR')}명은 그래프에서 생략했어요.`,
+    trust: '기여도 숫자는 판결이 아니라 참고할 신호예요. 더 나은 대화를 위한 맥락으로 봐 주세요.',
+  },
+  en: {
+    byCommits: 'By commits',
+    byLines: 'By lines changed',
+    others: (count: number) => `${count.toLocaleString('en-US')} contributors with smaller shares are hidden from the chart.`,
+    trust: "Contribution numbers are signals, not verdicts. Use them as context for better conversations, not as the only measure of someone's work.",
+  },
+})
 
 interface GroupProps {
   title: string
@@ -40,12 +56,14 @@ interface Props {
 }
 
 export function SummaryChart({ contributors, othersCount }: Props) {
+  const text = useMessages(TEXT)
   return (
     <div className="mt-3 space-y-5 rounded-xl bg-white p-4">
-      <Group title="커밋 수 기준" contributors={contributors} value={(contributor) => contributor.commitShare} />
-      <Group title="라인 수 기준" contributors={contributors} value={(contributor) => contributor.lineShare} />
+      <Group title={text.byCommits} contributors={contributors} value={(contributor) => contributor.commitShare} />
+      <Group title={text.byLines} contributors={contributors} value={(contributor) => contributor.lineShare} />
+      <p className="text-xs leading-relaxed text-gray-400">{text.trust}</p>
       {othersCount > 0 && (
-        <p className="text-xs text-gray-400">기여도가 낮은 {othersCount.toLocaleString('ko-KR')}명은 그래프에서 생략했어요.</p>
+        <p className="text-xs text-gray-400">{text.others(othersCount)}</p>
       )}
     </div>
   )

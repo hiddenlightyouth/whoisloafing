@@ -1,4 +1,16 @@
 import type { ChartSpec } from '../../shared/types'
+import { messages, useMessages } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: {
+    cell: (row: string, column: string, value: number) => `${row}, ${column}, ${value}개`,
+    legend: '색이 진할수록 커밋이 많아요',
+  },
+  en: {
+    cell: (row: string, column: string, value: number) => `${row}, ${column}, ${value}`,
+    legend: 'Darker cells mean more commits',
+  },
+})
 
 /** 세로 막대. 시간 흐름처럼 순서가 있는 값을 보여줘요. 아래 이름표는 몇 개만 골라서 보여줘요. */
 type Items = Exclude<ChartSpec, { kind: 'heatmap' }>['items']
@@ -60,6 +72,7 @@ function Bars({ items }: { items: Items }) {
 
 /** 줄마다 한 사람, 칸마다 한 시간대. 사람마다 가장 많이 커밋한 시간이 가장 진하게 보여요. */
 function Heatmap({ columns, rows }: Extract<ChartSpec, { kind: 'heatmap' }>) {
+  const text = useMessages(TEXT)
   const step = Math.max(1, Math.ceil(columns.length / 4))
 
   return (
@@ -73,7 +86,7 @@ function Heatmap({ columns, rows }: Extract<ChartSpec, { kind: 'heatmap' }>) {
               {row.values.map((value, index) => (
                 <span
                   key={index}
-                  title={`${row.label}, ${columns[index]}, ${value}개`}
+                  title={text.cell(row.label, columns[index], value)}
                   className={`h-5 min-w-0 flex-1 rounded-[3px] ${value > 0 ? 'bg-brand' : 'bg-gray-100'}`}
                   style={value > 0 ? { opacity: 0.2 + 0.8 * (value / max) } : undefined}
                 />
@@ -99,6 +112,7 @@ function Heatmap({ columns, rows }: Extract<ChartSpec, { kind: 'heatmap' }>) {
 }
 
 export function Charts({ charts }: { charts: ChartSpec[] }) {
+  const text = useMessages(TEXT)
   return (
     <div className="mt-3 space-y-5 rounded-xl bg-white p-4">
       {charts.map((chart) => (
@@ -107,7 +121,7 @@ export function Charts({ charts }: { charts: ChartSpec[] }) {
             <h3 className="text-xs font-medium text-gray-500">{chart.title}</h3>
             {/* 색의 진하기가 커밋 수라는 것을 말 대신 옅은 칸에서 진한 칸으로 이어지는 범례로 보여줘요. */}
             {chart.kind === 'heatmap' && (
-              <span className="flex shrink-0 items-center gap-[2px]" role="img" aria-label="색이 진할수록 커밋이 많아요">
+              <span className="flex shrink-0 items-center gap-[2px]" role="img" aria-label={text.legend}>
                 <span className="size-2.5 rounded-[2px] bg-gray-100" />
                 {[0.25, 0.5, 0.75, 1].map((opacity) => (
                   <span key={opacity} className="size-2.5 rounded-[2px] bg-brand" style={{ opacity }} />

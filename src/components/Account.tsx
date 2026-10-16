@@ -3,6 +3,8 @@ import { useAuth } from '../lib/auth'
 import { AuthForm } from './AuthForm'
 import { History } from './History'
 import { MyPage } from './MyPage'
+import { messages, useLang, useMessages } from '../lib/i18n'
+import { applyMeta, HOME_META, SITE_TITLE } from '../lib/meta'
 
 export type AccountPage = 'login' | 'signup' | 'me' | 'history'
 
@@ -19,26 +21,31 @@ interface Props {
   onHome: () => void
 }
 
-const SITE_TITLE = 'WhoIsLoafing'
-
-const TITLES: Record<AccountPage, string> = {
-  login: '로그인',
-  signup: '회원가입',
-  me: '내 정보',
-  history: '내 작업',
-}
+const TEXT = messages({
+  ko: {
+    titles: { login: '로그인', signup: '회원가입', me: '내 정보', history: '내 작업' } as Record<AccountPage, string>,
+    meNotice: '내 정보는 로그인한 뒤에 볼 수 있어요.',
+    historyNotice: '내 작업은 로그인한 뒤에 볼 수 있어요.',
+  },
+  en: {
+    titles: { login: 'Sign in', signup: 'Sign up', me: 'Account', history: 'My chats' },
+    meNotice: 'Sign in to see your account.',
+    historyNotice: 'Sign in to see your chats.',
+  },
+})
 
 export function Account({ page, onNavigate, onSignedIn, notice, returnTo, onOpenChat, onHome }: Props) {
   const { tokens } = useAuth()
   const signedIn = tokens !== null
   const guarded = page === 'me' || page === 'history'
 
+  const lang = useLang()
+  const text = useMessages(TEXT)
+
   useEffect(() => {
-    document.title = `${TITLES[page]} | ${SITE_TITLE}`
-    return () => {
-      document.title = SITE_TITLE
-    }
-  }, [page])
+    applyMeta({ ...HOME_META[lang], title: `${TEXT[lang].titles[page]} | ${SITE_TITLE}` }, lang, `/${page}`)
+    return () => applyMeta(HOME_META[lang], lang, '/')
+  }, [lang, page])
 
   useEffect(() => {
     if (signedIn && !guarded) onSignedIn()
@@ -50,7 +57,7 @@ export function Account({ page, onNavigate, onSignedIn, notice, returnTo, onOpen
       <AuthForm
         key={mode}
         mode={mode}
-        notice={notice ?? (page === 'me' ? '내 정보는 로그인한 뒤에 볼 수 있어요.' : page === 'history' ? '내 작업은 로그인한 뒤에 볼 수 있어요.' : undefined)}
+        notice={notice ?? (page === 'me' ? text.meNotice : page === 'history' ? text.historyNotice : undefined)}
         onSwitch={() => onNavigate(mode === 'signup' ? 'login' : 'signup')}
         returnTo={returnTo}
       />

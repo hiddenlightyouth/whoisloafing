@@ -1,11 +1,26 @@
 import { confirmSocialLink, createSocialLinkTicket, linkSocial, signInSocial, type AuthOutcome } from './auth'
+import { getLang, messages, pick } from './i18n'
 
 export type SocialProvider = 'github' | 'kakao'
 
+/** 서비스 이름. 카카오는 언어에 맞춰 적어서, 읽을 때마다 지금 언어의 이름을 돌려줘요. */
 export const SOCIAL_LABELS: Record<SocialProvider, string> = {
   github: 'GitHub',
-  kakao: '카카오',
+  get kakao() {
+    return getLang() === 'en' ? 'Kakao' : '카카오'
+  },
 }
+
+const TEXT = messages({
+  ko: {
+    canceled: (name: string) => `${name} 로그인을 취소했어요.`,
+    invalid: '로그인 요청을 확인하지 못했어요. 처음부터 다시 시도해 주세요.',
+  },
+  en: {
+    canceled: (name: string) => `${name} sign-in was canceled.`,
+    invalid: "We couldn't verify the sign-in request. Please start over.",
+  },
+})
 
 /** 소셜 로그인으로 무엇을 하려는지. login은 로그인(처음이면 가입), link는 로그인한 내 계정에 연결이에요. */
 export type SocialMode = 'login' | 'link'
@@ -107,9 +122,9 @@ export async function finishSocial(provider: SocialProvider): Promise<SocialResu
   const fail = (message: string): SocialResult => ({ outcome: { ok: false, message }, mode, returnTo })
 
   const code = params.get('code')
-  if (params.get('error') || !code) return fail(`${SOCIAL_LABELS[provider]} 로그인을 취소했어요.`)
+  if (params.get('error') || !code) return fail(pick(TEXT).canceled(SOCIAL_LABELS[provider]))
   if (!pending || pending.provider !== provider || pending.state !== params.get('state')) {
-    return fail('로그인 요청을 확인하지 못했어요. 처음부터 다시 시도해 주세요.')
+    return fail(pick(TEXT).invalid)
   }
 
   const outcome = mode === 'link' ? await linkSocial(provider, code, redirectUri(provider)) : await signInSocial(provider, code, redirectUri(provider))

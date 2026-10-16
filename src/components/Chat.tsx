@@ -6,6 +6,12 @@ import { isApp } from '../lib/app'
 import { AssistantOrb } from './AssistantOrb'
 import { Bubble } from './Bubble'
 import { TypingDots } from './TypingDots'
+import { messages, useMessages } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: { next: '다음 단계', resume: '계속하기', readOnly: '읽기 전용 채팅으로 전환됨', other: '다른 레포 분석해 보기', bottom: '맨 아래로 이동' },
+  en: { next: 'Next step', resume: 'Continue', readOnly: 'This chat is read-only', other: 'Analyze another repo', bottom: 'Scroll to bottom' },
+})
 
 interface Props {
   messages: ChatMessage[]
@@ -39,6 +45,7 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
   const pinned = useRef(true)
   const lastScrollTop = useRef(0)
   const [atBottom, setAtBottom] = useState(true)
+  const text = useMessages(TEXT)
   // 방울 옆 메뉴를 펼쳐 둘지. 채팅 칸과 겹치지 않을 만큼 넓은 화면에서는 처음부터 펼쳐 둬요.
   const [menuOpen, setMenuOpen] = useState(() => window.matchMedia('(min-width: 1280px)').matches)
 
@@ -159,7 +166,7 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
             {paused ? (
               <div className="mt-2 flex animate-rise flex-wrap items-center justify-end gap-x-3 gap-y-2">
                 <p className="text-[13px] text-gray-500">
-                  다음 단계 <span className="ml-1 font-medium text-gray-900">{paused}</span>
+                  {text.next} <span className="ml-1 font-medium text-gray-900">{paused}</span>
                 </p>
                 <button
                   type="button"
@@ -167,7 +174,7 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
                   onClick={onResume}
                   className="inline-flex h-10 items-center gap-1.5 rounded-full bg-brand pr-3.5 pl-4 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover"
                 >
-                  계속하기
+                  {text.resume}
                   <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-4" aria-hidden="true">
                     <path d="M8 3.5v9M4.5 9L8 12.5 11.5 9" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
@@ -178,13 +185,13 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
             )}
             {readOnly && (
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-brand-soft px-4 py-3">
-                <p className="text-[13px] text-gray-600">읽기 전용 채팅으로 전환됨</p>
+                <p className="text-[13px] text-gray-600">{text.readOnly}</p>
                 <button
                   type="button"
                   onClick={onHome}
                   className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover"
                 >
-                  다른 레포 분석해 보기
+                  {text.other}
                 </button>
               </div>
             )}
@@ -212,7 +219,7 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
 
         <button
           type="button"
-          aria-label="맨 아래로 이동"
+          aria-label={text.bottom}
           tabIndex={atBottom ? -1 : 0}
           onClick={() => {
             track('scroll_to_bottom_click')

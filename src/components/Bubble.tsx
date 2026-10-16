@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ANALYSIS_LABEL, type AnalyzeRequest, type FollowupQuestion } from '../../shared/types'
+import { type AnalyzeRequest, type FollowupQuestion } from '../../shared/types'
 import type { ChatMessage } from '../hooks/useAnalysis'
 import { repoLabel, track } from '../lib/analytics'
 import { Charts, Facts } from './Charts'
@@ -8,6 +8,33 @@ import { PeoplePicker } from './PeoplePicker'
 import { RankingCarousel } from './RankingCarousel'
 import { RichText } from './RichText'
 import { SummaryChart } from './SummaryChart'
+import { messages, pick as pickText, useMessages } from '../lib/i18n'
+import { MENU_TEXT } from './Followup'
+
+const BUBBLE_TEXT = messages({
+  ko: {
+    copied: '복사했어요',
+    copyFailed: '복사하지 못했어요',
+    copy: '복사하기',
+    excludeRequest: '빼고 계산해 주세요.',
+    includeRequest: '전부 포함해서 계산해 주세요.',
+    include: '전부 포함하기',
+    exclude: '빼고 계산하기',
+    retry: '다시 시도하기',
+    other: '다른 레포 분석하기',
+  },
+  en: {
+    copied: 'Copied',
+    copyFailed: "Couldn't copy",
+    copy: 'Copy',
+    excludeRequest: 'Please leave those files out.',
+    includeRequest: 'Please include everything.',
+    include: 'Include everything',
+    exclude: 'Leave them out',
+    retry: 'Try again',
+    other: 'Analyze another repo',
+  },
+})
 
 interface Props {
   message: ChatMessage
@@ -31,6 +58,7 @@ const quietButton =
 /** 목록 말풍선에 딸린 글을 클립보드에 복사해요. 공유된 채팅에서도 누를 수 있어요. */
 function CopyButton({ label, text, repo, quiet = false }: { label: string; text: string; repo: string; quiet?: boolean }) {
   const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle')
+  const t = useMessages(BUBBLE_TEXT)
 
   async function copy() {
     const ok = await navigator.clipboard.writeText(text).then(
@@ -52,7 +80,7 @@ function CopyButton({ label, text, repo, quiet = false }: { label: string; text:
           : `${actionButton} mt-1.5 mb-1.5`
       }
     >
-      {state === 'done' ? '복사했어요' : state === 'failed' ? '복사하지 못했어요' : label}
+      {state === 'done' ? t.copied : state === 'failed' ? t.copyFailed : label}
     </button>
   )
 }
@@ -62,6 +90,7 @@ const WIDE_TYPES = new Set(['ranking', 'summary', 'list', 'templates', 'chart', 
 export function Bubble({ message, busy, isLast, onSend, docked = false, onNewRepo }: Props) {
   // 글이 타자를 치듯 다 나타난 뒤에 카드, 그래프, 버튼 같은 나머지 내용을 보여줘요.
   const [typed, setTyped] = useState(docked || !(message.from === 'bot' && message.live))
+  const text = useMessages(BUBBLE_TEXT)
   if (message.from === 'user') {
     return (
       <div className="flex animate-rise justify-end">
@@ -83,7 +112,7 @@ export function Bubble({ message, busy, isLast, onSend, docked = false, onNewRep
     track('calc_mode_select', { repo, exclude_generated: excludeGenerated })
     onSend(
       { url: request.url, excludeGenerated },
-      excludeGenerated ? '빼고 계산해 주세요.' : '전부 포함해서 계산해 주세요.',
+      excludeGenerated ? text.excludeRequest : text.includeRequest,
     )
   }
 
@@ -98,7 +127,7 @@ export function Bubble({ message, busy, isLast, onSend, docked = false, onNewRep
   const start = () => {
     if (!request) return
     track('menu_analysis_select', { repo })
-    onSend({ url: request.url, start: true }, ANALYSIS_LABEL)
+    onSend({ url: request.url, start: true }, pickText(MENU_TEXT).analysis)
   }
 
   const pick = (ids: string[], userText: string, mode: 'top' | 'custom') => {
@@ -160,7 +189,7 @@ export function Bubble({ message, busy, isLast, onSend, docked = false, onNewRep
                     {template.name}
                     <span className="ml-2 font-normal break-all text-gray-400">{template.path}</span>
                   </p>
-                  <CopyButton label="복사하기" text={template.content} repo={repo} quiet />
+                  <CopyButton label={text.copy} text={template.content} repo={repo} quiet />
                 </div>
                 <pre className="mt-2.5 max-h-60 overflow-auto rounded-lg bg-gray-50 px-3 py-2.5 font-mono text-[12px] leading-relaxed tracking-normal whitespace-pre-wrap text-gray-700">
                   {template.content}
@@ -209,10 +238,10 @@ export function Bubble({ message, busy, isLast, onSend, docked = false, onNewRep
         {event.type === 'ask' && request && (
           <div className="mb-1.5 flex flex-wrap gap-2">
             <button type="button" disabled={locked} onClick={() => choose(false)} className={actionButton}>
-              전부 포함하기
+              {text.include}
             </button>
             <button type="button" disabled={locked} onClick={() => choose(true)} className={quietButton}>
-              빼고 계산하기
+              {text.exclude}
             </button>
           </div>
         )}
@@ -221,12 +250,12 @@ export function Bubble({ message, busy, isLast, onSend, docked = false, onNewRep
           <div className="mb-1.5 flex flex-wrap gap-2">
             {event.action === 'retry' && request && (
               <button type="button" disabled={locked} onClick={retry} className={actionButton}>
-                다시 시도하기
+                {text.retry}
               </button>
             )}
             {event.home && onNewRepo && (
               <button type="button" disabled={locked} onClick={onNewRepo} className={quietButton}>
-                다른 레포 분석하기
+                {text.other}
               </button>
             )}
           </div>

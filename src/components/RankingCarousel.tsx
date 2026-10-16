@@ -2,12 +2,19 @@ import { useRef, useState, type PointerEvent } from 'react'
 import type { ContributorStats } from '../../shared/types'
 import { track } from '../lib/analytics'
 import { StatsCard } from './StatsCard'
+import { messages, useMessages } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: { show: (rank: number, name: string) => `${rank}위 ${name} 보기` },
+  en: { show: (rank: number, name: string) => `Show #${rank} ${name}` },
+})
 
 /** 참여자별 수치 카드를 말풍선 하나 안에서 좌우로 넘겨 보는 영역이에요. 터치 스와이프와 마우스 드래그를 모두 지원해요. */
 export function RankingCarousel({ contributors }: { contributors: ContributorStats[] }) {
   const trackRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ startX: number; scrollLeft: number; moved: boolean } | null>(null)
   const [active, setActive] = useState(0)
+  const text = useMessages(TEXT)
   const [dragging, setDragging] = useState(false)
 
   const single = contributors.length === 1
@@ -96,7 +103,7 @@ export function RankingCarousel({ contributors }: { contributors: ContributorSta
             <button
               key={`${contributor.login ?? ''}:${contributor.name}`}
               type="button"
-              aria-label={`${index + 1}위 ${contributor.name} 보기`}
+              aria-label={text.show(index + 1, contributor.name)}
               aria-current={index === active}
               onClick={() => goTo(index)}
               className={`size-1.5 rounded-full transition-colors ${index === active ? 'bg-brand' : 'bg-gray-300'}`}

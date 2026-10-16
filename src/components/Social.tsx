@@ -5,6 +5,48 @@ import { isApp } from '../lib/app'
 import { fetchSocialLinkTarget, type SocialLinkTarget } from '../lib/auth'
 import { appLinkFromLocation, finishAppLink, finishSocial, SOCIAL_LABELS, startSocial, startSocialFromApp, type SocialMode, type SocialProvider, type SocialResult } from '../lib/social'
 import { showToast } from '../lib/toast'
+import { messages, pick, useMessages } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: {
+    continueWith: (name: string) => `${name}로 계속하기`,
+    finishInBrowser: '브라우저에서 연결을 마무리해 주세요.',
+    startFailed: '연결을 시작하지 못했어요. 잠시 뒤에 다시 시도해 주세요.',
+    canceledInApp: (name: string) => `${name} 로그인을 취소했어요. 앱에서 연결을 다시 눌러 주세요.`,
+    checking: (name: string) => `${name} 계정을 확인하고 있어요.`,
+    expired: '연결 요청 시간이 지났어요. 앱에서 연결을 다시 눌러 주세요.',
+    linked: '연결했어요',
+    linkedBody: (name: string) => `이제 ${name} 계정으로도 로그인할 수 있어요. 이 창을 닫고 앱으로 돌아가면 돼요.`,
+    linkFailed: '연결하지 못했어요',
+    linkTitle: (name: string) => `${name} 계정을 연결할까요?`,
+    linkBody: (name: string) => `아래 계정에 ${name} 계정으로 로그인할 수 있도록 연결합니다`,
+    cancel: '취소',
+    working: '처리 중',
+    link: '연결하기',
+    loginFailed: '로그인하지 못했어요',
+    backToMe: '내 정보로 돌아가기',
+    backToLogin: '로그인 화면으로 돌아가기',
+  },
+  en: {
+    continueWith: (name: string) => `Continue with ${name}`,
+    finishInBrowser: 'Finish connecting in your browser.',
+    startFailed: "Couldn't start connecting. Please try again in a moment.",
+    canceledInApp: (name: string) => `${name} sign-in was canceled. Click Connect in the app again.`,
+    checking: (name: string) => `Checking your ${name} account.`,
+    expired: 'The connection request expired. Click Connect in the app again.',
+    linked: 'Connected',
+    linkedBody: (name: string) => `You can now sign in with ${name} too. Close this window and head back to the app.`,
+    linkFailed: "Couldn't connect",
+    linkTitle: (name: string) => `Connect your ${name} account?`,
+    linkBody: (name: string) => `This lets you sign in to the account below with ${name}.`,
+    cancel: 'Cancel',
+    working: 'Working',
+    link: 'Connect',
+    loginFailed: "Couldn't sign in",
+    backToMe: 'Back to Account',
+    backToLogin: 'Back to sign in',
+  },
+})
 
 /** 서버가 켜 둔 소셜 로그인과 그 공개 값. 아직 모르면 null이에요. */
 export function useSocialClients(): Partial<Record<SocialProvider, string>> | null {
@@ -54,8 +96,10 @@ interface ButtonsProps {
  * GitHub와 카카오로 가는 버튼이에요. 서버가 켜 둔 서비스만 보여주고, 하나도 없으면 아무것도 그리지 않아요.
  * 카카오 버튼은 카카오의 안내대로 노란 바탕에 검은 글자예요. 메인 컬러 규칙의 예외예요.
  */
-export function SocialButtons({ mode, returnTo, only, label = (name) => `${name}로 계속하기` }: ButtonsProps) {
+export function SocialButtons({ mode, returnTo, only, label: customLabel }: ButtonsProps) {
   const clients = useSocialClients()
+  const text = useMessages(TEXT)
+  const label = customLabel ?? text.continueWith
   const [going, setGoing] = useState(false)
   if (!clients) return null
   const providers = (['github', 'kakao'] as const).filter((provider) => clients[provider] && (!only || only === provider))
@@ -78,7 +122,7 @@ export function SocialButtons({ mode, returnTo, only, label = (name) => `${name}
             // 앱에서는 브라우저가 열려서 거기서 마무리돼요. 이 화면은 그대로 남으니 버튼을 다시 누를 수 있게 풀어요.
             void startSocialFromApp(provider, clients[provider] ?? '').then((opened) => {
               setGoing(false)
-              showToast(opened ? '브라우저에서 연결을 마무리해 주세요.' : '연결을 시작하지 못했어요. 잠시 뒤에 다시 시도해 주세요.')
+              showToast(opened ? pick(TEXT).finishInBrowser : pick(TEXT).startFailed)
             })
           }}
           className={`${base} ${provider === 'kakao' ? '' : 'border border-gray-200 bg-white text-gray-900 hover:border-gray-300'}`}
@@ -105,8 +149,9 @@ const primary = 'h-11 rounded-full bg-brand px-6 text-[14px] font-semibold text-
 function AppLink({ provider, ticket, code }: { provider: SocialProvider; ticket: string; code: string | null }) {
   const [target, setTarget] = useState<SocialLinkTarget | null | 'missing'>(null)
   const [state, setState] = useState<'asking' | 'working' | 'done'>('asking')
-  const [error, setError] = useState(code ? '' : `${SOCIAL_LABELS[provider]} 로그인을 취소했어요. 앱에서 연결을 다시 눌러 주세요.`)
+  const [error, setError] = useState(code ? '' : pick(TEXT).canceledInApp(SOCIAL_LABELS[provider]))
   const label = SOCIAL_LABELS[provider]
+  const text = useMessages(TEXT)
 
   useEffect(() => {
     let stale = false
@@ -133,24 +178,24 @@ function AppLink({ provider, ticket, code }: { provider: SocialProvider; ticket:
   if (target === null) {
     return (
       <main className={shell} aria-busy="true">
-        <p className="text-[14px] text-gray-500">{label} 계정을 확인하고 있어요.</p>
+        <p className="text-[14px] text-gray-500">{text.checking(label)}</p>
       </main>
     )
   }
 
-  const failed = error || (target === 'missing' ? '연결 요청 시간이 지났어요. 앱에서 연결을 다시 눌러 주세요.' : '')
+  const failed = error || (target === 'missing' ? text.expired : '')
 
   return (
     <main className={shell}>
       <div className="w-full max-w-sm animate-rise text-center">
         {state === 'done' ? (
           <>
-            <h1 className="text-[20px] font-semibold text-gray-900">연결했어요</h1>
-            <p className="mt-3 break-keep text-[14px] leading-relaxed text-gray-600">이제 {label} 계정으로도 로그인할 수 있어요. 이 창을 닫고 앱으로 돌아가면 돼요.</p>
+            <h1 className="text-[20px] font-semibold text-gray-900">{text.linked}</h1>
+            <p className="mt-3 break-keep text-[14px] leading-relaxed text-gray-600">{text.linkedBody(label)}</p>
           </>
         ) : failed ? (
           <>
-            <h1 className="text-[20px] font-semibold text-gray-900">연결하지 못했어요</h1>
+            <h1 className="text-[20px] font-semibold text-gray-900">{text.linkFailed}</h1>
             <p role="alert" className="mt-3 break-keep text-[14px] leading-relaxed text-gray-600">
               {failed}
             </p>
@@ -158,18 +203,18 @@ function AppLink({ provider, ticket, code }: { provider: SocialProvider; ticket:
         ) : (
           target !== 'missing' && (
             <>
-              <h1 className="text-[20px] font-semibold text-gray-900">{label} 계정을 연결할까요?</h1>
-              <p className="mt-3 break-keep text-[14px] leading-relaxed text-gray-600">아래 계정에 {label} 계정으로 로그인할 수 있도록 연결합니다</p>
+              <h1 className="text-[20px] font-semibold text-gray-900">{text.linkTitle(label)}</h1>
+              <p className="mt-3 break-keep text-[14px] leading-relaxed text-gray-600">{text.linkBody(label)}</p>
               <div className="mt-5 rounded-2xl border border-gray-200 px-4 py-3.5 text-left">
                 <p className="truncate text-[14.5px] font-semibold text-gray-900">{target.name}</p>
                 <p className="mt-0.5 truncate text-[13px] text-gray-500">{target.email}</p>
               </div>
               <div className="mt-7 flex justify-center gap-2">
                 <button type="button" onClick={() => window.location.replace('/')} className="h-11 rounded-full px-5 text-[14px] font-medium text-gray-600 transition-colors hover:text-gray-900">
-                  취소
+                  {text.cancel}
                 </button>
                 <button type="button" disabled={state === 'working'} onClick={() => void confirm()} className={primary}>
-                  {state === 'working' ? '처리 중' : '연결하기'}
+                  {state === 'working' ? text.working : text.link}
                 </button>
               </div>
             </>
@@ -190,6 +235,7 @@ export function SocialCallback({ provider }: { provider: SocialProvider }) {
 
 function BrowserCallback({ provider }: { provider: SocialProvider }) {
   const [failed, setFailed] = useState<SocialResult | null>(null)
+  const text = useMessages(TEXT)
 
   useEffect(() => {
     let stale = false
@@ -207,7 +253,7 @@ function BrowserCallback({ provider }: { provider: SocialProvider }) {
   if (!failed) {
     return (
       <main className="flex h-dvh items-center justify-center bg-white px-5" aria-busy="true">
-        <p className="text-[14px] text-gray-500">{SOCIAL_LABELS[provider]} 계정을 확인하고 있어요.</p>
+        <p className="text-[14px] text-gray-500">{text.checking(SOCIAL_LABELS[provider])}</p>
       </main>
     )
   }
@@ -218,7 +264,7 @@ function BrowserCallback({ provider }: { provider: SocialProvider }) {
   return (
     <main className="flex h-dvh items-center justify-center bg-white px-5">
       <div className="w-full max-w-sm animate-rise text-center">
-        <h1 className="text-[20px] font-semibold text-gray-900">{failed.mode === 'link' ? '연결하지 못했어요' : '로그인하지 못했어요'}</h1>
+        <h1 className="text-[20px] font-semibold text-gray-900">{failed.mode === 'link' ? text.linkFailed : text.loginFailed}</h1>
         <p role="alert" className="mt-3 break-keep text-[14px] leading-relaxed text-gray-600">
           {failed.outcome.ok ? '' : failed.outcome.message}
         </p>
@@ -227,7 +273,7 @@ function BrowserCallback({ provider }: { provider: SocialProvider }) {
           onClick={() => window.location.replace(back)}
           className="mt-7 h-11 rounded-full bg-brand px-6 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover"
         >
-          {failed.mode === 'link' ? '내 정보로 돌아가기' : '로그인 화면으로 돌아가기'}
+          {failed.mode === 'link' ? text.backToMe : text.backToLogin}
         </button>
       </div>
     </main>

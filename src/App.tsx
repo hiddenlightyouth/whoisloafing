@@ -23,36 +23,38 @@ import { socialFromPath } from './lib/social'
 import { setFeedbackReady, shouldAskFeedback, useFeedback } from './lib/feedback'
 import { useShortcuts } from './lib/shortcuts'
 import { showToast } from './lib/toast'
+import { currentPath, localizePath, messages, pick, useLang, useMessages } from './lib/i18n'
+import { applyMeta, HOME_META } from './lib/meta'
 
 const CHAT_PATH = /^\/c\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i
 
-const chatIdFromPath = () => CHAT_PATH.exec(window.location.pathname)?.[1] ?? null
+const chatIdFromPath = () => CHAT_PATH.exec(currentPath())?.[1] ?? null
 
 const ARTICLE_PATH = /^\/articles(?:\/([^/]+))?\/?$/
 
 /** 아티클 주소면 보고 있는 글을 돌려줘요. slug가 null이면 목록이에요. */
 function articleFromPath(): { slug: string | null } | null {
-  const match = ARTICLE_PATH.exec(window.location.pathname)
+  const match = ARTICLE_PATH.exec(currentPath())
   return match ? { slug: match[1] ?? null } : null
 }
 
 const ABOUT_PATH = /^\/about\/?$/
 
-const aboutFromPath = () => ABOUT_PATH.test(window.location.pathname)
+const aboutFromPath = () => ABOUT_PATH.test(currentPath())
 
 const ACCOUNT_PATH = /^\/(login|signup|me|history)\/?$/
 
-const accountFromPath = () => (ACCOUNT_PATH.exec(window.location.pathname)?.[1] as AccountPage | undefined) ?? null
+const accountFromPath = () => (ACCOUNT_PATH.exec(currentPath())?.[1] as AccountPage | undefined) ?? null
 
 const APP_LOGIN_PATH = /^\/app-login\/?$/
 
-const appLoginFromPath = () => APP_LOGIN_PATH.test(window.location.pathname)
+const appLoginFromPath = () => APP_LOGIN_PATH.test(currentPath())
 
 const DEEP_PATH = /^\/deep(?:\/([^/]+)\/([^/]+))?\/?$/
 
 /** 심층 분석 주소면 보고 있는 레포(소유자/레포)를 돌려줘요. repo가 null이면 레포를 고르는 화면이에요. */
 function deepFromPath(): { repo: string | null } | null {
-  const match = DEEP_PATH.exec(window.location.pathname)
+  const match = DEEP_PATH.exec(currentPath())
   return match ? { repo: match[1] ? `${match[1]}/${match[2]}` : null } : null
 }
 
@@ -60,7 +62,7 @@ const PORTFOLIO_PATH = /^\/portfolio(?:\/([^/]+)\/([^/]+))?\/?$/
 
 /** 포트폴리오 만들기 주소면 고른 레포(소유자/레포)를 돌려줘요. repo가 null이면 레포를 고르는 화면이에요. */
 function portfolioFromPath(): { repo: string | null } | null {
-  const match = PORTFOLIO_PATH.exec(window.location.pathname)
+  const match = PORTFOLIO_PATH.exec(currentPath())
   return match ? { repo: match[1] ? `${match[1]}/${match[2]}` : null } : null
 }
 
@@ -68,7 +70,7 @@ const EXPLORE_PATH = /^\/explore(?:\/(clubs))?\/?$/
 
 /** 탐색 화면 주소면 보고 있는 갈래를 돌려줘요. */
 function exploreFromPath(): ExploreCategory | null {
-  const match = EXPLORE_PATH.exec(window.location.pathname)
+  const match = EXPLORE_PATH.exec(currentPath())
   return match ? (match[1] ? 'clubs' : 'github') : null
 }
 
@@ -76,7 +78,7 @@ const ADMIN_PATH = /^\/admin(?:\/(users|chats|feedback|ai))?\/?$/
 
 /** 관리자 화면 주소면 보고 있는 탭을 돌려줘요. */
 function adminFromPath(): AdminTab | null {
-  const match = ADMIN_PATH.exec(window.location.pathname)
+  const match = ADMIN_PATH.exec(currentPath())
   return match ? ((match[1] as AdminTab | undefined) ?? 'overview') : null
 }
 
@@ -155,6 +157,31 @@ async function copyLink(): Promise<boolean> {
   }
 }
 
+const TEXT = messages({
+  ko: {
+    loginToShare: '로그인하면 공유하려던 채팅으로 바로 돌아가요.',
+    loginToContinue: '로그인하면 분석하던 채팅으로 바로 돌아가요.',
+    sharedCopied: '공유했어요. 링크를 복사했어요.',
+    sharedCopyManually: '공유했어요. 링크 복사를 눌러 링크를 가져가세요.',
+    missingTitle: '이 채팅을 열 수 없어요.',
+    missingBody: '아직 공유되지 않았거나 없는 채팅이에요.',
+    home: '홈으로',
+    closeSidebar: '사이드바 닫기',
+    openSidebar: '사이드바 열기',
+  },
+  en: {
+    loginToShare: "Sign in and we'll bring you right back to the chat you wanted to share.",
+    loginToContinue: "Sign in and we'll bring you right back to your analysis.",
+    sharedCopied: 'Shared. The link is copied.',
+    sharedCopyManually: 'Shared. Tap Copy link to grab the link.',
+    missingTitle: "This chat can't be opened.",
+    missingBody: "It hasn't been shared yet, or it doesn't exist.",
+    home: 'Go home',
+    closeSidebar: 'Close sidebar',
+    openSidebar: 'Open sidebar',
+  },
+})
+
 /** 헤더에서 갈 수 있는 곳. 아티클은 목록으로 가요. */
 type LeaveTarget = 'home' | 'about' | 'articles' | AccountPage
 
@@ -218,6 +245,13 @@ export default function App() {
   const [nudgeClosed, setNudgeClosed] = useState(() => nudgeChatsSinceClose() !== null)
   /** 분석이 도는 중에 로그인해서, 그 요청이 끝나면 채팅을 계정에 한 번 더 연결해야 하는지 */
   const claimWhenIdle = useRef(false)
+  const lang = useLang()
+  const text = useMessages(TEXT)
+
+  // 소개와 아티클, 계정 화면은 스스로 제목과 미리보기 태그를 정하고, 그 밖의 화면은 메인 화면의 값을 언어에 맞춰 써요.
+  useEffect(() => {
+    if (!about && !article && !account) applyMeta(HOME_META[lang], lang, '/')
+  }, [about, account, article, lang])
 
   // 주소에 맞는 화면을 준비해요. 처음 들어왔을 때와 뒤로 가기, 앞으로 가기에서 불러요.
   const openFromLocation = useCallback(async () => {
@@ -395,7 +429,7 @@ export default function App() {
     setPortfolioPage(null)
     setExplorePage(null)
     setAdminPage(null)
-    if (window.location.pathname !== '/') window.history.pushState(null, '', '/')
+    if (window.location.pathname !== localizePath('/')) window.history.pushState(null, '', localizePath('/'))
     trackPageView('home')
   }, [account, article, chat, messages.length, reset])
 
@@ -414,7 +448,7 @@ export default function App() {
       setAdminPage(null)
       setAbout(false)
       setArticle({ slug })
-      window.history.pushState(null, '', slug ? `/articles/${slug}` : '/articles')
+      window.history.pushState(null, '', localizePath(slug ? `/articles/${slug}` : '/articles'))
       trackPageView(slug ? 'article' : 'articles', { slug: slug ?? undefined })
     },
     [reset],
@@ -423,7 +457,7 @@ export default function App() {
   const openAbout = useCallback(() => {
     if (!reset()) return
     loginReturn.current = null
-    window.history.pushState(null, '', '/about')
+    window.history.pushState(null, '', localizePath('/about'))
     void openFromLocation()
   }, [openFromLocation, reset])
 
@@ -541,7 +575,7 @@ export default function App() {
     [chatId, openAccount, settle],
   )
 
-  const handleLoginToShare = useCallback(() => loginFromChat('로그인하면 공유하려던 채팅으로 바로 돌아가요.'), [loginFromChat])
+  const handleLoginToShare = useCallback(() => loginFromChat(pick(TEXT).loginToShare), [loginFromChat])
 
   const closeNudge = useCallback(() => {
     track('login_nudge_close')
@@ -557,13 +591,13 @@ export default function App() {
 
   const handleNudgeLogin = useCallback(() => {
     track('login_nudge_click', { busy })
-    loginFromChat('로그인하면 분석하던 채팅으로 바로 돌아가요.')
+    loginFromChat(pick(TEXT).loginToContinue)
   }, [busy, loginFromChat])
 
   const handleLeaveLogin = useCallback(() => {
     track('leave_login_click', { busy })
     setLeaveTo(null)
-    loginFromChat('로그인하면 분석하던 채팅으로 바로 돌아가요.')
+    loginFromChat(pick(TEXT).loginToContinue)
   }, [busy, loginFromChat])
 
   useEffect(() => {
@@ -679,7 +713,7 @@ export default function App() {
     if (!ok) return false
     setChat({ mine: true, shared: true })
     // 휴대폰 브라우저는 공유 요청을 기다리는 사이에 복사 권한이 사라지기도 해서, 그때는 링크 복사 버튼을 안내해요.
-    showToast((await copyLink()) ? '공유했어요. 링크를 복사했어요.' : '공유했어요. 링크 복사를 눌러 링크를 가져가세요.')
+    showToast((await copyLink()) ? pick(TEXT).sharedCopied : pick(TEXT).sharedCopyManually)
     return true
   }, [chatId, messages.length])
 
@@ -695,7 +729,7 @@ export default function App() {
     {
       KeyN: handleHome,
       KeyA: () => leaveFor('articles'),
-      Slash: () => document.querySelector<HTMLInputElement>('input[aria-label="GitHub 레포 링크"]')?.focus(),
+      Slash: () => document.querySelector<HTMLInputElement>('input[data-repo-input]')?.focus(),
       KeyD: isApp && deep ? () => openDeep(null) : undefined,
       KeyT: isApp && exploreReady ? () => openExplore() : undefined,
       KeyB: isApp ? () => toggleSidebar(!sidebarOpen) : undefined,
@@ -756,7 +790,7 @@ export default function App() {
         onAccount={(page) => {
           // 분석하던 중에 로그인하러 가면 채팅을 들고 가서, 로그인한 뒤에 그대로 이어가요.
           if (page === account && working) return
-          if (page === 'login' && working && storage && !account && chatId.current) loginFromChat('로그인하면 분석하던 채팅으로 바로 돌아가요.')
+          if (page === 'login' && working && storage && !account && chatId.current) loginFromChat(pick(TEXT).loginToContinue)
           else leaveFor(page)
         }}
       />
@@ -816,16 +850,16 @@ export default function App() {
       ) : missing ? (
         <main className="flex flex-1 flex-col items-center justify-center gap-4 px-5 text-center">
           <p className="text-[15px] leading-relaxed text-gray-600">
-            이 채팅을 열 수 없어요.
+            {text.missingTitle}
             <br />
-            아직 공유되지 않았거나 없는 채팅이에요.
+            {text.missingBody}
           </p>
           <button
             type="button"
             onClick={handleHome}
             className="h-10 rounded-full bg-brand px-5 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover"
           >
-            홈으로
+            {text.home}
           </button>
         </main>
       ) : messages.length === 0 ? (
@@ -886,7 +920,7 @@ export default function App() {
       {/* 창 버튼 바로 옆, 늘 같은 자리에 있는 사이드바 접기 버튼이에요. 접어도 펴도 움직이지 않아요. */}
       <button
         type="button"
-        aria-label={sidebarOpen ? '사이드바 닫기' : '사이드바 열기'}
+        aria-label={sidebarOpen ? text.closeSidebar : text.openSidebar}
         aria-expanded={sidebarOpen}
         onClick={() => toggleSidebar(!sidebarOpen)}
         className="absolute top-0.5 left-[78px] z-[31] flex size-7 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-200/70 hover:text-gray-900"

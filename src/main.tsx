@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import { currentPath } from './lib/i18n'
 import './index.css'
 
 const RELOADED_KEY = 'whoisloafing:chunk-reloaded'
@@ -28,6 +29,7 @@ const start = () =>
   )
 
 // 소개와 아티클 주소로 들어오면 미리 그려 둔 화면이 이미 있어요. 그 화면의 코드를 먼저 받은 뒤에 그려서, 글이 잠깐 사라졌다 나타나지 않게 해요.
-if (/^\/articles(\/|$)/.test(window.location.pathname)) void import('./components/Articles').finally(start)
-else if (/^\/about\/?$/.test(window.location.pathname)) void import('./components/About').finally(start)
+const path = currentPath()
+if (/^\/articles(\/|$)/.test(path)) void import('./components/Articles').finally(start)
+else if (/^\/about\/?$/.test(path)) void import('./components/About').finally(start)
 else start()

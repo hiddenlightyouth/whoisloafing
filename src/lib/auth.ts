@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { apiUrl, ownerHeaders, readResult, type ApiResult } from './http'
+import { getLang, messages, pick } from './i18n'
 
 const TOKEN_STORAGE = 'whoisloafing:auth'
 const ME_STORAGE = 'whoisloafing:me'
@@ -71,24 +72,45 @@ export interface ChatSummary {
 
 export type AuthOutcome = { ok: true } | { ok: false; message: string }
 
-const ERROR_MESSAGES: Record<string, string> = {
-  C4012: '비밀번호가 맞지 않아요.',
-  C4014: '로그인 시간이 지났어요. 처음부터 다시 시도해 주세요.',
-  C4015: '계정을 확인하지 못했어요. 처음부터 다시 시도해 주세요.',
-  C4017: '연결 요청 시간이 지났어요. 앱에서 연결을 다시 눌러 주세요.',
-  C4016: 'GitHub 계정에 인증된 이메일이 없어요. GitHub에서 이메일을 인증한 뒤에 다시 시도해 주세요.',
-  C4045: '지금은 이 방법으로 로그인할 수 없어요.',
-  C4092: '이미 이메일로 가입한 계정이에요. 이메일로 로그인한 뒤, 내 정보에서 계정을 연결해 주세요.',
-  C4093: '이미 다른 계정에 연결되어 있어요.',
-  C4094: '로그인할 방법이 하나는 남아 있어야 해서 해제할 수 없어요.',
-  C4034: '정지된 계정이에요. 관리자에게 문의해 주세요.',
-  C4041: '가입하지 않은 이메일이에요.',
-  C4091: '이미 가입한 이메일이에요.',
-  C002: '입력한 내용을 다시 확인해 주세요.',
-}
+const ERROR_MESSAGES = messages<Record<string, string>>({
+  ko: {
+    C4012: '비밀번호가 맞지 않아요.',
+    C4014: '로그인 시간이 지났어요. 처음부터 다시 시도해 주세요.',
+    C4015: '계정을 확인하지 못했어요. 처음부터 다시 시도해 주세요.',
+    C4017: '연결 요청 시간이 지났어요. 앱에서 연결을 다시 눌러 주세요.',
+    C4016: 'GitHub 계정에 인증된 이메일이 없어요. GitHub에서 이메일을 인증한 뒤에 다시 시도해 주세요.',
+    C4045: '지금은 이 방법으로 로그인할 수 없어요.',
+    C4092: '이미 이메일로 가입한 계정이에요. 이메일로 로그인한 뒤, 내 정보에서 계정을 연결해 주세요.',
+    C4093: '이미 다른 계정에 연결되어 있어요.',
+    C4094: '로그인할 방법이 하나는 남아 있어야 해서 해제할 수 없어요.',
+    C4034: '정지된 계정이에요. 관리자에게 문의해 주세요.',
+    C4041: '가입하지 않은 이메일이에요.',
+    C4091: '이미 가입한 이메일이에요.',
+    C002: '입력한 내용을 다시 확인해 주세요.',
+    network: '서버와 연결하지 못했어요. 잠시 뒤에 다시 시도해 주세요.',
+    unknown: '문제가 생겼어요. 잠시 뒤에 다시 시도해 주세요.',
+  },
+  en: {
+    C4012: 'The password is incorrect.',
+    C4014: 'The sign-in request expired. Please start over.',
+    C4015: "We couldn't verify the account. Please start over.",
+    C4017: 'The connection request expired. Click Connect in the app again.',
+    C4016: 'Your GitHub account has no verified email. Verify an email on GitHub and try again.',
+    C4045: "You can't sign in this way right now.",
+    C4092: 'This email already has an account. Sign in with your email, then connect this account from Account settings.',
+    C4093: "It's already connected to another account.",
+    C4094: "You need at least one way to sign in, so this can't be disconnected.",
+    C4034: 'This account is suspended. Please contact an administrator.',
+    C4041: "There's no account with this email.",
+    C4091: 'This email is already registered.',
+    C002: 'Please check what you entered.',
+    network: "Couldn't reach the server. Please try again in a moment.",
+    unknown: 'Something went wrong. Please try again in a moment.',
+  },
+})
 
-const NETWORK_MESSAGE = '서버와 연결하지 못했어요. 잠시 뒤에 다시 시도해 주세요.'
-const UNKNOWN_MESSAGE = '문제가 생겼어요. 잠시 뒤에 다시 시도해 주세요.'
+const NETWORK_MESSAGE = () => pick(ERROR_MESSAGES).network
+const UNKNOWN_MESSAGE = () => pick(ERROR_MESSAGES).unknown
 
 function readJson<T>(key: string): T | null {
   try {
@@ -217,23 +239,24 @@ export async function authFetch<T>(path: string, init: RequestInit = {}): Promis
   return readResult<T>(res)
 }
 
-const messageOf = (code: string | null) => (code && ERROR_MESSAGES[code]) || UNKNOWN_MESSAGE
+const messageOf = (code: string | null) => (code && pick(ERROR_MESSAGES)[code]) || UNKNOWN_MESSAGE()
 
 export function describeDevice(userAgent: string | null | undefined): string {
   const ua = userAgent ?? ''
+  const en = getLang() === 'en'
   const browser = /Edg\//.test(ua)
     ? 'Edge'
     : /Whale\//.test(ua)
       ? 'Whale'
       : /SamsungBrowser/.test(ua)
-        ? '삼성 인터넷'
+        ? (en ? 'Samsung Internet' : '삼성 인터넷')
         : /Firefox\//.test(ua)
           ? 'Firefox'
           : /Chrome\//.test(ua)
             ? 'Chrome'
             : /Safari\//.test(ua)
               ? 'Safari'
-              : '알 수 없는 브라우저'
+              : en ? 'Unknown browser' : '알 수 없는 브라우저'
   const os = /iPhone|iPad|iPod/.test(ua)
     ? 'iOS'
     : /Android/.test(ua)
@@ -245,8 +268,8 @@ export function describeDevice(userAgent: string | null | undefined): string {
           : /Linux/.test(ua)
             ? 'Linux'
             : ''
-  if (/WhoIsLoafingApp\//.test(ua)) return os ? `${os} 앱` : '앱'
-  return os ? `${os}의 ${browser}` : browser
+  if (/WhoIsLoafingApp\//.test(ua)) return en ? (os ? `${os} app` : 'App') : os ? `${os} 앱` : '앱'
+  return os ? (en ? `${browser} on ${os}` : `${os}의 ${browser}`) : browser
 }
 
 async function startSession(tokens: Tokens): Promise<void> {
@@ -273,7 +296,7 @@ async function submitCredentials(path: string, body: Record<string, string>): Pr
     await startSession(result.data)
     return { ok: true }
   } catch {
-    return { ok: false, message: NETWORK_MESSAGE }
+    return { ok: false, message: NETWORK_MESSAGE() }
   }
 }
 
@@ -298,7 +321,7 @@ export async function linkSocial(provider: string, code: string, redirectUri: st
     await loadMe()
     return { ok: true }
   } catch {
-    return { ok: false, message: NETWORK_MESSAGE }
+    return { ok: false, message: NETWORK_MESSAGE() }
   }
 }
 
@@ -310,7 +333,7 @@ export async function unlinkSocial(provider: string): Promise<AuthOutcome> {
     await loadMe()
     return { ok: true }
   } catch {
-    return { ok: false, message: NETWORK_MESSAGE }
+    return { ok: false, message: NETWORK_MESSAGE() }
   }
 }
 
@@ -322,7 +345,7 @@ export async function withdraw(): Promise<AuthOutcome> {
     clearAuth()
     return { ok: true }
   } catch {
-    return { ok: false, message: NETWORK_MESSAGE }
+    return { ok: false, message: NETWORK_MESSAGE() }
   }
 }
 
@@ -363,7 +386,7 @@ export async function confirmSocialLink(provider: string, ticket: string, code: 
     const result = await readResult<null>(res)
     return result.ok ? { ok: true } : { ok: false, message: messageOf(result.code) }
   } catch {
-    return { ok: false, message: NETWORK_MESSAGE }
+    return { ok: false, message: NETWORK_MESSAGE() }
   }
 }
 
@@ -414,7 +437,7 @@ async function fetchList<T>(path: string): Promise<{ ok: true; data: T } | { ok:
     const result = await authFetch<T>(path)
     return result.ok && result.data ? { ok: true, data: result.data } : { ok: false, message: messageOf(result.code) }
   } catch {
-    return { ok: false, message: NETWORK_MESSAGE }
+    return { ok: false, message: NETWORK_MESSAGE() }
   }
 }
 

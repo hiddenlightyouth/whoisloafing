@@ -1,4 +1,24 @@
 import { useEffect } from 'react'
+import { messages, useMessages } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: {
+    TITLE: '분석을 잃어버리지 마세요',
+    DESCRIPTION: '로그인하면 분석 중인 내용을 저장하고, 더 많은 기능을 사용할 수 있는 기회가 주어져요.',
+    ACTION: '로그인하여 분석 저장하기',
+    open: '로그인 안내 열기',
+    close: '닫기',
+    later: '나중에 하기',
+  },
+  en: {
+    TITLE: "Don't lose this analysis",
+    DESCRIPTION: 'Sign in to save what you are analyzing and unlock more features.',
+    ACTION: 'Sign in to save',
+    open: 'Open sign-in prompt',
+    close: 'Close',
+    later: 'Maybe later',
+  },
+})
 
 interface Props {
   /** 닫아 둔 상태. 넓은 화면에서는 작은 아이콘만 떠 있고, 좁은 화면에서는 아무것도 보여주지 않아요. */
@@ -8,9 +28,6 @@ interface Props {
   onOpen: () => void
 }
 
-const TITLE = '분석을 잃어버리지 마세요'
-const DESCRIPTION = '로그인하면 분석 중인 내용을 저장하고, 더 많은 기능을 사용할 수 있는 기회가 주어져요.'
-const ACTION = '로그인하여 분석 저장하기'
 
 /**
  * 로그인하지 않고 분석하는 동안 로그인을 권하는 안내예요.
@@ -18,6 +35,7 @@ const ACTION = '로그인하여 분석 저장하기'
  * 넓은 화면에서 카드를 닫으면 같은 자리에 로그인 아이콘이 둥둥 떠 있고, 누르면 카드가 다시 열려요.
  */
 export function LoginNudge({ collapsed, onLogin, onClose, onOpen }: Props) {
+  const { TITLE, DESCRIPTION, ACTION, open, close, later } = useMessages(TEXT)
   useEffect(() => {
     if (collapsed) return
     const onKeyDown = (event: KeyboardEvent) => {
@@ -32,7 +50,7 @@ export function LoginNudge({ collapsed, onLogin, onClose, onOpen }: Props) {
     return (
       <button
         type="button"
-        aria-label="로그인 안내 열기"
+        aria-label={open}
         onClick={onOpen}
         className="nudge-float absolute bottom-6 left-6 z-10 hidden size-11 items-center justify-center rounded-full border border-gray-200 bg-white text-brand transition-colors hover:border-brand hover:bg-brand-soft md:flex"
       >
@@ -52,7 +70,7 @@ export function LoginNudge({ collapsed, onLogin, onClose, onOpen }: Props) {
       >
         <button
           type="button"
-          aria-label="닫기"
+          aria-label={close}
           onClick={onClose}
           className="absolute top-2.5 right-2.5 flex size-7 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
         >
@@ -103,7 +121,7 @@ export function LoginNudge({ collapsed, onLogin, onClose, onOpen }: Props) {
             onClick={onClose}
             className="mt-1 h-11 w-full rounded-2xl text-[14px] font-medium text-gray-500 transition-colors hover:text-gray-900"
           >
-            나중에 하기
+            {later}
           </button>
         </div>
       </div>

@@ -1,4 +1,24 @@
 import type { ContributorStats } from '../../shared/types'
+import { messages, useMessages } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: {
+    rank: (rank: number) => `${rank}위`,
+    commits: '커밋 수',
+    count: (value: string) => `${value}개`,
+    lines: '추가 / 삭제 라인',
+    byCommits: '기여도 (커밋 수 기준)',
+    byLines: '기여도 (라인 수 기준)',
+  },
+  en: {
+    rank: (rank: number) => `#${rank}`,
+    commits: 'Commits',
+    count: (value: string) => value,
+    lines: 'Lines added / removed',
+    byCommits: 'Share by commits',
+    byLines: 'Share by lines',
+  },
+})
 
 const format = (value: number) => value.toLocaleString('ko-KR')
 
@@ -22,10 +42,11 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
 }
 
 export function StatsCard({ contributor, rank }: { contributor: ContributorStats; rank: number }) {
+  const text = useMessages(TEXT)
   return (
     <div className="h-full rounded-xl bg-white p-4">
       <div className="flex items-center gap-2.5">
-        <span className="shrink-0 text-xs font-semibold text-brand tabular-nums">{rank}위</span>
+        <span className="shrink-0 text-xs font-semibold text-brand tabular-nums">{text.rank(rank)}</span>
         <Avatar contributor={contributor} className="size-8" />
         {contributor.profileUrl ? (
           <a
@@ -42,15 +63,15 @@ export function StatsCard({ contributor, rank }: { contributor: ContributorStats
       </div>
 
       <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
-        <Stat label="커밋 수">{format(contributor.commits)}개</Stat>
-        <Stat label="추가 / 삭제 라인">
+        <Stat label={text.commits}>{text.count(format(contributor.commits))}</Stat>
+        <Stat label={text.lines}>
           +{format(contributor.additions)} <span className="font-normal text-gray-300">/</span>{' '}
           <span className="text-gray-500">-{format(contributor.deletions)}</span>
         </Stat>
-        <Stat label="기여도 (커밋 수 기준)">
+        <Stat label={text.byCommits}>
           <span className="text-brand">{contributor.commitShare}%</span>
         </Stat>
-        <Stat label="기여도 (라인 수 기준)">
+        <Stat label={text.byLines}>
           <span className="text-brand">{contributor.lineShare}%</span>
         </Stat>
       </dl>

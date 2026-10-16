@@ -1,3 +1,10 @@
+import { messages, useMessages } from '../lib/i18n'
+
+
+const TEXT = messages({
+  ko: { collapse: '질문 메뉴 접기', expand: '질문 메뉴 펼치기' },
+  en: { collapse: 'Collapse question menu', expand: 'Expand question menu' },
+})
 interface Props {
   expanded: boolean
   onClick: () => void
@@ -8,10 +15,11 @@ interface Props {
  * 그림 파일 없이 CSS로만 그려요. 모양과 움직임은 `src/index.css`의 orb 규칙에 있어요.
  */
 export function AssistantOrb({ expanded, onClick }: Props) {
+  const text = useMessages(TEXT)
   return (
     <button
       type="button"
-      aria-label={expanded ? '질문 메뉴 접기' : '질문 메뉴 펼치기'}
+      aria-label={expanded ? text.collapse : text.expand}
       aria-expanded={expanded}
       onClick={onClick}
       className="orb"

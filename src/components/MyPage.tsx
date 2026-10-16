@@ -22,6 +22,71 @@ import { SOCIAL_LABELS, type SocialProvider } from '../lib/social'
 import { IpPlace } from './IpPlace'
 import { SocialButtons, useSocialClients } from './Social'
 import { Bone } from './Skeleton'
+import { messages, pick, useMessages } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: {
+    loading: '불러오고 있어요.',
+    unlinked: (name: string) => `${name} 연결을 해제했어요.`,
+    social: '소셜 로그인',
+    linked: '연결됨',
+    unlink: '해제',
+    link: '연결',
+    unlinkTitle: (name: string) => `${name} 연결을 해제할까요?`,
+    unlinkBody: (name: string) => `해제하면 ${name} 계정으로는 이 계정에 로그인할 수 없어요. 나중에 다시 연결할 수 있어요.`,
+    revokeFailed: '기기를 로그아웃시키지 못했어요. 잠시 뒤에 다시 시도해 주세요.',
+    current: '현재 사용 중',
+    lastUsed: (when: string) => `마지막 접속: ${when}`,
+    signOut: '로그아웃',
+    noRecords: '아직 로그인 기록이 없어요.',
+    unknownAddress: '주소를 알 수 없어요',
+    working: '처리 중',
+    more: '더 보기',
+    withdrawn: '탈퇴했어요. 그동안 써 주셔서 고마워요.',
+    title: '내 정보',
+    account: '계정',
+    name: '이름',
+    email: '이메일',
+    joined: '가입한 날',
+    devices: '로그인한 기기',
+    history: '로그인 기록',
+    withdraw: '회원탈퇴',
+    // 사용자가 정한 문구라 격식체 그대로 둬요.
+    withdrawTitle: '정말 탈퇴할까요?',
+    withdrawBody: '계속하면 계정에 대한 모든 정보가 유실되며, 이 작업은 되돌릴 수 없습니다.',
+    withdrawConfirm: '탈퇴하기',
+  },
+  en: {
+    loading: 'Loading.',
+    unlinked: (name: string) => `Disconnected ${name}.`,
+    social: 'Social sign-in',
+    linked: 'Connected',
+    unlink: 'Disconnect',
+    link: 'Connect',
+    unlinkTitle: (name: string) => `Disconnect ${name}?`,
+    unlinkBody: (name: string) => `You won't be able to sign in to this account with ${name}. You can connect it again later.`,
+    revokeFailed: "Couldn't sign out that device. Please try again in a moment.",
+    current: 'This device',
+    lastUsed: (when: string) => `Last active: ${when}`,
+    signOut: 'Sign out',
+    noRecords: 'No sign-in history yet.',
+    unknownAddress: 'Unknown address',
+    working: 'Working',
+    more: 'Show more',
+    withdrawn: 'Your account has been deleted. Thanks for using WhoIsLoafing.',
+    title: 'Account',
+    account: 'Profile',
+    name: 'Name',
+    email: 'Email',
+    joined: 'Joined',
+    devices: 'Signed-in devices',
+    history: 'Sign-in history',
+    withdraw: 'Delete account',
+    withdrawTitle: 'Delete your account?',
+    withdrawBody: 'All information associated with your account will be permanently lost. This cannot be undone.',
+    withdrawConfirm: 'Delete account',
+  },
+})
 
 interface Props {
   onSignedOut: () => void
@@ -43,9 +108,10 @@ function Message({ children }: { children: React.ReactNode }) {
 }
 
 function SkeletonRows({ count, action }: { count: number; action?: boolean }) {
+  const text = useMessages(TEXT)
   return (
     <ul className="divide-y divide-gray-100 border-y border-gray-100" aria-busy="true">
-      <li className="sr-only">불러오고 있어요.</li>
+      <li className="sr-only">{text.loading}</li>
       {Array.from({ length: count }, (_, index) => (
         <li key={index} aria-hidden className="flex items-center justify-between gap-4 py-4">
           <div className="min-w-0 flex-1">
@@ -64,6 +130,7 @@ function SkeletonRows({ count, action }: { count: number; action?: boolean }) {
  * 서버가 켜 둔 서비스만 보여주고, 하나도 없으면 묶음을 통째로 숨겨요.
  */
 function Connections() {
+  const text = useMessages(TEXT)
   const { me } = useAuth()
   const clients = useSocialClients()
   const providers = (['github', 'kakao'] as const).filter((provider) => clients?.[provider])
@@ -99,13 +166,13 @@ function Connections() {
     track('auth_social_unlink', { provider, success: outcome.ok })
     setWorking(false)
     setUnlinking(null)
-    showToast(outcome.ok ? `${SOCIAL_LABELS[provider]} 연결을 해제했어요.` : outcome.message)
+    showToast(outcome.ok ? pick(TEXT).unlinked(SOCIAL_LABELS[provider]) : outcome.message)
   }
 
   const linked = (provider: SocialProvider) => (provider === 'github' ? me?.github === true : me?.kakao === true)
 
   return (
-    <Section title="소셜 로그인">
+    <Section title={text.social}>
       <ul className="divide-y divide-gray-100 border-y border-gray-100">
         {providers.map((provider) => (
           <li key={provider} className="flex items-center justify-between gap-4 py-3.5 text-[14px]">
@@ -118,17 +185,17 @@ function Connections() {
                 <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-3.5 text-brand" aria-hidden="true">
                   <path d="M3.5 8.5l3 3 6-7" />
                 </svg>
-                연결됨
+                {text.linked}
                 {canUnlink(provider) && (
                   <button type="button" onClick={() => setUnlinking(provider)} className={`${quiet} ml-1.5 bg-gray-100 text-gray-700 hover:text-red-500`}>
-                    해제
+                    {text.unlink}
                   </button>
                 )}
               </p>
             )}
             {me && !linked(provider) && canLink && (
               <div className="w-20 shrink-0 [&_button]:h-9 [&_button]:text-[13px]">
-                <SocialButtons mode="link" returnTo="/me" only={provider} label={() => '연결'} />
+                <SocialButtons mode="link" returnTo="/me" only={provider} label={() => text.link} />
               </div>
             )}
           </li>
@@ -136,9 +203,9 @@ function Connections() {
       </ul>
       {unlinking && (
         <ConfirmDialog
-          title={`${SOCIAL_LABELS[unlinking]} 연결을 해제할까요?`}
-          body={`해제하면 ${SOCIAL_LABELS[unlinking]} 계정으로는 이 계정에 로그인할 수 없어요. 나중에 다시 연결할 수 있어요.`}
-          confirm="해제"
+          title={text.unlinkTitle(SOCIAL_LABELS[unlinking])}
+          body={text.unlinkBody(SOCIAL_LABELS[unlinking])}
+          confirm={text.unlink}
           danger
           working={working}
           onCancel={() => setUnlinking(null)}
@@ -150,6 +217,7 @@ function Connections() {
 }
 
 function Sessions() {
+  const text = useMessages(TEXT)
   const [sessions, setSessions] = useState<DeviceSession[] | null>(null)
   const [error, setError] = useState('')
   const [revoking, setRevoking] = useState<string | null>(null)
@@ -170,7 +238,7 @@ function Sessions() {
     track('session_revoke', { success: ok })
     setRevoking(null)
     if (ok) setSessions((prev) => prev?.filter((session) => session.sessionId !== sessionId) ?? null)
-    else setError('기기를 로그아웃시키지 못했어요. 잠시 뒤에 다시 시도해 주세요.')
+    else setError(pick(TEXT).revokeFailed)
   }
 
   if (!sessions) return error ? <Message>{error}</Message> : <SkeletonRows count={2} action />
@@ -185,7 +253,7 @@ function Sessions() {
                 {session.deviceName || describeDevice(session.userAgent)}
               </p>
               <p className="mt-1 text-[13px] text-gray-500">
-                {session.current ? '현재 사용 중' : `마지막 접속: ${formatDateTime(session.lastUsedAt)}`}
+                {session.current ? text.current : text.lastUsed(formatDateTime(session.lastUsedAt))}
               </p>
             </div>
             {!session.current && (
@@ -195,7 +263,7 @@ function Sessions() {
                 onClick={() => void revoke(session.sessionId)}
                 className={`${quiet} bg-gray-100 text-gray-700 hover:text-red-500 disabled:text-gray-400`}
               >
-                로그아웃
+                {text.signOut}
               </button>
             )}
           </li>
@@ -210,6 +278,7 @@ function Sessions() {
 const HISTORY_STEP = 5
 
 function LoginHistory() {
+  const text = useMessages(TEXT)
   const [records, setRecords] = useState<LoginRecord[]>([])
   /** 받아 둔 기록 중에 몇 개까지 보여줄지 */
   const [shown, setShown] = useState(HISTORY_STEP)
@@ -237,7 +306,7 @@ function LoginHistory() {
   }, [load])
 
   if (records.length === 0) {
-    return loading ? <SkeletonRows count={4} /> : <Message>{error || '아직 로그인 기록이 없어요.'}</Message>
+    return loading ? <SkeletonRows count={4} /> : <Message>{error || text.noRecords}</Message>
   }
 
   return (
@@ -250,8 +319,8 @@ function LoginHistory() {
                 {record.deviceName || describeDevice(record.userAgent)}
               </p>
               <p className="mt-1 text-[13px] text-gray-500">
-                {record.ipAddress ? <IpPlace ip={record.ipAddress} /> : record.current ? null : '주소를 알 수 없어요'}
-                {record.current && (record.ipAddress ? ', 현재 사용 중' : '현재 사용 중')}
+                {record.ipAddress ? <IpPlace ip={record.ipAddress} /> : record.current ? null : text.unknownAddress}
+                {record.current && (record.ipAddress ? `, ${text.current}` : text.current)}
               </p>
             </div>
             <span className="shrink-0 pt-0.5 text-[13px] text-gray-400">{formatDateTime(record.loggedInAt)}</span>
@@ -272,7 +341,7 @@ function LoginHistory() {
             }}
             className={`${quiet} bg-gray-100 text-gray-700 hover:text-brand disabled:text-gray-400`}
           >
-            {loading ? '처리 중' : '더 보기'}
+            {loading ? text.working : text.more}
           </button>
         </div>
       )}
@@ -281,6 +350,7 @@ function LoginHistory() {
 }
 
 export function MyPage({ onSignedOut }: Props) {
+  const text = useMessages(TEXT)
   const { me } = useAuth()
   const [leaving, setLeaving] = useState(false)
   /** 서버에 회원 탈퇴 API가 있는지 */
@@ -304,7 +374,7 @@ export function MyPage({ onSignedOut }: Props) {
       showToast(outcome.message)
       return
     }
-    showToast('탈퇴했어요. 그동안 써 주셔서 고마워요.')
+    showToast(pick(TEXT).withdrawn)
     onSignedOut()
   }
 
@@ -320,14 +390,14 @@ export function MyPage({ onSignedOut }: Props) {
   return (
     <main className="flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-2xl px-5 pt-24 pb-20 sm:pt-28">
-        <h1 className="text-[24px] font-semibold leading-snug text-gray-900 sm:text-[30px]">내 정보</h1>
+        <h1 className="text-[24px] font-semibold leading-snug text-gray-900 sm:text-[30px]">{text.title}</h1>
 
-        <Section title="계정">
+        <Section title={text.account}>
           <dl className="divide-y divide-gray-100 border-y border-gray-100 text-[14px]">
             {[
-              { label: '이름', value: me?.name },
-              { label: '이메일', value: me?.email },
-              { label: '가입한 날', value: registered ? formatDate(registered) : undefined },
+              { label: text.name, value: me?.name },
+              { label: text.email, value: me?.email },
+              { label: text.joined, value: registered ? formatDate(registered) : undefined },
             ].map((row) => (
               <div key={row.label} className="flex items-center justify-between gap-4 py-3.5">
                 <dt className="shrink-0 text-gray-500">{row.label}</dt>
@@ -344,18 +414,18 @@ export function MyPage({ onSignedOut }: Props) {
               onClick={() => void handleSignOut()}
               className={`${quiet} bg-gray-100 text-gray-700 hover:text-gray-900 disabled:text-gray-400`}
             >
-              로그아웃
+              {text.signOut}
             </button>
           </div>
         </Section>
 
         <Connections />
 
-        <Section title="로그인한 기기">
+        <Section title={text.devices}>
           <Sessions />
         </Section>
 
-        <Section title="로그인 기록">
+        <Section title={text.history}>
           <LoginHistory />
         </Section>
 
@@ -363,15 +433,15 @@ export function MyPage({ onSignedOut }: Props) {
         {withdrawReady && (
           <div className="mt-10 text-right">
             <button type="button" onClick={() => setAskingWithdraw(true)} className="text-[13px] text-red-500 transition-colors hover:text-red-600">
-              회원탈퇴
+              {text.withdraw}
             </button>
           </div>
         )}
         {askingWithdraw && (
           <ConfirmDialog
-            title="정말 탈퇴할까요?"
-            body="계속하면 계정에 대한 모든 정보가 유실되며, 이 작업은 되돌릴 수 없습니다."
-            confirm="탈퇴하기"
+            title={text.withdrawTitle}
+            body={text.withdrawBody}
+            confirm={text.withdrawConfirm}
             danger
             working={withdrawing}
             onCancel={() => setAskingWithdraw(false)}

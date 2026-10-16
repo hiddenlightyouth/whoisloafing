@@ -2,6 +2,12 @@ import { useCallback, useRef, useState } from 'react'
 import type { AnalyzeRequest, ChatEvent, ChatSnapshot } from '../../shared/types'
 import { repoLabel, track } from '../lib/analytics'
 import { streamAnalysis } from '../lib/api'
+import { messages, pick } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: { disconnected: '서버와 연결이 끊어졌어요. 잠시 뒤에 다시 시도해 주세요.', stopped: '분석을 중단했어요.' },
+  en: { disconnected: 'Lost connection to the server. Please try again in a moment.', stopped: 'Analysis stopped.' },
+})
 
 export type ChatMessage =
   | { id: number; from: 'user'; text: string }
@@ -81,7 +87,7 @@ export function useAnalysis() {
 
       streamAnalysis({ ...current, chatId: chatIdRef.current ?? undefined, userText }, push, controller.signal)
         .catch(() =>
-          push({ type: 'error', text: '서버와 연결이 끊어졌어요. 잠시 뒤에 다시 시도해 주세요.', action: 'retry' }),
+          push({ type: 'error', text: pick(TEXT).disconnected, action: 'retry' }),
         )
         .finally(() => {
           finished = true
@@ -131,7 +137,7 @@ export function useAnalysis() {
 
       if (stoppedRef.current) {
         track('analysis_stop', { repo, question: current.question ?? 'analysis', duration_seconds: Math.round((Date.now() - startedAt) / 1000) })
-        append({ from: 'bot', event: { type: 'error', text: '분석을 중단했어요.', action: 'retry' }, request: current })
+        append({ from: 'bot', event: { type: 'error', text: pick(TEXT).stopped, action: 'retry' }, request: current })
       }
       abortRef.current = null
       wakeRef.current = null

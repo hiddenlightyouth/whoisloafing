@@ -1,5 +1,22 @@
 import { useEffect } from 'react'
 import { track } from '../lib/analytics'
+import { messages, useMessages } from '../lib/i18n'
+
+/** 제목은 사용자가 정한 문구라 그대로 둬요. */
+const TEXT = messages({
+  ko: {
+    title: '심층 분석을 사용할 수 있음',
+    close: '닫기',
+    body: '프로젝트 구조, CI/CD 파이프라인, 템플릿 모두를 분석할 수 있는 심층 분석을 사용해보세요.',
+    go: '심층 분석으로 이동',
+  },
+  en: {
+    title: 'Deep dive is available',
+    close: 'Close',
+    body: 'Try a deep dive to explore the project structure, CI/CD pipeline, and templates in one place.',
+    go: 'Open deep dive',
+  },
+})
 
 const CLOSED_STORAGE = 'whoisloafing:deep-nudge-closed'
 /** 이만큼 닫았으면 더 권하지 않아요. */
@@ -28,6 +45,7 @@ function rememberClose() {
 
 /** 앱에서 레포의 기본 분석이 끝나면 오른쪽 위에 떠서, 같은 레포를 심층 분석으로 볼 수 있다고 알려줘요. */
 export function DeepNudge({ onDeep, onClose }: { onDeep: () => void; onClose: () => void }) {
+  const text = useMessages(TEXT)
   useEffect(() => {
     track('deep_nudge_view')
   }, [])
@@ -39,11 +57,11 @@ export function DeepNudge({ onDeep, onClose }: { onDeep: () => void; onClose: ()
     >
       <div className="flex items-start justify-between gap-3">
         <h2 id="deep-nudge-title" className="text-[14px] font-semibold text-gray-900">
-          심층 분석을 사용할 수 있음
+          {text.title}
         </h2>
         <button
           type="button"
-          aria-label="닫기"
+          aria-label={text.close}
           onClick={() => {
             track('deep_nudge_close')
             rememberClose()
@@ -57,7 +75,7 @@ export function DeepNudge({ onDeep, onClose }: { onDeep: () => void; onClose: ()
         </button>
       </div>
       <p className="mt-1 break-keep text-[13px] leading-relaxed text-gray-500">
-        프로젝트 구조, CI/CD 파이프라인, 템플릿 모두를 분석할 수 있는 심층 분석을 사용해보세요.
+        {text.body}
       </p>
       <button
         type="button"
@@ -67,7 +85,7 @@ export function DeepNudge({ onDeep, onClose }: { onDeep: () => void; onClose: ()
         }}
         className="mt-3.5 h-9 w-full rounded-full bg-brand text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover"
       >
-        심층 분석으로 이동
+        {text.go}
       </button>
     </section>
   )

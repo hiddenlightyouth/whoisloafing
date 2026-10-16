@@ -1,4 +1,10 @@
 import { isApp } from '../lib/app'
+import { messages, useMessages } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: { chat: '채팅을 불러오고 있어요.', loading: '불러오고 있어요.' },
+  en: { chat: 'Loading the chat.', loading: 'Loading.' },
+})
 
 export function Bone({ className = '' }: { className?: string }) {
   return <span aria-hidden className={`block rounded-full bg-gray-100 motion-safe:animate-pulse ${className}`} />
@@ -6,10 +12,11 @@ export function Bone({ className = '' }: { className?: string }) {
 
 export function ChatSkeleton() {
   const bubble = 'rounded-2xl motion-safe:animate-pulse'
+  const text = useMessages(TEXT)
 
   return (
     <main className="flex min-h-0 flex-1 flex-col" aria-busy="true">
-      <span className="sr-only">채팅을 불러오고 있어요.</span>
+      <span className="sr-only">{text.chat}</span>
       <div className={`flex-1 overflow-hidden pt-14 ${isApp ? 'px-6 md:pl-10 xl:pr-[348px]' : 'px-4 sm:px-6'}`} aria-hidden>
         <div className={`flex max-w-2xl flex-col gap-2.5 pt-6 ${isApp ? 'mr-auto' : 'mx-auto'}`}>
           <div className={`${bubble} ml-auto h-11 w-3/5 rounded-br-md bg-brand-soft`} />
@@ -26,6 +33,7 @@ export function ChatSkeleton() {
 
 /** 탐색의 레포 카드와 같은 크기와 배치의 뼈대예요. 목록을 받는 동안 보여줘요. */
 export function ExploreCardsSkeleton({ row = false }: { row?: boolean }) {
+  const text = useMessages(TEXT)
   return (
     <ul
       className={
@@ -35,7 +43,7 @@ export function ExploreCardsSkeleton({ row = false }: { row?: boolean }) {
       }
       aria-busy="true"
     >
-      <li className="sr-only">불러오고 있어요.</li>
+      <li className="sr-only">{text.loading}</li>
       {Array.from({ length: row ? 8 : 12 }, (_, item) => (
         <li key={item} aria-hidden className="flex h-[176px] min-h-0 flex-col rounded-2xl border border-gray-200 bg-white p-5">
           <div className="flex items-center gap-3">

@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react'
 import { track } from '../lib/analytics'
 import { useAppCaptured } from '../lib/app'
 import { useAppSettings } from '../lib/theme'
+import { messages, useMessages } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: { title: '화면 녹화가 감지 됨', body: '녹화가 감지되어 화면을 일시적으로 가렸어요.', note: '이 옵션은 설정에서 끄거나 켤 수 있습니다.', reveal: '가림 해제' },
+  en: { title: 'Screen recording detected', body: 'The screen is hidden for now because recording was detected.', note: 'You can turn this on or off in Settings.', reveal: 'Show screen' },
+})
 
 /**
  * 앱에서 화면 공유나 녹화가 감지되면 화면 전체를 흐리게 가려요. 사용자가 가림 해제를 누르면 그 공유가 끝날 때까지 풀어 두고,
@@ -14,6 +20,7 @@ export function CaptureShield() {
   const active = useAppCaptured()
   /** 이번 공유에서는 계속 보겠다고 했는지 */
   const [allowed, setAllowed] = useState(false)
+  const text = useMessages(TEXT)
 
   // 공유가 끝나면 동의를 지워서, 다음에 공유가 시작될 때 다시 물어봐요.
   useEffect(() => {
@@ -31,12 +38,12 @@ export function CaptureShield() {
     <div data-app-drag role="alertdialog" aria-modal="true" aria-labelledby="capture-shield-title" className="fixed inset-0 z-50 flex items-center justify-center bg-white/70 px-6 backdrop-blur-2xl">
       <div className="w-full max-w-sm text-center">
         <h2 id="capture-shield-title" className="text-[20px] font-semibold text-gray-900">
-          화면 녹화가 감지 됨
+          {text.title}
         </h2>
         <p className="mt-2.5 text-[14px] leading-relaxed break-keep text-gray-600">
-          녹화가 감지되어 화면을 일시적으로 가렸어요.
+          {text.body}
           <br />
-          이 옵션은 설정에서 끄거나 켤 수 있습니다.
+          {text.note}
         </p>
         <button
           type="button"
@@ -47,7 +54,7 @@ export function CaptureShield() {
           }}
           className="mt-6 h-10 rounded-full bg-brand px-6 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover"
         >
-          가림 해제
+          {text.reveal}
         </button>
       </div>
     </div>

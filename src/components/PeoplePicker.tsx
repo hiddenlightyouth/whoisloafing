@@ -1,5 +1,34 @@
 import { useState } from 'react'
 import type { FollowupPerson } from '../../shared/types'
+import { messages, useMessages } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: {
+    customRequest: (names: string[]) => {
+      const named = names.map((name) => `${name}님`)
+      const label = named.length <= 3 ? named.join(', ') : `${named.slice(0, 3).join(', ')} 외 ${named.length - 3}명`
+      return `${label}을 살펴봐 주세요.`
+    },
+    topRequest: (count: number) => `상위 ${count}명만 분석해 주세요.`,
+    top: (count: number) => `상위 ${count}명만 분석하기`,
+    choose: '직접 고르기',
+    hint: (max: number) => `살펴볼 사람을 골라 주세요. 최대 ${max}명까지 고를 수 있어요.`,
+    empty: '사람을 골라 주세요',
+    submit: (count: number) => `고른 ${count}명 분석하기`,
+  },
+  en: {
+    customRequest: (names: string[]) => {
+      const label = names.length <= 3 ? names.join(', ') : `${names.slice(0, 3).join(', ')} and ${names.length - 3} more`
+      return `Please look at ${label}.`
+    },
+    topRequest: (count: number) => `Please analyze the top ${count} only.`,
+    top: (count: number) => `Analyze the top ${count}`,
+    choose: 'Choose people',
+    hint: (max: number) => `Pick who to look at. You can choose up to ${max}.`,
+    empty: 'Pick someone',
+    submit: (count: number) => `Analyze ${count} selected`,
+  },
+})
 
 interface Props {
   people: FollowupPerson[]
@@ -18,6 +47,7 @@ const action =
 export function PeoplePicker({ people, top, max, disabled, onPick }: Props) {
   const [picking, setPicking] = useState(false)
   const [chosen, setChosen] = useState<string[]>([])
+  const text = useMessages(TEXT)
 
   const topPeople = people.slice(0, top)
   const full = chosen.length >= max
@@ -31,11 +61,9 @@ export function PeoplePicker({ people, top, max, disabled, onPick }: Props) {
   function submitChosen() {
     // 순위 순서를 유지해서 보내요.
     const picked = people.filter((person) => chosen.includes(person.id))
-    const names = picked.map((person) => `${person.name}님`)
-    const label = names.length <= 3 ? names.join(', ') : `${names.slice(0, 3).join(', ')} 외 ${names.length - 3}명`
     onPick(
       picked.map((person) => person.id),
-      `${label}을 살펴봐 주세요.`,
+      text.customRequest(picked.map((person) => person.name)),
       'custom',
     )
   }
@@ -49,13 +77,13 @@ export function PeoplePicker({ people, top, max, disabled, onPick }: Props) {
           onClick={() =>
             onPick(
               topPeople.map((person) => person.id),
-              `상위 ${topPeople.length}명만 분석해 주세요.`,
+              text.topRequest(topPeople.length),
               'top',
             )
           }
           className={`${action} bg-brand text-white hover:bg-brand-hover`}
         >
-          상위 {topPeople.length}명만 분석하기
+          {text.top(topPeople.length)}
         </button>
         <button
           type="button"
@@ -64,14 +92,14 @@ export function PeoplePicker({ people, top, max, disabled, onPick }: Props) {
           onClick={() => setPicking((open) => !open)}
           className={`${action} bg-white text-gray-700 hover:text-brand`}
         >
-          직접 고르기
+          {text.choose}
         </button>
       </div>
 
       {picking && !disabled && (
         <div className="mt-3 animate-rise rounded-xl bg-white p-3.5">
           <p className="text-[13px] text-gray-500">
-            살펴볼 사람을 골라 주세요. 최대 {max}명까지 고를 수 있어요.
+            {text.hint(max)}
           </p>
           <div className="mt-2.5 flex flex-wrap gap-1.5">
             {people.map((person, index) => {
@@ -100,7 +128,7 @@ export function PeoplePicker({ people, top, max, disabled, onPick }: Props) {
               onClick={submitChosen}
               className={`${action} bg-brand text-white hover:bg-brand-hover`}
             >
-              {chosen.length === 0 ? '사람을 골라 주세요' : `고른 ${chosen.length}명 분석하기`}
+              {chosen.length === 0 ? text.empty : text.submit(chosen.length)}
             </button>
           </div>
         </div>

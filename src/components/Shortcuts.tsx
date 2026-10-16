@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useShortcutHints } from '../lib/shortcuts'
+import { messages, useMessages } from '../lib/i18n'
+
+const TEXT = messages({ ko: { tip: '을 눌러 단축키 표시' }, en: { tip: 'Hold to show shortcuts' } })
 
 interface KbdProps {
   children: string
@@ -36,6 +39,7 @@ const TIP_MS = 6000
 export function ShortcutTip() {
   const hinting = useShortcutHints()
   const [shown, setShown] = useState(true)
+  const text = useMessages(TEXT)
 
   useEffect(() => {
     if (!shown) return
@@ -56,7 +60,7 @@ export function ShortcutTip() {
     >
       {/* Mac 자판의 Option 키에 그려진 기호예요. */}
       <span className="rounded-[4px] border border-white/30 px-1 py-px text-[10.5px] leading-none">⌥ option</span>
-      을 눌러 단축키 표시
+      {text.tip}
     </p>
   )
 }
