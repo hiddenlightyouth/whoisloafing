@@ -32,6 +32,8 @@ export interface ServerConfig {
   deepStack: boolean
   /** 서버에 포트폴리오 만들기 API가 있는지. 없으면 앱의 사이드바에서 포트폴리오 만들기를 숨겨요. */
   portfolio: boolean
+  /** 서버에 이력서 만들기 API가 있는지. 없으면 앱의 사이드바에서 이력서 만들기를 숨겨요. */
+  resume: boolean
 }
 
 /** 서버가 어떤 기능을 지원하는지 물어봐요. */
@@ -53,9 +55,10 @@ export async function fetchConfig(): Promise<ServerConfig> {
       withdraw: result.ok && result.data?.withdraw === true,
       deepStack: result.ok && result.data?.deepStack === true,
       portfolio: result.ok && result.data?.portfolio === true,
+      resume: result.ok && result.data?.resume === true,
     }
   } catch {
-    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false, clubs: false, githubClientId: null, kakaoClientId: null, socialAppLink: false, socialUnlink: false, withdraw: false, deepStack: false, portfolio: false }
+    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false, clubs: false, githubClientId: null, kakaoClientId: null, socialAppLink: false, socialUnlink: false, withdraw: false, deepStack: false, portfolio: false, resume: false }
   }
 }
 

@@ -111,6 +111,7 @@ export function AppFrame({ sidebarOpen, onToggleSidebar, sidebar, children }: Pr
       onLogin={closing(sidebar.onLogin)}
       onDeep={closing(sidebar.onDeep)}
       onPortfolio={closing(sidebar.onPortfolio)}
+      onResume={closing(sidebar.onResume)}
       onExplore={closing(sidebar.onExplore)}
       onDeepRepo={closing(sidebar.onDeepRepo)}
       onAdmin={closing(sidebar.onAdmin)}

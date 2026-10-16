@@ -146,8 +146,8 @@ export default function App() {
   // 로그인 화면에서 로그인하면, 보던 채팅이 있으면 그리로 돌아가고 아니면 내 작업으로 가요.
   const [claimWhenIdle, setClaimWhenIdle] = useState(false)
   const handleSignedIn = useCallback(() => {
-    // 포트폴리오 주소에서 로그인했으면 그 화면을 그대로 이어서 보여줘요.
-    if (page?.kind === 'portfolio') return
+    // 포트폴리오나 이력서 주소에서 로그인했으면 그 화면을 그대로 이어서 보여줘요.
+    if (page?.kind === 'portfolio' || page?.kind === 'resume') return
     const id = loginReturn.current?.id
     if (!id) {
       // 웹의 /app에서는 내 작업을 사이드바가 보여줘서, 새 분석 화면으로 가요.
@@ -438,7 +438,7 @@ export default function App() {
       sidebar={{
         activeChatId: page ? null : chatIdFromPath(),
         page:
-          page?.kind === 'deep' || page?.kind === 'portfolio' || page?.kind === 'explore' || page?.kind === 'admin'
+          page?.kind === 'deep' || page?.kind === 'portfolio' || page?.kind === 'resume' || page?.kind === 'explore' || page?.kind === 'admin'
             ? page.kind
             : account === 'me'
               ? 'me'
@@ -449,6 +449,7 @@ export default function App() {
         onExplore: exploreReady ? () => openExplore() : undefined,
         // 포트폴리오는 내 작업의 채팅으로 만들어서, 로그인했을 때만 보여줘요.
         onPortfolio: config?.portfolio && tokens !== null ? () => openPortfolio(null) : undefined,
+        onResume: config?.resume && tokens !== null ? () => openAppPage('/resume') : undefined,
         onDeepRepo: deep
           ? (repo) => {
               track('deep_open', { from: 'sidebar', repo })
@@ -456,7 +457,7 @@ export default function App() {
             }
           : undefined,
         onAdmin: isAdmin(me) ? () => openAdmin() : undefined,
-        refreshKey: `${busy}:${account ?? ''}:${page?.kind === 'deep' ? 'deep' : ''}:${page?.kind === 'portfolio' ? 'portfolio' : ''}:${page?.kind === 'explore' ? 'explore' : ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`,
+        refreshKey: `${busy}:${account ?? ''}:${page?.kind === 'deep' ? 'deep' : ''}:${page?.kind === 'portfolio' || page?.kind === 'resume' ? page.kind : ''}:${page?.kind === 'explore' ? 'explore' : ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`,
         onNew: handleHome,
         onOpenChat: (id) => {
           if (id === chatId.current && !page) return

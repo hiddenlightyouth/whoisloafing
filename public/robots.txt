@@ -8,6 +8,7 @@ Disallow: /app-login
 Disallow: /auth/
 Disallow: /deep
 Disallow: /portfolio
+Disallow: /resume
 Disallow: /explore
 Disallow: /admin
 Disallow: /app/

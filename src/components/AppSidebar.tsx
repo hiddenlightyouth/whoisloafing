@@ -20,6 +20,7 @@ const TEXT = messages({
     new: '새 분석',
     explore: '탐색',
     portfolio: '포트폴리오 만들기',
+    resume: '이력서 만들기',
     me: '내 정보',
     admin: '관리자',
     signOut: '로그아웃',
@@ -35,6 +36,7 @@ const TEXT = messages({
     new: 'New analysis',
     explore: 'Explore',
     portfolio: 'Build a portfolio',
+    resume: 'Build a resume',
     me: 'Account',
     admin: 'Admin',
     signOut: 'Sign out',
@@ -49,7 +51,7 @@ interface Props {
   /** 지금 열려 있는 채팅. 목록에서 강조해요. */
   activeChatId: string | null
   /** 지금 보고 있는 화면. 아래쪽 링크를 강조해요. */
-  page: 'deep' | 'portfolio' | 'explore' | 'articles' | 'me' | 'admin' | null
+  page: 'deep' | 'portfolio' | 'resume' | 'explore' | 'articles' | 'me' | 'admin' | null
   /** 값이 바뀌면 목록을 다시 받아요. */
   refreshKey: string
   onNew: () => void
@@ -57,6 +59,8 @@ interface Props {
   onDeep?: () => void
   /** 포트폴리오 만들기 화면을 열어요. 서버에 포트폴리오 API가 없으면 넘기지 않고, 그때는 버튼을 숨겨요. */
   onPortfolio?: () => void
+  /** 이력서 만들기 화면을 열어요. 서버에 이력서 API가 없으면 넘기지 않고, 그때는 버튼을 숨겨요. */
+  onResume?: () => void
   /** 탐색 화면을 열어요. 서버에 탐색 API가 없으면 넘기지 않고, 그때는 버튼을 숨겨요. */
   onExplore?: () => void
   /** 내 작업의 채팅에서 그 레포의 심층 분석으로 바로 가요. 서버에 심층 분석 API가 없으면 넘기지 않아요. */
@@ -214,7 +218,7 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
 }
 
 /** 앱 화면 왼쪽의 사이드바예요. 새 분석, 내 작업 목록과 관리, 아티클과 내 정보로 가는 링크가 있어요. */
-export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPortfolio, onExplore, onOpenChat, onDeepRepo, onChatChanged, onMe, onSettings, settingsOpen, onAdmin, signedIn, onLogin }: Props) {
+export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPortfolio, onResume, onExplore, onOpenChat, onDeepRepo, onChatChanged, onMe, onSettings, settingsOpen, onAdmin, signedIn, onLogin }: Props) {
   const { me } = useAuth()
   const list = useMessages(CHAT_LIST_TEXT)
   const text = useMessages(TEXT)
@@ -404,6 +408,25 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
               <path d="M5.5 4.5v-1a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v1M2 8.5h12" />
             </svg>
             <span className="flex-1">{text.portfolio}</span>
+          </a>
+        )}
+        {onResume && (
+          <a
+            href="/resume"
+            aria-current={page === 'resume' ? 'page' : undefined}
+            onClick={(event) => {
+              if (!plain(event)) return
+              event.preventDefault()
+              track('resume_open', { from: 'sidebar' })
+              onResume()
+            }}
+            className={`${link} mt-1.5 gap-2 ${tone(page === 'resume')}`}
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round" className="size-4" aria-hidden="true">
+              <path d="M4 1.75h5.5L12.5 4.75v9a.75.75 0 0 1-.75.75h-7.5a.75.75 0 0 1-.75-.75V2.5a.75.75 0 0 1 .75-.75Z" />
+              <path d="M6 7.5h4.5M6 10h4.5M6 5h2" />
+            </svg>
+            <span className="flex-1">{text.resume}</span>
           </a>
         )}
       </div>

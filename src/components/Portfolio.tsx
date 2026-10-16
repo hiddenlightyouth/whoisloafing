@@ -386,7 +386,7 @@ function Check({ on }: { on: boolean }) {
   )
 }
 
-function PeopleList({ people, person, onPick, onRetry }: {
+export function PeopleList({ people, person, onPick, onRetry }: {
   people: PortfolioPerson[] | 'loading' | { error: string } | null
   person: string | null
   onPick: (id: string) => void

@@ -31,6 +31,7 @@ function trackPage(page: Page) {
   switch (page.kind) {
     case 'about':
     case 'app-login':
+    case 'resume':
       return trackPageView(page.kind)
     case 'deep':
     case 'portfolio':

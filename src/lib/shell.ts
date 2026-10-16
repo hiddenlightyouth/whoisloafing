@@ -12,7 +12,7 @@ export const isApp = typeof navigator !== 'undefined' && /WhoIsLoafingApp\//.tes
 const APP_PREFIX = /^\/app(?=\/|$)/
 
 /** 웹에서는 /app 아래에서만 여는 화면이에요. 예전 주소(/c/아이디, /login 등)로 들어오면 /app을 붙여서 열어요. */
-const APP_ROUTES = /^\/(?:c|login|signup|me|history|deep|portfolio|explore|admin)(?=\/|$)/
+const APP_ROUTES = /^\/(?:c|login|signup|me|history|deep|portfolio|resume|explore|admin)(?=\/|$)/
 
 if (browser && !isApp) {
   const { pathname, search, hash } = window.location

@@ -47,6 +47,11 @@ export function portfolioFromPath(): { repo: string | null } | null {
   return match ? { repo: match[1] ? `${match[1]}/${match[2]}` : null } : null
 }
 
+const RESUME_PATH = /^\/resume\/?$/
+
+/** 이력서 만들기 주소인지 */
+export const resumeFromPath = () => RESUME_PATH.test(currentPath())
+
 const EXPLORE_PATH = /^\/explore(?:\/(clubs|global))?\/?$/
 
 /** 탐색 화면 주소면 보고 있는 갈래를 돌려줘요. */
@@ -69,13 +74,14 @@ export type Page =
   | { kind: 'app-login' }
   | { kind: 'deep'; repo: string | null }
   | { kind: 'portfolio'; repo: string | null }
+  | { kind: 'resume' }
   | { kind: 'explore'; category: ExploreCategory }
   | { kind: 'admin'; tab: AdminTab }
   | { kind: 'account'; page: AccountPage }
   | { kind: 'article'; slug: string | null }
 
-/** 심층 분석, 포트폴리오 만들기, 탐색, 관리자 화면은 앱 화면(macOS 앱, 웹의 /app)에서만 써요. 심층 분석은 웹의 /app에서 앱을 권하는 안내만 보여줘요. */
-export const isAppOnly = (page: Page) => page.kind === 'deep' || page.kind === 'portfolio' || page.kind === 'explore' || page.kind === 'admin'
+/** 심층 분석, 포트폴리오 만들기, 이력서 만들기, 탐색, 관리자 화면은 앱 화면(macOS 앱, 웹의 /app)에서만 써요. 심층 분석은 웹의 /app에서 앱을 권하는 안내만 보여줘요. */
+export const isAppOnly = (page: Page) => page.kind === 'deep' || page.kind === 'portfolio' || page.kind === 'resume' || page.kind === 'explore' || page.kind === 'admin'
 
 /** 주소에서 지금 보여줄 화면을 읽어요. 앱 전용 화면인지는 따지지 않아요. */
 export function pageFromPath(): Page | null {
@@ -85,6 +91,7 @@ export function pageFromPath(): Page | null {
   if (deep) return { kind: 'deep', repo: deep.repo }
   const portfolio = portfolioFromPath()
   if (portfolio) return { kind: 'portfolio', repo: portfolio.repo }
+  if (resumeFromPath()) return { kind: 'resume' }
   const category = exploreFromPath()
   if (category) return { kind: 'explore', category }
   const tab = adminFromPath()

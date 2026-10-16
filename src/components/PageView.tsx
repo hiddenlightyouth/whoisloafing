@@ -17,6 +17,7 @@ const DeepAppOnly = lazy(() => import('./DeepAppOnly').then((module) => ({ defau
 
 // 포트폴리오 만들기도 앱에서만 쓰는 화면이라, 열 때만 받아요.
 const Portfolio = lazy(() => import('./Portfolio').then((module) => ({ default: module.Portfolio })))
+const Resume = lazy(() => import('./Resume').then((module) => ({ default: module.Resume })))
 
 const Explore = lazy(() => import('./Explore').then((module) => ({ default: module.Explore })))
 
@@ -54,7 +55,7 @@ interface Props {
   clubs: boolean
   adminApi: boolean
   feedback: boolean
-  /** 로그인했는지. 웹의 /app에서 로그인하지 않고 포트폴리오 주소로 들어오면 로그인 화면을 보여줘요. */
+  /** 로그인했는지. 웹의 /app에서 로그인하지 않고 포트폴리오나 이력서 주소로 들어오면 로그인 화면을 보여줘요. */
   signedIn: boolean
 }
 
@@ -80,8 +81,8 @@ export function PageView({
   feedback,
   signedIn,
 }: Props) {
-  // 포트폴리오는 내 작업의 채팅으로 만들어서 로그인해야 써요. 로그인하면 이 화면을 이어서 보여줘요.
-  const accountPage = page.kind === 'account' ? page.page : page.kind === 'portfolio' && !signedIn ? 'login' : null
+  // 포트폴리오와 이력서는 내 작업의 채팅으로 만들어서 로그인해야 써요. 로그인하면 이 화면을 이어서 보여줘요.
+  const accountPage = page.kind === 'account' ? page.page : (page.kind === 'portfolio' || page.kind === 'resume') && !signedIn ? 'login' : null
   return (
     <Suspense fallback={<main className="flex-1" />}>
       {page.kind === 'app-login' ? (
@@ -92,6 +93,8 @@ export function PageView({
         <Deep repo={page.repo} onOpen={(repo) => onDeep(repo)} onNew={onHome} refreshKey={chatsVersion} chatHint={deepChatHint} />
       ) : page.kind === 'portfolio' && signedIn ? (
         <Portfolio repo={page.repo} onOpen={onPortfolio} onNew={onHome} refreshKey={chatsVersion} />
+      ) : page.kind === 'resume' && signedIn ? (
+        <Resume onNew={onHome} refreshKey={chatsVersion} />
       ) : page.kind === 'explore' ? (
         <Explore category={page.category} onCategory={onExplore} clubs={clubs} onPick={onExplorePick} />
       ) : page.kind === 'admin' ? (

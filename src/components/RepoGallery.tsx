@@ -14,6 +14,7 @@ const TEXT = messages({
     start: '새 분석 시작하기',
     working: '처리 중',
     more: '더 보기',
+    back: '뒤로 가기',
   },
   en: {
     newAnalysis: 'New analysis',
@@ -23,6 +24,7 @@ const TEXT = messages({
     start: 'Start a new analysis',
     working: 'Working',
     more: 'Show more',
+    back: 'Back',
   },
 })
 
@@ -33,7 +35,13 @@ interface RepoCard {
 }
 
 /** 링크를 다시 적지 않고, 채팅으로 분석해 둔 레포 중에서 골라요. */
-export function RepoGallery({ title, onOpen, onNew }: { title: string; onOpen: (repo: string) => void; onNew: () => void }) {
+export function RepoGallery({ title, onOpen, onNew, onBack }: {
+  title: string
+  onOpen: (repo: string) => void
+  onNew: () => void
+  /** 넘기면 제목 왼쪽에 뒤로 가기 버튼을 둬요. 이력서 만들기처럼 갤러리가 첫 화면이 아닐 때 써요. */
+  onBack?: () => void
+}) {
   const L = useMessages(TEXT)
   const [cards, setCards] = useState<RepoCard[] | null>(null)
   const [nextPage, setNextPage] = useState<number | null>(0)
@@ -67,7 +75,21 @@ export function RepoGallery({ title, onOpen, onNew }: { title: string; onOpen: (
   return (
     <main className="min-h-0 flex-1 overflow-y-auto px-6 pt-14 pb-10 md:px-10">
       <div className="flex items-center justify-between gap-4 pt-6">
-        <h1 className="text-[22px] leading-snug font-semibold text-gray-900">{title}</h1>
+        <div className="flex min-w-0 items-center gap-2">
+          {onBack && (
+            <button
+              type="button"
+              aria-label={L.back}
+              onClick={onBack}
+              className="-ml-2 flex size-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+            >
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" className="size-4" aria-hidden="true">
+                <path d="M10 3.5L5.5 8 10 12.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          )}
+          <h1 className="truncate text-[22px] leading-snug font-semibold text-gray-900">{title}</h1>
+        </div>
         <button type="button" onClick={onNew} className={toolButton}>
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
             <path d="M8 3v10M3 8h10" />
