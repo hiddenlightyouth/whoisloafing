@@ -10,7 +10,7 @@ import { showToast } from '../lib/toast'
 import { CHAT_LIST_TEXT, copyChatLink, DeleteDialog } from './History'
 import { Kbd } from './Shortcuts'
 import { Bone } from './Skeleton'
-import { messages, pick, useLang, useMessages } from '../lib/i18n'
+import { messages, pick, useMessages } from '../lib/i18n'
 
 const TEXT = messages({
   ko: {
@@ -27,7 +27,6 @@ const TEXT = messages({
     bug: '버그 신고',
     login: '로그인',
     signedOut: '로그인하여 분석 결과를 저장하세요',
-    intro: 'WhoIsLoafing 소개로',
   },
   en: {
     sharedChat: 'Shared chat',
@@ -43,7 +42,6 @@ const TEXT = messages({
     bug: 'Report a bug',
     login: 'Sign in',
     signedOut: 'Sign in to save your analyses',
-    intro: 'Back to the WhoIsLoafing intro',
   },
 })
 
@@ -218,7 +216,6 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
 /** 앱 화면 왼쪽의 사이드바예요. 새 분석, 내 작업 목록과 관리, 아티클과 내 정보로 가는 링크가 있어요. */
 export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPortfolio, onExplore, onOpenChat, onDeepRepo, onChatChanged, onMe, onSettings, settingsOpen, onAdmin, signedIn, onLogin }: Props) {
   const { me } = useAuth()
-  const lang = useLang()
   const list = useMessages(CHAT_LIST_TEXT)
   const text = useMessages(TEXT)
   const [chats, setChats] = useState<ChatSummary[] | null>(null)
@@ -319,9 +316,17 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
   return (
     <aside className="relative z-30 flex w-64 shrink-0 flex-col border-r border-gray-200 bg-gray-50">
       {isWebApp ? (
-        // 웹에서는 왼쪽 위의 사이드바 버튼 옆에 로고를 두고, 누르면 소개 화면으로 가요. 높이는 헤더와 맞춰요.
+        // 웹에서는 왼쪽 위의 사이드바 버튼 옆에 로고를 두고, 누르면 새 분석 화면으로 가요. 높이는 헤더와 맞춰요.
         <div className="flex h-14 shrink-0 items-center pl-12">
-          <a href={lang === 'en' ? '/en' : '/'} aria-label={text.intro} className="inline-flex items-center">
+          <a
+            href="/app"
+            onClick={(event) => {
+              if (!plain(event)) return
+              event.preventDefault()
+              onNew()
+            }}
+            className="inline-flex items-center"
+          >
             <img src="/logo.svg" alt="WhoIsLoafing" width={3403} height={367} draggable={false} className="h-[13px] w-auto translate-y-px" />
           </a>
         </div>
