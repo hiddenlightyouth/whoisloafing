@@ -1,5 +1,6 @@
 import { Marked } from 'marked'
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useDismiss } from '../hooks/useDismiss'
 import { track } from '../lib/analytics'
 import {
   clearPortfolio,
@@ -19,7 +20,7 @@ import {
   type SavedPortfolio,
 } from '../lib/portfolio'
 import { showToast } from '../lib/toast'
-import { ConfirmDialog } from './AdminParts'
+import { ConfirmDialog } from './Dialog'
 import { MapMenu, toolButton } from './DeepParts'
 import { RepoGallery } from './RepoGallery'
 import { Bone } from './Skeleton'
@@ -841,22 +842,8 @@ function RevisionPicker({ onPick, onClose }: { onPick: (revision: RevisionKey) =
   const L = useMessages(TEXT)
   const ref = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as HTMLElement
-      // 고치기 버튼을 다시 누른 것은 버튼이 알아서 닫아요.
-      if (!ref.current?.contains(target) && !target.closest('[aria-expanded="true"]')) onClose()
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('pointerdown', onPointerDown, true)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown, true)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [onClose])
+  // 고치기 버튼을 다시 누른 것은 버튼이 알아서 닫아요.
+  useDismiss(true, ref, onClose, { capture: true, ignore: (target) => !!target.closest('[aria-expanded="true"]') })
 
   return (
     <div ref={ref} role="dialog" aria-label={L.reviseTitle} className="origin-top animate-pop border-t border-gray-100 px-3 pt-2.5 pb-3">

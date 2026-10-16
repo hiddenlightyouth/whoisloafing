@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useDismiss } from '../hooks/useDismiss'
 import { track } from '../lib/analytics'
 import { canPinChats, deleteChat, pinChat, reorderPinned, unshareChat } from '../lib/api'
 import { fetchMyChats, type ChatSummary } from '../lib/auth'
 import { formatWhen } from '../lib/format'
 import { showToast } from '../lib/toast'
+import { ConfirmDialog } from './Dialog'
 import { Bone } from './Skeleton'
 import { messages, pick, useMessages } from '../lib/i18n'
 
@@ -120,53 +122,16 @@ export async function copyChatLink(id: string): Promise<boolean> {
 /** 채팅을 지우기 전에 한 번 더 묻는 창이에요. */
 export function DeleteDialog({ chat, working, onCancel, onConfirm }: { chat: ChatSummary; working: boolean; onCancel: () => void; onConfirm: () => void }) {
   const text = useMessages(CHAT_LIST_TEXT)
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCancel()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onCancel])
-
   return (
-    <div
-      className="fixed inset-0 animate-fade z-30 flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
-      onPointerDown={(event) => {
-        if (event.target === event.currentTarget) onCancel()
-      }}
-    >
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="delete-dialog-title"
-        className="w-full max-w-xs animate-pop rounded-2xl border border-gray-200 bg-white p-5"
-      >
-        <h2 id="delete-dialog-title" className="text-[15px] font-semibold text-gray-900">
-          {text.deleteTitle}
-        </h2>
-        <p className="mt-1.5 break-keep text-[13px] leading-relaxed text-gray-500 [overflow-wrap:anywhere]">
-          {text.deleteBody(chat.repoName, chat.shared)}
-        </p>
-        <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="h-9 rounded-full px-3.5 text-[13px] font-medium text-gray-600 transition-colors hover:text-gray-900"
-          >
-            {text.cancel}
-          </button>
-          <button
-            type="button"
-            autoFocus
-            disabled={working}
-            onClick={onConfirm}
-            className="h-9 rounded-full bg-red-500 px-4 text-[13px] font-semibold text-white transition-colors hover:bg-red-600 disabled:bg-gray-200 disabled:text-gray-400"
-          >
-            {working ? text.working : text.delete}
-          </button>
-        </div>
-      </div>
-    </div>
+    <ConfirmDialog
+      title={text.deleteTitle}
+      body={text.deleteBody(chat.repoName, chat.shared)}
+      confirm={text.delete}
+      danger
+      working={working}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+    />
   )
 }
 
@@ -192,21 +157,7 @@ function ChatRow({ chat, menuOpen, working, onOpen, onToggleMenu, onCloseMenu, o
   const menuRef = useRef<HTMLDivElement>(null)
 
   // 메뉴가 열려 있을 때 바깥을 누르거나 Esc를 누르면 닫아요.
-  useEffect(() => {
-    if (!menuOpen) return
-    const onPointerDown = (event: PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) onCloseMenu()
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCloseMenu()
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [menuOpen, onCloseMenu])
+  useDismiss(menuOpen, menuRef, onCloseMenu)
 
   const item = 'block w-full rounded-xl px-3 py-2 text-left text-[13px] font-medium transition-colors hover:bg-gray-50 disabled:text-gray-400'
 

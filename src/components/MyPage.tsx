@@ -16,7 +16,7 @@ import {
 import { formatDate, formatDateTime, parseServerTime } from '../lib/format'
 import { loadConfig } from '../lib/api'
 import { showToast } from '../lib/toast'
-import { ConfirmDialog } from './AdminParts'
+import { ConfirmDialog } from './Dialog'
 import { isApp } from '../lib/app'
 import { SOCIAL_LABELS, type SocialProvider } from '../lib/social'
 import { IpPlace } from './IpPlace'

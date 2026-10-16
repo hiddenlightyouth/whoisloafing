@@ -4,7 +4,8 @@ import { deleteAdminChat, fetchAdminChats, unshareAdminChat, type AdminChat, typ
 import { formatWhen } from '../lib/format'
 import { showToast } from '../lib/toast'
 import { tag } from './DeepParts'
-import { ConfirmDialog, Empty, Failed, full, MoreButton, rowButton, RowsSkeleton, SearchBox, Segmented, tableWrap, td, th, useDebounced, usePaged } from './AdminParts'
+import { ConfirmDialog } from './Dialog'
+import { Empty, Failed, full, MoreButton, rowButton, RowsSkeleton, SearchBox, Segmented, tableWrap, td, th, useDebounced, usePaged } from './AdminParts'
 import { messages, pick, useMessages } from '../lib/i18n'
 
 const TEXT = messages({

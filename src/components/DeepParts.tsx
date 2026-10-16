@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import { useDismiss } from '../hooks/useDismiss'
 import { track } from '../lib/analytics'
 import { Kbd } from './Shortcuts'
 import { messages, useMessages } from '../lib/i18n'
@@ -109,23 +110,9 @@ export function MapMenu({ label, value, active = false, groups, onOpen }: {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (!open) return
-    const onPointerDown = (event: PointerEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setOpen(false)
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    // 맵은 끌어서 옮기는 동작과 겹치지 않게 메뉴 줄의 누름을 바깥으로 흘려보내지 않아요.
-    // 그래서 흘러나오기 전에(캡처 단계에서) 먼저 받아야, 옆의 다른 메뉴를 눌렀을 때도 이 메뉴가 닫혀요.
-    document.addEventListener('pointerdown', onPointerDown, true)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown, true)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [open])
+  // 맵은 끌어서 옮기는 동작과 겹치지 않게 메뉴 줄의 누름을 바깥으로 흘려보내지 않아요.
+  // 그래서 흘러나오기 전에(캡처 단계에서) 먼저 받아야, 옆의 다른 메뉴를 눌렀을 때도 이 메뉴가 닫혀요.
+  useDismiss(open, ref, () => setOpen(false), { capture: true })
 
   return (
     <div ref={ref} className="relative">

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react'
+import { useDismiss } from '../hooks/useDismiss'
 import { track } from '../lib/analytics'
 import { canPinChats, deleteChat, pinChat, reorderPinned, unshareChat } from '../lib/api'
 import { fetchMyChats, signOut, useAuth, type ChatSummary, type Me } from '../lib/auth'
@@ -98,21 +99,7 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
   const text = useMessages(TEXT)
 
   // 메뉴가 열려 있을 때 바깥을 누르거나 Esc를 누르면 닫아요.
-  useEffect(() => {
-    if (!menuOpen) return
-    const onPointerDown = (event: PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) onCloseMenu()
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCloseMenu()
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [menuOpen, onCloseMenu])
+  useDismiss(menuOpen, menuRef, onCloseMenu)
 
   return (
     <li ref={menuRef} className={`group relative flex items-center rounded-xl transition-colors ${tone(active || menuOpen)}`}>
@@ -466,21 +453,7 @@ function AccountMenu({ me, page, onMe, onSettings, settingsOpen, onAdmin }: { me
   const text = useMessages(TEXT)
   const name = me?.name || text.me
 
-  useEffect(() => {
-    if (!open) return
-    const onPointerDown = (event: PointerEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setOpen(false)
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [open])
+  useDismiss(open, ref, () => setOpen(false))
 
   const go = (action: () => void) => () => {
     setOpen(false)

@@ -82,6 +82,8 @@ src/
   lib/feedback.ts     평가와 버그 신고 보내기, 버그 신고 창 열기, 평가를 물어볼 때인지 세기
   lib/admin.ts        관리자 API 호출(현황, 회원, 채팅, AI 사용량과 호출 기록)과 응답 타입, 한국 날짜 계산
   lib/geo.ts          IP 주소의 대략적인 위치 알아내기(공개 서비스 ipwho.is)와 이 기기에 적어 두기
+  lib/storage.ts      localStorage 읽고 쓰기. 막혀 있거나 가득 차도 오류 없이 넘어가요(readItem, writeItem, readJson, writeJson, readFlag, writeFlag). 새로 저장하는 값도 이것을 써요.
+  lib/routes.ts       주소에서 지금 보여줄 화면 읽기(채팅, 아티클, 소개, 계정, 심층 분석, 포트폴리오, 탐색, 관리자)
   lib/format.ts       서버 시각을 "오늘 오후 3:12", "어제", "10월 3일" 같은 말로 바꾸기
   lib/analytics.ts    Google Analytics 이벤트 전송
   lib/toast.ts        화면 아래에 잠깐 뜨는 안내(토스트) 저장소
@@ -115,6 +117,8 @@ src/
   components/DeepParts.tsx   심층 분석에서 같이 쓰는 탭, 원문 칸, 복사 버튼
   lib/articles.ts     아티클 마크다운 읽기와 변환
   hooks/useAnalysis.ts  채팅 메시지 큐, 입력 중 표시 타이밍
+  hooks/useDismiss.ts   열려 있는 메뉴를 바깥을 누르거나 Esc를 누르면 닫기. 새 메뉴와 펼쳐지는 칸도 이것을 써요.
+  components/Dialog.tsx 화면을 덮고 가운데에 뜨는 창(Modal)과 한 번 더 묻는 확인 창(ConfirmDialog). 새 창은 직접 막과 Esc 처리를 만들지 않고 이것을 써요.
   components/About.tsx       소개 화면 (/about)
   components/         Header, Logo, Hero, Footer, AppNudge, ContributionBackdrop, RepoInput, Chat, Bubble, TypingDots, RichText, Articles, PeoplePicker, AssistantOrb, LeaveDialog, RankingCarousel, StatsCard, SummaryChart, Charts, Followup, Account, AuthForm, MyPage, History, LoginNudge, Skeleton, Toast
 ```
@@ -289,7 +293,7 @@ macOS 앱(hiddenlightyouth/whoisloafing-app)은 이 서비스를 창 안의 웹�
 - 탭은 현황(`/admin`), 회원(`/admin/users`), 채팅(`/admin/chats`), 피드백(`/admin/feedback`), AI 사용량(`/admin/ai`) 다섯 개예요. 탭마다 주소가 달라서 뒤로 가기로 앞의 탭에 돌아가요. 단축키 1부터 5로도 바꿔요. 피드백 탭은 서버의 `/config`가 `feedback: true`를 돌려줄 때만 보여줘요.
 - 서버의 `/config`가 `admin: true`를 돌려줄 때만 네 탭을 다 보여줘요. 관리자 API가 없는 예전 서버에서는 탭 없이 AI 사용량의 합계와 그래프만 보여줘서, 화면이 서버보다 먼저 배포되어도 열리지 않는 탭이 나오지 않아요.
 - 고르는 칸(기간, 그래프 값, 목록 필터)은 모두 같은 모양(`Segmented`)이에요. 목록은 20개씩 더 보기로 받고, 검색어는 잠깐 멈췄을 때 보내요. 받는 동안에는 같은 배치의 스켈레톤을, 받지 못하면 안내와 다시 시도하기 버튼을 보여줘요.
-- 되돌리기 어려운 작업은 모두 확인 창(`ConfirmDialog`)으로 한 번 더 묻고, 결과는 토스트로 알려줘요. 지우기와 정지처럼 위험한 작업의 버튼만 빨간색이에요.
+- 되돌리기 어려운 작업은 모두 확인 창(`Dialog`의 `ConfirmDialog`)으로 한 번 더 묻고, 결과는 토스트로 알려줘요. 지우기와 정지처럼 위험한 작업의 버튼만 빨간색이에요.
 
 현황 탭(`AdminOverview`)
 
@@ -490,7 +494,7 @@ AI 사용량 탭(`AdminUsage`)
 - 움직임 줄이기 설정에서는 모두 바로 나타나요.
 - 심층 분석도 같은 움직임을 써요. 갤러리의 카드는 차례로 떠오르고, CI/CD와 템플릿 탭의 내용은 떠오르고, 오른쪽 채팅 칸은 옆에서 들어와요. 구조 맵은 처음 그릴 때 뿌리에서부터 가지가 차례로 뻗어 나오듯 칸이 통 하고 나타나고(깊은 칸일수록 조금 늦게), 그 뒤에 펼친 칸은 바로 통 하고 나타나요. 칸이 자리를 옮길 때는 움직이지 않아요. 앱의 웹뷰(Safari)는 가지를 잇는 선의 모양을 부드럽게 바꾸지 못해서, 칸만 미끄러지면 선과 어긋나기 때문이에요.
 - `animate-pop`과 `animate-fade`는 끝의 투명도를 정해 두지 않아요. 흐리게 둔 요소(맵에서 손대지 않은 폴더)가 제 투명도로 돌아가게 하려는 거예요.
-- 화면 전체를 덮는 확인 창은 움직이는 요소(`animate-*`가 붙은 요소) 안에 그리지 않아요. 그 안에서는 `fixed`가 화면이 아니라 그 요소를 기준으로 잡혀서, 뒤를 가리는 막과 블러가 화면 일부에만 깔려요. 그런 자리에서 띄워야 하면 `createPortal`로 `document.body`에 그려요(탐색의 확인 창, 관리자 화면의 `ConfirmDialog`).
+- 화면 전체를 덮는 확인 창은 움직이는 요소(`animate-*`가 붙은 요소) 안에 그리지 않아요. 그 안에서는 `fixed`가 화면이 아니라 그 요소를 기준으로 잡혀서, 뒤를 가리는 막과 블러가 화면 일부에만 깔려요. 그래서 화면을 덮는 창은 모두 `Dialog`의 `Modal`로 그리고, `Modal`은 늘 `createPortal`로 `document.body`에 그려요.
 - 사라질 때의 움직임은 아직 없어요. 닫으면 바로 사라져요. 앱의 사이드바를 접고 펼 때도 움직임을 두지 않아요.
 
 ## 다국어

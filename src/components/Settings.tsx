@@ -1,5 +1,6 @@
-import { useEffect, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { track } from '../lib/analytics'
+import { Modal } from './Dialog'
 import { appAtLeast, appVersion, postToApp, type AppTheme } from '../lib/app'
 import { setShortcutHintsPinned, useShortcutHintsPinned } from '../lib/shortcuts'
 import { setAppBackdrop, setAppShield, setAppTheme, useAppSettings } from '../lib/theme'
@@ -114,117 +115,102 @@ export function Settings({ onClose }: { onClose: () => void }) {
   const lang = useLang()
   const text = useMessages(TEXT)
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onClose])
-
   return (
-    <div
-      className="fixed inset-0 animate-fade z-40 flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
-      onPointerDown={(event) => {
-        if (event.target === event.currentTarget) onClose()
-      }}
-    >
-      <div role="dialog" aria-modal="true" aria-labelledby="settings-title" className="flex max-h-[85dvh] w-full max-w-lg animate-pop flex-col rounded-2xl border border-gray-200 bg-white">
-        <div className="flex shrink-0 items-center justify-between px-6 pt-5 pb-4">
-          <h2 id="settings-title" className="text-[17px] font-semibold text-gray-900">
-            {text.title}
-          </h2>
-          <button type="button" aria-label={text.close} onClick={onClose} className="-mr-2 flex size-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-4" aria-hidden="true">
-              <path d="M4 4l8 8M12 4l-8 8" />
-            </svg>
-          </button>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
-
-        <Section title={text.display}>
-          <Row label={text.theme}>
-            <Segmented
-              label={text.theme}
-              value={theme}
-              options={THEMES.map((value) => [value, text.themes[value]])}
-              onChange={(value) => {
-                track('app_theme_change', { theme: value })
-                setAppTheme(value)
-              }}
-            />
-          </Row>
-          <Row label={text.language}>
-            <Segmented
-              label={text.language}
-              value={lang}
-              options={LANGS.map((value) => [value, LANG_NAMES[value]])}
-              onChange={(value) => {
-                track('language_change', { lang: value, from: 'settings' })
-                setLang(value)
-              }}
-            />
-          </Row>
-          <Row label={text.backdrop}>
-            <Switch
-              on={backdrop}
-              label={text.backdrop}
-              onChange={(next) => {
-                track('app_backdrop_change', { on: next })
-                setAppBackdrop(next)
-              }}
-            />
-          </Row>
-          <Row label={text.hints} note={text.hintsNote}>
-            <Switch
-              on={hints}
-              label={text.hints}
-              onChange={(next) => {
-                track('app_shortcut_hints_change', { on: next })
-                setShortcutHintsPinned(next)
-              }}
-            />
-          </Row>
-        </Section>
-
-        {/* 화면 공유를 알아채는 것은 앱 1.2부터라, 그보다 낮은 앱에서는 보여주지 않아요. */}
-        {appAtLeast('1.2') && (
-          <Section title={text.privacy}>
-            <Row label={text.shield} note={text.shieldNote}>
-              <Switch
-                on={shield}
-                label={text.shield}
-                onChange={(next) => {
-                  track('app_shield_change', { on: next })
-                  setAppShield(next)
-                }}
-              />
-            </Row>
-          </Section>
-        )}
-
-        <Section title={text.app}>
-          <Row label={text.version}>
-            <span className="flex items-center gap-3">
-              <span className="font-medium text-gray-900 tabular-nums">{appVersion}</span>
-              {/* 예전 앱은 이 메시지를 받지 못해서, 받을 수 있는 버전에서만 버튼을 보여줘요. */}
-              {appAtLeast('1.1') && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    track('app_update_check')
-                    postToApp({ type: 'update' })
-                  }}
-                  className="h-8 rounded-full bg-gray-100 px-3.5 text-[13px] font-medium text-gray-700 transition-colors hover:text-brand"
-                >
-                  {text.update}
-                </button>
-              )}
-            </span>
-          </Row>
-        </Section>
-        </div>
+    <Modal onClose={onClose} labelledBy="settings-title" className="flex max-h-[85dvh] w-full max-w-lg flex-col">
+      <div className="flex shrink-0 items-center justify-between px-6 pt-5 pb-4">
+        <h2 id="settings-title" className="text-[17px] font-semibold text-gray-900">
+          {text.title}
+        </h2>
+        <button type="button" aria-label={text.close} onClick={onClose} className="-mr-2 flex size-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-4" aria-hidden="true">
+            <path d="M4 4l8 8M12 4l-8 8" />
+          </svg>
+        </button>
       </div>
-    </div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+
+      <Section title={text.display}>
+        <Row label={text.theme}>
+          <Segmented
+            label={text.theme}
+            value={theme}
+            options={THEMES.map((value) => [value, text.themes[value]])}
+            onChange={(value) => {
+              track('app_theme_change', { theme: value })
+              setAppTheme(value)
+            }}
+          />
+        </Row>
+        <Row label={text.language}>
+          <Segmented
+            label={text.language}
+            value={lang}
+            options={LANGS.map((value) => [value, LANG_NAMES[value]])}
+            onChange={(value) => {
+              track('language_change', { lang: value, from: 'settings' })
+              setLang(value)
+            }}
+          />
+        </Row>
+        <Row label={text.backdrop}>
+          <Switch
+            on={backdrop}
+            label={text.backdrop}
+            onChange={(next) => {
+              track('app_backdrop_change', { on: next })
+              setAppBackdrop(next)
+            }}
+          />
+        </Row>
+        <Row label={text.hints} note={text.hintsNote}>
+          <Switch
+            on={hints}
+            label={text.hints}
+            onChange={(next) => {
+              track('app_shortcut_hints_change', { on: next })
+              setShortcutHintsPinned(next)
+            }}
+          />
+        </Row>
+      </Section>
+
+      {/* 화면 공유를 알아채는 것은 앱 1.2부터라, 그보다 낮은 앱에서는 보여주지 않아요. */}
+      {appAtLeast('1.2') && (
+        <Section title={text.privacy}>
+          <Row label={text.shield} note={text.shieldNote}>
+            <Switch
+              on={shield}
+              label={text.shield}
+              onChange={(next) => {
+                track('app_shield_change', { on: next })
+                setAppShield(next)
+              }}
+            />
+          </Row>
+        </Section>
+      )}
+
+      <Section title={text.app}>
+        <Row label={text.version}>
+          <span className="flex items-center gap-3">
+            <span className="font-medium text-gray-900 tabular-nums">{appVersion}</span>
+            {/* 예전 앱은 이 메시지를 받지 못해서, 받을 수 있는 버전에서만 버튼을 보여줘요. */}
+            {appAtLeast('1.1') && (
+              <button
+                type="button"
+                onClick={() => {
+                  track('app_update_check')
+                  postToApp({ type: 'update' })
+                }}
+                className="h-8 rounded-full bg-gray-100 px-3.5 text-[13px] font-medium text-gray-700 transition-colors hover:text-brand"
+              >
+                {text.update}
+              </button>
+            )}
+          </span>
+        </Row>
+      </Section>
+      </div>
+    </Modal>
   )
 }

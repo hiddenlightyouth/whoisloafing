@@ -23,64 +23,10 @@ import { socialFromPath } from './lib/social'
 import { setFeedbackReady, shouldAskFeedback, useFeedback } from './lib/feedback'
 import { useShortcuts } from './lib/shortcuts'
 import { showToast } from './lib/toast'
-import { currentPath, localizePath, messages, pick, useLang, useMessages } from './lib/i18n'
+import { localizePath, messages, pick, useLang, useMessages } from './lib/i18n'
 import { applyMeta, HOME_META } from './lib/meta'
-
-const CHAT_PATH = /^\/c\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i
-
-const chatIdFromPath = () => CHAT_PATH.exec(currentPath())?.[1] ?? null
-
-const ARTICLE_PATH = /^\/articles(?:\/([^/]+))?\/?$/
-
-/** 아티클 주소면 보고 있는 글을 돌려줘요. slug가 null이면 목록이에요. */
-function articleFromPath(): { slug: string | null } | null {
-  const match = ARTICLE_PATH.exec(currentPath())
-  return match ? { slug: match[1] ?? null } : null
-}
-
-const ABOUT_PATH = /^\/about\/?$/
-
-const aboutFromPath = () => ABOUT_PATH.test(currentPath())
-
-const ACCOUNT_PATH = /^\/(login|signup|me|history)\/?$/
-
-const accountFromPath = () => (ACCOUNT_PATH.exec(currentPath())?.[1] as AccountPage | undefined) ?? null
-
-const APP_LOGIN_PATH = /^\/app-login\/?$/
-
-const appLoginFromPath = () => APP_LOGIN_PATH.test(currentPath())
-
-const DEEP_PATH = /^\/deep(?:\/([^/]+)\/([^/]+))?\/?$/
-
-/** 심층 분석 주소면 보고 있는 레포(소유자/레포)를 돌려줘요. repo가 null이면 레포를 고르는 화면이에요. */
-function deepFromPath(): { repo: string | null } | null {
-  const match = DEEP_PATH.exec(currentPath())
-  return match ? { repo: match[1] ? `${match[1]}/${match[2]}` : null } : null
-}
-
-const PORTFOLIO_PATH = /^\/portfolio(?:\/([^/]+)\/([^/]+))?\/?$/
-
-/** 포트폴리오 만들기 주소면 고른 레포(소유자/레포)를 돌려줘요. repo가 null이면 레포를 고르는 화면이에요. */
-function portfolioFromPath(): { repo: string | null } | null {
-  const match = PORTFOLIO_PATH.exec(currentPath())
-  return match ? { repo: match[1] ? `${match[1]}/${match[2]}` : null } : null
-}
-
-const EXPLORE_PATH = /^\/explore(?:\/(clubs))?\/?$/
-
-/** 탐색 화면 주소면 보고 있는 갈래를 돌려줘요. */
-function exploreFromPath(): ExploreCategory | null {
-  const match = EXPLORE_PATH.exec(currentPath())
-  return match ? (match[1] ? 'clubs' : 'github') : null
-}
-
-const ADMIN_PATH = /^\/admin(?:\/(users|chats|feedback|ai))?\/?$/
-
-/** 관리자 화면 주소면 보고 있는 탭을 돌려줘요. */
-function adminFromPath(): AdminTab | null {
-  const match = ADMIN_PATH.exec(currentPath())
-  return match ? ((match[1] as AdminTab | undefined) ?? 'overview') : null
-}
+import { readFlag, readItem, writeFlag, writeItem } from './lib/storage'
+import { aboutFromPath, accountFromPath, adminFromPath, appLoginFromPath, articleFromPath, chatIdFromPath, deepFromPath, exploreFromPath, portfolioFromPath } from './lib/routes'
 
 // 앱에서만 쓰는 화면과, 앱이 브라우저로 열어 주는 로그인 화면은 필요할 때만 받아요.
 const AppGate = lazy(() => import('./components/AppGate').then((module) => ({ default: module.AppGate })))
@@ -117,13 +63,7 @@ const Articles = lazy(() => import('./components/Articles').then((module) => ({ 
 
 const SIDEBAR_CLOSED_KEY = 'whoisloafing:app-sidebar-closed'
 
-function sidebarClosed(): boolean {
-  try {
-    return localStorage.getItem(SIDEBAR_CLOSED_KEY) === '1'
-  } catch {
-    return false
-  }
-}
+const sidebarClosed = () => readFlag(SIDEBAR_CLOSED_KEY)
 
 const NUDGE_DISMISSED_KEY = 'whoisloafing:login-nudge-dismissed'
 /** 좁은 화면에서 로그인 안내를 닫은 뒤, 채팅을 이만큼 새로 시작하면 다시 띄워요. */
@@ -131,22 +71,11 @@ const NUDGE_REOPEN_CHATS = 3
 
 /** 로그인 안내를 닫은 뒤에 새로 시작한 채팅 수. 닫은 적이 없으면 null이에요. */
 function nudgeChatsSinceClose(): number | null {
-  try {
-    const value = localStorage.getItem(NUDGE_DISMISSED_KEY)
-    return value === null ? null : Number(value) || 0
-  } catch {
-    return null
-  }
+  const value = readItem(NUDGE_DISMISSED_KEY)
+  return value === null ? null : Number(value) || 0
 }
 
-function storeNudge(chats: number | null) {
-  try {
-    if (chats === null) localStorage.removeItem(NUDGE_DISMISSED_KEY)
-    else localStorage.setItem(NUDGE_DISMISSED_KEY, String(chats))
-  } catch {
-    // 저장하지 못해도 이번 화면에서는 그대로 동작해요.
-  }
-}
+const storeNudge = (chats: number | null) => writeItem(NUDGE_DISMISSED_KEY, chats === null ? null : String(chats))
 
 async function copyLink(): Promise<boolean> {
   try {
@@ -667,12 +596,7 @@ export default function App() {
 
   const toggleSidebar = useCallback((open: boolean) => {
     setSidebarOpen(open)
-    try {
-      if (open) localStorage.removeItem(SIDEBAR_CLOSED_KEY)
-      else localStorage.setItem(SIDEBAR_CLOSED_KEY, '1')
-    } catch {
-      // 저장하지 못해도 이번 화면에서는 그대로 동작해요.
-    }
+    writeFlag(SIDEBAR_CLOSED_KEY, !open)
   }, [])
 
   const handleHome = useCallback(() => leaveFor('home'), [leaveFor])

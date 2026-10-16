@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { track } from '../lib/analytics'
-import { createPortal } from 'react-dom'
 import { fetchExplore, type ExploreKind, type ExploreRepo } from '../lib/api'
 import { Avatar } from './History'
+import { Modal, primaryButton, quietButton } from './Dialog'
 import { MapMenu } from './DeepParts'
 import { ExploreCardsSkeleton } from './Skeleton'
 import { getLang, messages, useLang, useMessages, type Lang } from '../lib/i18n'
@@ -194,7 +194,7 @@ function Failed({ onRetry, compact = false }: { onRetry: () => void; compact?: b
   return (
     <div className={`flex flex-col items-center gap-4 text-center ${compact ? 'py-10' : 'mt-16'}`}>
       <p className="text-[14px] leading-relaxed text-gray-600">{L.failed}</p>
-      <button type="button" onClick={onRetry} className={primary}>
+      <button type="button" onClick={onRetry} className={primaryButton}>
         {L.retry}
       </button>
     </div>
@@ -493,56 +493,36 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
   )
 }
 
-const quiet = 'h-9 rounded-full px-3.5 text-[13px] font-medium text-gray-600 transition-colors hover:text-gray-900'
-const primary = 'h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover'
-
 /** 카드를 누르면 바로 분석하지 않고, 어떤 레포인지 보여주면서 한 번 물어봐요. 바깥을 누르거나 Esc를 누르면 닫혀요. */
 function ConfirmDialog({ repo, onCancel, onConfirm }: { repo: ExploreRepo; onCancel: () => void; onConfirm: () => void }) {
   const L = useMessages(TEXT)
   const [owner, name] = repo.repo.split('/')
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCancel()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [onCancel])
-
-  // 화면 맨 바깥(body)에 그려요. 움직이는 요소 안에 두면 그 요소 크기만큼만 덮여서, 막과 블러가 화면 일부에만 깔려요.
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 animate-fade flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
-      onPointerDown={(event) => {
-        if (event.target === event.currentTarget) onCancel()
-      }}
-    >
-      <div role="alertdialog" aria-modal="true" aria-labelledby="explore-confirm-title" className="w-full max-w-sm animate-pop rounded-2xl border border-gray-200 bg-white p-5">
-        <h2 id="explore-confirm-title" className="text-[15px] font-semibold text-gray-900">
-          {L.confirmTitle}
-        </h2>
-        <div className="mt-3.5 flex items-center gap-3">
-          <Avatar owner={owner} />
-          <div className="min-w-0">
-            <p className="truncate text-[14.5px] font-semibold text-gray-900">{name}</p>
-            <p className="truncate text-[12px] text-gray-400">{owner}</p>
-          </div>
-        </div>
-        {repo.description && <p className="mt-3 text-[13px] leading-relaxed text-gray-600">{repo.description}</p>}
-        <p className="mt-2 flex items-center gap-2.5 text-[12px] text-gray-400 tabular-nums">
-          {repo.language && <span>{repo.language}</span>}
-          <Stars count={repo.stars} />
-        </p>
-        <div className="mt-5 flex justify-end gap-2">
-          <button type="button" onClick={onCancel} className={quiet}>
-            {L.cancel}
-          </button>
-          <button type="button" autoFocus onClick={onConfirm} className={primary}>
-            {L.analyze}
-          </button>
+  return (
+    <Modal onClose={onCancel} labelledBy="explore-confirm-title" alert>
+      <h2 id="explore-confirm-title" className="text-[15px] font-semibold text-gray-900">
+        {L.confirmTitle}
+      </h2>
+      <div className="mt-3.5 flex items-center gap-3">
+        <Avatar owner={owner} />
+        <div className="min-w-0">
+          <p className="truncate text-[14.5px] font-semibold text-gray-900">{name}</p>
+          <p className="truncate text-[12px] text-gray-400">{owner}</p>
         </div>
       </div>
-    </div>,
-    document.body,
+      {repo.description && <p className="mt-3 text-[13px] leading-relaxed text-gray-600">{repo.description}</p>}
+      <p className="mt-2 flex items-center gap-2.5 text-[12px] text-gray-400 tabular-nums">
+        {repo.language && <span>{repo.language}</span>}
+        <Stars count={repo.stars} />
+      </p>
+      <div className="mt-5 flex justify-end gap-2">
+        <button type="button" onClick={onCancel} className={quietButton}>
+          {L.cancel}
+        </button>
+        <button type="button" autoFocus onClick={onConfirm} className={primaryButton}>
+          {L.analyze}
+        </button>
+      </div>
+    </Modal>
   )
 }

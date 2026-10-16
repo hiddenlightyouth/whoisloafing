@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { track } from '../lib/analytics'
 import { closeBugReport, sendFeedback } from '../lib/feedback'
 import { showToast } from '../lib/toast'
+import { Modal } from './Dialog'
 import { messages, pick, useMessages } from '../lib/i18n'
 
 const TEXT = messages({
@@ -153,11 +154,6 @@ export function BugReport({ chatId }: { chatId: string | null }) {
   useEffect(() => {
     track('bug_report_open')
     inputRef.current?.focus()
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeBugReport()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
   }, [])
 
   const ready = comment.trim().length >= 5
@@ -177,41 +173,34 @@ export function BugReport({ chatId }: { chatId: string | null }) {
   }
 
   return (
-    <div
-      className="fixed inset-0 animate-fade z-40 flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
-      onPointerDown={(event) => {
-        if (event.target === event.currentTarget) closeBugReport()
-      }}
-    >
-      <div role="dialog" aria-modal="true" aria-labelledby="bug-report-title" className="w-full max-w-md animate-pop rounded-2xl border border-gray-200 bg-white p-5">
-        <h2 id="bug-report-title" className="text-[15px] font-semibold text-gray-900">
-          {text.bugTitle}
-        </h2>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">{text.bugNotice}</p>
-        <textarea
-          ref={inputRef}
-          value={comment}
-          onChange={(event) => setComment(event.target.value)}
-          rows={5}
-          maxLength={2000}
-          placeholder={text.bugPlaceholder}
-          aria-label={text.bugLabel}
-          className={`${field} mt-3.5`}
-        />
-        <div className="mt-3.5 flex justify-end gap-2">
-          <button type="button" onClick={closeBugReport} className="h-9 rounded-full px-3.5 text-[13px] font-medium text-gray-600 transition-colors hover:text-gray-900">
-            {text.cancel}
-          </button>
-          <button
-            type="button"
-            disabled={!ready || sending}
-            onClick={() => void send()}
-            className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover disabled:bg-gray-200 disabled:text-gray-400"
-          >
-            {sending ? text.working : text.send}
-          </button>
-        </div>
+    <Modal onClose={closeBugReport} labelledBy="bug-report-title" className="w-full max-w-md p-5">
+      <h2 id="bug-report-title" className="text-[15px] font-semibold text-gray-900">
+        {text.bugTitle}
+      </h2>
+      <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">{text.bugNotice}</p>
+      <textarea
+        ref={inputRef}
+        value={comment}
+        onChange={(event) => setComment(event.target.value)}
+        rows={5}
+        maxLength={2000}
+        placeholder={text.bugPlaceholder}
+        aria-label={text.bugLabel}
+        className={`${field} mt-3.5`}
+      />
+      <div className="mt-3.5 flex justify-end gap-2">
+        <button type="button" onClick={closeBugReport} className="h-9 rounded-full px-3.5 text-[13px] font-medium text-gray-600 transition-colors hover:text-gray-900">
+          {text.cancel}
+        </button>
+        <button
+          type="button"
+          disabled={!ready || sending}
+          onClick={() => void send()}
+          className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover disabled:bg-gray-200 disabled:text-gray-400"
+        >
+          {sending ? text.working : text.send}
+        </button>
       </div>
-    </div>
+    </Modal>
   )
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useSyncExternalStore } from 'react'
+import { readFlag, writeFlag } from './storage'
 
 /**
  * 단축키는 글자가 아니라 키의 자리(`event.code`)로 알아봐요. 한글 자판 상태에서 N을 눌러도 ㅜ가 아니라 N으로 받아요.
@@ -36,13 +37,7 @@ export function useShortcuts(keys: ShortcutMap, enabled = true) {
 
 const PINNED_KEY = 'whoisloafing:shortcut-hints'
 
-function readPinned(): boolean {
-  try {
-    return localStorage.getItem(PINNED_KEY) === '1'
-  } catch {
-    return false
-  }
-}
+const readPinned = () => readFlag(PINNED_KEY)
 
 /** held는 Option을 누르고 있는지, pinned는 설정에서 늘 보이게 켜 뒀는지예요. */
 let hints = { held: false, pinned: typeof window !== 'undefined' && readPinned() }
@@ -92,10 +87,5 @@ export function useShortcutHintsPinned(): boolean {
 /** 단축키 힌트를 늘 보이게 할지 정하고, 다음에 열었을 때도 그대로 두게 저장해요. */
 export function setShortcutHintsPinned(pinned: boolean) {
   setHints({ pinned })
-  try {
-    if (pinned) localStorage.setItem(PINNED_KEY, '1')
-    else localStorage.removeItem(PINNED_KEY)
-  } catch {
-    return
-  }
+  writeFlag(PINNED_KEY, pinned)
 }

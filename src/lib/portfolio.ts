@@ -1,6 +1,7 @@
 import { authFetch } from './auth'
 import { DEEP_ERRORS } from './api'
 import { getLang, messages, pick } from './i18n'
+import { readJson, writeItem, writeJson } from './storage'
 
 /** 포트폴리오에 넣을 수 있는 항목. 서버의 PortfolioSection과 맞춰요. */
 export type PortfolioKey = 'intro' | 'period' | 'team' | 'stack' | 'role' | 'features' | 'trouble' | 'result'
@@ -128,30 +129,12 @@ export function revisePortfolio(repo: string, section: PortfolioKey, revision: R
 
 const SAVED_PREFIX = 'whoisloafing:portfolio:v1:'
 
-export function readPortfolio(repo: string): SavedPortfolio | null {
-  try {
-    const raw = localStorage.getItem(`${SAVED_PREFIX}${repo.toLowerCase()}`)
-    return raw ? (JSON.parse(raw) as SavedPortfolio) : null
-  } catch {
-    return null
-  }
-}
+export const readPortfolio = (repo: string) => readJson<SavedPortfolio | null>(`${SAVED_PREFIX}${repo.toLowerCase()}`, null)
 
-export function writePortfolio(saved: SavedPortfolio) {
-  try {
-    localStorage.setItem(`${SAVED_PREFIX}${saved.repo.toLowerCase()}`, JSON.stringify(saved))
-  } catch {
-    // 저장 공간이 모자라면 저장하지 않아요. 화면에는 그대로 보여요.
-  }
-}
+// 저장 공간이 모자라면 저장하지 않아요. 화면에는 그대로 보여요.
+export const writePortfolio = (saved: SavedPortfolio) => writeJson(`${SAVED_PREFIX}${saved.repo.toLowerCase()}`, saved)
 
-export function clearPortfolio(repo: string) {
-  try {
-    localStorage.removeItem(`${SAVED_PREFIX}${repo.toLowerCase()}`)
-  } catch {
-    return
-  }
-}
+export const clearPortfolio = (repo: string) => writeItem(`${SAVED_PREFIX}${repo.toLowerCase()}`, null)
 
 /** 화면 오른쪽의 미리보기와 복사 버튼이 쓰는 마크다운이에요. 항목은 왼쪽에서 정한 순서대로 이어 붙여요. */
 export function toMarkdown(name: string, sections: PortfolioSection[]): string {

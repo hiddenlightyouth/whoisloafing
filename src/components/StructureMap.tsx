@@ -5,6 +5,7 @@ import { fetchDeepReport } from '../lib/api'
 import { useShortcuts } from '../lib/shortcuts'
 import { MapMenu, tag } from './DeepParts'
 import { getLang, messages, useMessages } from '../lib/i18n'
+import { readFlag, readItem, readJson, writeFlag, writeItem, writeJson } from '../lib/storage'
 
 interface Props {
   /** 맵 한가운데서 가지가 뻗어 나가는 뿌리 칸에 적을 이름 (레포 이름) */
@@ -162,45 +163,20 @@ function allFolders(root: StructureNode): Set<string> {
 const PEOPLE_PREFIX = 'whoisloafing:deep:v2:'
 
 /** 참여자 자료는 받는 데 오래 걸려서, 한 번 받으면 이 기기에 저장해 둬요. */
-function readPeople(repo: string): FolderPerson[] | null {
-  try {
-    const raw = localStorage.getItem(`${PEOPLE_PREFIX}${repo.toLowerCase()}:people`)
-    return raw ? (JSON.parse(raw) as FolderPerson[]) : null
-  } catch {
-    return null
-  }
-}
+const readPeople = (repo: string) => readJson<FolderPerson[] | null>(`${PEOPLE_PREFIX}${repo.toLowerCase()}:people`, null)
 
-function writePeople(repo: string, people: FolderPerson[]) {
-  try {
-    localStorage.setItem(`${PEOPLE_PREFIX}${repo.toLowerCase()}:people`, JSON.stringify(people))
-  } catch {
-    // 저장 공간이 모자라면 저장하지 않아요.
-  }
-}
+const writePeople = (repo: string, people: FolderPerson[]) => writeJson(`${PEOPLE_PREFIX}${repo.toLowerCase()}:people`, people)
 
 const ROLES_HIDDEN_KEY = 'whoisloafing:deep-map-roles-hidden'
 
-function rolesHidden(): boolean {
-  try {
-    return localStorage.getItem(ROLES_HIDDEN_KEY) === '1'
-  } catch {
-    return false
-  }
-}
+const rolesHidden = () => readFlag(ROLES_HIDDEN_KEY)
 
 /** 가지가 뻗는 방향. 가로는 왼쪽에서 오른쪽으로, 세로는 위에서 아래로 뻗어요. */
 type Direction = 'horizontal' | 'vertical'
 
 const DIRECTION_KEY = 'whoisloafing:deep-map-direction'
 
-function savedDirection(): Direction {
-  try {
-    return localStorage.getItem(DIRECTION_KEY) === 'vertical' ? 'vertical' : 'horizontal'
-  } catch {
-    return 'horizontal'
-  }
-}
+const savedDirection = (): Direction => (readItem(DIRECTION_KEY) === 'vertical' ? 'vertical' : 'horizontal')
 
 /** 사용자가 칸을 끌어서 옮긴 거리. 폴더 경로마다 따로 적어 둬요. */
 type Moves = Record<string, { x: number; y: number }>
@@ -208,22 +184,14 @@ type Moves = Record<string, { x: number; y: number }>
 const MOVES_PREFIX = 'whoisloafing:deep-map-moves:'
 
 /** 옮겨 둔 배치는 레포와 방향마다 이 기기에 저장해요. 다음에 열어도 그대로 보여요. */
-function readMoves(repo: string, direction: Direction): Moves {
-  try {
-    return (JSON.parse(localStorage.getItem(`${MOVES_PREFIX}${repo.toLowerCase()}:${direction}`) ?? '{}') as Moves) ?? {}
-  } catch {
-    return {}
-  }
-}
+const movesKey = (repo: string, direction: Direction) => `${MOVES_PREFIX}${repo.toLowerCase()}:${direction}`
+
+const readMoves = (repo: string, direction: Direction) => readJson<Moves>(movesKey(repo, direction), {})
 
 function writeMoves(repo: string, direction: Direction, moves: Moves) {
-  try {
-    const key = `${MOVES_PREFIX}${repo.toLowerCase()}:${direction}`
-    if (Object.keys(moves).length === 0) localStorage.removeItem(key)
-    else localStorage.setItem(key, JSON.stringify(moves))
-  } catch {
-    // 저장하지 못해도 이번 화면에서는 그대로 보여요.
-  }
+  const key = movesKey(repo, direction)
+  if (Object.keys(moves).length === 0) writeItem(key, null)
+  else writeJson(key, moves)
 }
 
 /** 맵 위에 그린 그림 하나. 좌표는 맵 기준이라, 맵을 옮기거나 키우면 같이 따라가요. 저장하지 않아서 화면을 떠나면 사라져요. */
@@ -487,12 +455,7 @@ export function StructureMap({ name, repo, root }: Props) {
     // 방향마다 배치가 따로라서, 되돌리기 기록도 새로 시작해요.
     undoStack.current = []
     redoStack.current = []
-    try {
-      if (next === 'vertical') localStorage.setItem(DIRECTION_KEY, 'vertical')
-      else localStorage.removeItem(DIRECTION_KEY)
-    } catch {
-      return
-    }
+    writeItem(DIRECTION_KEY, next === 'vertical' ? 'vertical' : null)
   }
 
   /** 끌어서 옮긴 칸을 모두 원래 자리로 돌려놔요. */
@@ -557,12 +520,7 @@ export function StructureMap({ name, repo, root }: Props) {
     const next = !roles
     refit.current = true
     setRoles(next)
-    try {
-      if (next) localStorage.removeItem(ROLES_HIDDEN_KEY)
-      else localStorage.setItem(ROLES_HIDDEN_KEY, '1')
-    } catch {
-      return
-    }
+    writeFlag(ROLES_HIDDEN_KEY, !next)
   }
 
   // 펼치거나 접으면 다른 칸들의 자리가 바뀌어요. 누른 칸은 화면에서 움직이지 않게 맵을 그만큼 옮겨요.

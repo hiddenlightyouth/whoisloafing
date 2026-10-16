@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
+import { useDismiss } from '../hooks/useDismiss'
 import { track } from '../lib/analytics'
 import { MAC_DOWNLOAD, MAC_DOWNLOAD_OPEN, MAC_SUPPORT } from '../lib/app'
 import { LANG_NAMES, localizePath, messages, pick, setLang, useLang, useMessages } from '../lib/i18n'
@@ -517,24 +518,4 @@ function Caret({ open }: { open: boolean }) {
       <path d="M1 1l4 4 4-4" />
     </svg>
   )
-}
-
-/** 열려 있는 동안 바깥을 누르거나 Esc를 누르면 닫아요. ref가 없으면 Esc만 받아요. */
-function useDismiss(open: boolean, ref: RefObject<HTMLElement | null> | null, close: () => void) {
-  useEffect(() => {
-    if (!open) return
-    const onPointerDown = (event: PointerEvent) => {
-      if (ref && !ref.current?.contains(event.target as Node)) close()
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') close()
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-    // close는 매번 새로 만들어지지만 하는 일은 같아서 다시 등록하지 않아요.
-  }, [open, ref])
 }

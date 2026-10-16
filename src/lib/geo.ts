@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getLang, messages, pick, useLang } from './i18n'
+import { readJson, writeJson } from './storage'
 
 /**
  * IP 주소가 대략 어디인지 알려줘요. 위치는 키 없이 쓰는 공개 서비스(ipwho.is)에 물어보고,
@@ -22,21 +23,11 @@ function isPrivateIp(ip: string): boolean {
   return PRIVATE_V4.test(value) || PRIVATE_V6.test(value)
 }
 
-function readStored(): Record<string, string> {
-  try {
-    return (JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Record<string, string>) ?? {}
-  } catch {
-    return {}
-  }
-}
+const readStored = () => readJson<Record<string, string>>(STORAGE_KEY, {})
 
 function store(ip: string, place: string) {
-  try {
-    const entries = Object.entries({ ...readStored(), [ip]: place }).slice(-STORED_LIMIT)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(entries)))
-  } catch {
-    // 적어 두지 못해도 이번 화면에서는 그대로 보여요.
-  }
+  const entries = Object.entries({ ...readStored(), [ip]: place }).slice(-STORED_LIMIT)
+  writeJson(STORAGE_KEY, Object.fromEntries(entries))
 }
 
 const countryNames: Partial<Record<string, Intl.DisplayNames>> = {}

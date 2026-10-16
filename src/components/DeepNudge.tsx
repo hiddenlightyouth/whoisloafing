@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { track } from '../lib/analytics'
 import { messages, useMessages } from '../lib/i18n'
+import { readItem, writeItem } from '../lib/storage'
 
 /** 제목은 사용자가 정한 문구라 그대로 둬요. */
 const TEXT = messages({
@@ -22,26 +23,15 @@ const CLOSED_STORAGE = 'whoisloafing:deep-nudge-closed'
 /** 이만큼 닫았으면 더 권하지 않아요. */
 const CLOSE_LIMIT = 3
 
-function closedCount(): number {
-  try {
-    return Number(localStorage.getItem(CLOSED_STORAGE)) || 0
-  } catch {
-    return 0
-  }
-}
+const closedCount = () => Number(readItem(CLOSED_STORAGE)) || 0
 
 /** 심층 분석 안내를 띄워도 되는지. 여러 번 닫은 사람에게는 더 띄우지 않아요. */
 export function shouldNudgeDeep(): boolean {
   return closedCount() < CLOSE_LIMIT
 }
 
-function rememberClose() {
-  try {
-    localStorage.setItem(CLOSED_STORAGE, String(closedCount() + 1))
-  } catch {
-    // 저장하지 못해도 안내는 닫혀요.
-  }
-}
+// 저장하지 못해도 안내는 닫혀요.
+const rememberClose = () => writeItem(CLOSED_STORAGE, String(closedCount() + 1))
 
 /** 앱에서 레포의 기본 분석이 끝나면 오른쪽 위에 떠서, 같은 레포를 심층 분석으로 볼 수 있다고 알려줘요. */
 export function DeepNudge({ onDeep, onClose }: { onDeep: () => void; onClose: () => void }) {

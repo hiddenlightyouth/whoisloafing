@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { track } from '../lib/analytics'
 import { MAC_DOWNLOAD, MAC_SUPPORT } from '../lib/app'
 import { messages, useMessages } from '../lib/i18n'
+import { readFlag, writeFlag } from '../lib/storage'
 
 interface Props {
   /** 닫아 둔 로그인 안내 아이콘이 왼쪽 아래에 떠 있으면 true. 그 위로 자리를 올려서 겹치지 않게 해요. */
@@ -30,13 +31,7 @@ const TEXT = messages({
   },
 })
 
-function closedBefore(): boolean {
-  try {
-    return localStorage.getItem(CLOSED_KEY) === '1'
-  } catch {
-    return false
-  }
-}
+const closedBefore = () => readFlag(CLOSED_KEY)
 
 /**
  * 웹에서 채팅을 보는 동안 macOS 앱을 권하는 안내예요. 넓은 화면의 Mac에서만 띄워요.
@@ -53,12 +48,7 @@ export function AppNudge({ raised }: Props) {
   function toggle(next: boolean) {
     track(next ? 'app_nudge_close' : 'app_nudge_open')
     setClosed(next)
-    try {
-      if (next) localStorage.setItem(CLOSED_KEY, '1')
-      else localStorage.removeItem(CLOSED_KEY)
-    } catch {
-      return
-    }
+    writeFlag(CLOSED_KEY, next)
   }
 
   const place = raised ? 'bottom-20' : 'bottom-6'

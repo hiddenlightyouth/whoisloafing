@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
 import type { Result } from '../lib/admin'
 import type { Slice } from '../lib/auth'
 import { tag, toolButton } from './DeepParts'
 import { Bone } from './Skeleton'
 import { getLang, messages, pick, useMessages } from '../lib/i18n'
 
-const CANCEL = messages({ ko: '취소', en: 'Cancel' })
 
 const TEXT = messages({
   ko: {
@@ -135,63 +133,6 @@ export function DeviceTags({ app, mobile, desktop }: { app: boolean; mobile: boo
       {mobile && <span className={tag}>{L.mobile}</span>}
       {desktop && <span className={tag}>PC</span>}
     </span>
-  )
-}
-
-/** 되돌리기 어려운 관리자 작업을 하기 전에 한 번 더 묻는 창이에요. */
-export function ConfirmDialog({ title, body, confirm, danger = false, working, onCancel, onConfirm }: {
-  title: string
-  body: ReactNode
-  confirm: string
-  danger?: boolean
-  working: boolean
-  onCancel: () => void
-  onConfirm: () => void
-}) {
-  const L = useMessages(TEXT)
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation()
-        onCancel()
-      }
-    }
-    document.addEventListener('keydown', onKeyDown, true)
-    return () => document.removeEventListener('keydown', onKeyDown, true)
-  }, [onCancel])
-
-  // 화면 맨 바깥(body)에 그려요. 움직이는 요소 안에 두면 그 요소 크기만큼만 덮여서, 막과 블러가 화면 일부에만 깔려요.
-  return createPortal(
-    <div
-      className="fixed inset-0 z-40 animate-fade flex items-center justify-center bg-gray-900/25 px-5 backdrop-blur-[2px]"
-      onPointerDown={(event) => {
-        if (event.target === event.currentTarget) onCancel()
-      }}
-    >
-      <div role="alertdialog" aria-modal="true" aria-labelledby="admin-confirm-title" className="w-full max-w-sm animate-pop rounded-2xl border border-gray-200 bg-white p-5">
-        <h2 id="admin-confirm-title" className="text-[15px] font-semibold text-gray-900">
-          {title}
-        </h2>
-        <p className="mt-1.5 text-[13px] leading-relaxed break-keep text-gray-500 [overflow-wrap:anywhere]">{body}</p>
-        <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onCancel} className="h-9 rounded-full px-3.5 text-[13px] font-medium text-gray-600 transition-colors hover:text-gray-900">
-            {pick(CANCEL)}
-          </button>
-          <button
-            type="button"
-            autoFocus
-            disabled={working}
-            onClick={onConfirm}
-            className={`h-9 rounded-full px-4 text-[13px] font-semibold text-white transition-colors disabled:bg-gray-200 disabled:text-gray-400 ${
-              danger ? 'bg-red-500 hover:bg-red-600' : 'bg-brand hover:bg-brand-hover'
-            }`}
-          >
-            {working ? L.working : confirm}
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
   )
 }
 

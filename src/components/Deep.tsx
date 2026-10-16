@@ -8,7 +8,7 @@ import { useShortcuts } from '../lib/shortcuts'
 import { formatDateTime } from '../lib/format'
 import { showToast } from '../lib/toast'
 import { Chat } from './Chat'
-import { ConfirmDialog } from './AdminParts'
+import { ConfirmDialog } from './Dialog'
 import { MapMenu, toolButton } from './DeepParts'
 import { Forms } from './Forms'
 import { Kbd } from './Shortcuts'
@@ -19,6 +19,7 @@ import { Bone } from './Skeleton'
 import { Stack } from './Stack'
 import { StructureMap } from './StructureMap'
 import { getLang, messages, pick, useLang, useMessages } from '../lib/i18n'
+import { readJson, writeItem, writeJson } from '../lib/storage'
 
 interface Props {
   /** 살펴볼 레포(소유자/레포). null이면 레포를 고르는 화면이에요. */
@@ -86,31 +87,16 @@ const savedKey = (repo: string, section: DeepSection) => `${SAVED_PREFIX}${repo.
 function readSaved(repo: string): Partial<Record<DeepSection, Loaded>> {
   const saved: Partial<Record<DeepSection, Loaded>> = {}
   for (const section of DEEP_SECTIONS) {
-    try {
-      const raw = localStorage.getItem(savedKey(repo, section))
-      if (raw) saved[section] = { report: JSON.parse(raw) as DeepReport }
-    } catch {
-      continue
-    }
+    const report = readJson<DeepReport | null>(savedKey(repo, section), null)
+    if (report) saved[section] = { report }
   }
   return saved
 }
 
-function clearPeople(repo: string) {
-  try {
-    localStorage.removeItem(`whoisloafing:deep:v2:${repo.toLowerCase()}:people`)
-  } catch {
-    return
-  }
-}
+const clearPeople = (repo: string) => writeItem(`whoisloafing:deep:v2:${repo.toLowerCase()}:people`, null)
 
-function writeSaved(repo: string, section: DeepSection, report: DeepReport) {
-  try {
-    localStorage.setItem(savedKey(repo, section), JSON.stringify(report))
-  } catch {
-    // 저장 공간이 모자라면 저장하지 않아요. 화면에는 그대로 보여요.
-  }
-}
+// 저장 공간이 모자라면 저장하지 않아요. 화면에는 그대로 보여요.
+const writeSaved = (repo: string, section: DeepSection, report: DeepReport) => writeJson(savedKey(repo, section), report)
 
 /**
  * 앱에서만 쓰는 심층 분석 화면이에요. 채팅처럼 말풍선이 쌓이지 않고, 레포 하나를 탭으로 나눠 한 화면에서 살펴봐요.
