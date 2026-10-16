@@ -25,6 +25,7 @@
   --animate-shimmer: shimmer 1.8s linear infinite;
   --animate-shake: shake 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
   --animate-word: word 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-draw: draw 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 
   @keyframes typing {
     0%,
@@ -140,6 +141,16 @@
     }
     to {
       scale: 1 1;
+    }
+  }
+
+  /* 테두리가 한 바퀴 그려지듯 나타나요. 그리는 도형에 pathLength="1"과 stroke-dasharray="1"을 같이 줘요. */
+  @keyframes draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+    to {
+      stroke-dashoffset: 0;
     }
   }
 

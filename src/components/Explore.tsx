@@ -6,6 +6,7 @@ import { Modal, primaryButton, quietButton } from './Dialog'
 import { MapMenu } from './DeepParts'
 import { ExploreCardsSkeleton } from './Skeleton'
 import { clubInfo } from '../lib/clubs'
+import { readFlag, writeFlag } from '../lib/storage'
 import { getLang, messages, useMessages, type Lang } from '../lib/i18n'
 
 /** 탐색의 큰 갈래. GitHub는 GitHub 전체에서 인기 있는 레포, 동아리는 IT 연합 동아리와 커뮤니티가 만든 레포예요. */
@@ -41,6 +42,9 @@ const TEXT = messages({
     sort: '정렬',
     items: (count: string) => `${count}개의 항목`,
     more: '더 보기',
+    guide: '동아리를 선택해서 더 자세히 탐색할 수 있어요',
+    guideNever: '다시 보지 않기',
+    guideClose: '안내 닫기',
     confirmTitle: '이 프로젝트를 분석할까요?',
     cancel: '취소',
     analyze: '분석하기',
@@ -62,6 +66,9 @@ const TEXT = messages({
     sort: 'Sort',
     items: (count: string) => `${count} ${count === '1' ? 'item' : 'items'}`,
     more: 'Show more',
+    guide: 'Pick a club to explore its projects in more detail',
+    guideNever: "Don't show again",
+    guideClose: 'Close guide',
     confirmTitle: 'Analyze this project?',
     cancel: 'Cancel',
     analyze: 'Analyze',
@@ -309,6 +316,52 @@ export function ExplorePreview({ onPick, clubs: hasClubs = false, onMore }: Prev
   )
 }
 
+const GUIDE_KEY = 'whoisloafing:explore-club-guide-hidden'
+
+/**
+ * 동아리 탭에 들어오면 동아리 버튼 줄에 메인 컬러 테두리를 한 바퀴 그리고, 그 아래에 안내 카드를 띄워요.
+ * 버튼 줄을 감싼 relative 칸 안에 그려요.
+ */
+function ClubGuide({ onClose }: { onClose: () => void }) {
+  const L = useMessages(TEXT)
+  const [never, setNever] = useState(false)
+  useEffect(() => track('explore_guide_view'), [])
+  return (
+    <>
+      <svg aria-hidden className="pointer-events-none absolute -top-1.5 -left-1.5 h-[calc(100%+12px)] w-[calc(100%+12px)] overflow-visible text-brand">
+        <rect x="0" y="0" width="100%" height="100%" rx="12" fill="none" stroke="currentColor" strokeWidth="2" pathLength="1" strokeDasharray="1" className="animate-draw" />
+      </svg>
+      <div
+        role="dialog"
+        aria-label={L.guide}
+        className="absolute top-full left-0 z-20 mt-4 w-[min(320px,calc(100vw-48px))] origin-top-left animate-pop rounded-xl border border-gray-200 bg-white p-4 [animation-delay:0.45s]"
+      >
+        <div className="flex items-start gap-3">
+          <p className="flex-1 text-[14px] leading-snug font-medium text-gray-900">{L.guide}</p>
+          <button
+            type="button"
+            aria-label={L.guideClose}
+            onClick={() => {
+              track('explore_guide_close', { never })
+              if (never) writeFlag(GUIDE_KEY, true)
+              onClose()
+            }}
+            className="-mt-1 -mr-1 flex size-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+          >
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
+              <path d="M4 4l8 8M12 4l-8 8" />
+            </svg>
+          </button>
+        </div>
+        <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-[12.5px] text-gray-500 select-none">
+          <input type="checkbox" checked={never} onChange={(event) => setNever(event.target.checked)} className="size-3.5 accent-brand" />
+          {L.guideNever}
+        </label>
+      </div>
+    </>
+  )
+}
+
 interface Props {
   /** 보고 있는 갈래 */
   category: Category
@@ -351,6 +404,8 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
   const [group, setGroup] = useState<string | null>(null)
   /** 고른 동아리의 "어떤 단체인가요?" 툴팁이 떠 있는지 */
   const [aboutOpen, setAboutOpen] = useState(false)
+  /** 동아리 버튼 줄을 알려주는 안내. 다시 보지 않기를 고르고 닫으면 다음부터 띄우지 않고, 그냥 닫거나 동아리를 고르면 이 화면에서만 닫혀요. */
+  const [guide, setGuide] = useState(() => !readFlag(GUIDE_KEY))
   const about = club ? clubInfo(club) : null
   const showAbout = (open: boolean) => {
     if (open && !aboutOpen) track('explore_club_about', { club: club ?? '' })
@@ -403,27 +458,31 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
       <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 px-6 pt-4 pb-16 md:px-10">
         {/* 동아리는 메뉴에 넣지 않고 한눈에 보이게 늘어놓아요. */}
         {clubRepos && (
-          <div role="radiogroup" aria-label={L.clubs} className="mb-3 flex flex-wrap gap-2">
-            {[null, ...clubs].map((name) => (
-              <button
-                key={name ?? ''}
-                type="button"
-                role="radio"
-                aria-checked={club === name}
-                onClick={() => {
-                  track('explore_club_select', { club: name ?? 'all' })
-                  setClub(name)
-                  setGroup(null)
-                  setShown(PAGE_SIZE)
-                }}
-                className={`${clubButton} ${club === name ? 'border-brand bg-brand-soft text-brand-hover' : 'border-gray-200 bg-white text-gray-800 hover:border-gray-300 hover:text-gray-950'}`}
-              >
-                {name ?? L.all}
-                <span className={`text-[12px] font-normal tabular-nums ${club === name ? 'text-brand' : 'text-gray-400'}`}>
-                  {number(name ? (counts.get(name) ?? 0) : clubRepos.length)}
-                </span>
-              </button>
-            ))}
+          <div className="relative mb-3">
+            <div role="radiogroup" aria-label={L.clubs} className="flex flex-wrap gap-2">
+              {[null, ...clubs].map((name) => (
+                <button
+                  key={name ?? ''}
+                  type="button"
+                  role="radio"
+                  aria-checked={club === name}
+                  onClick={() => {
+                    track('explore_club_select', { club: name ?? 'all' })
+                    setGuide(false)
+                    setClub(name)
+                    setGroup(null)
+                    setShown(PAGE_SIZE)
+                  }}
+                  className={`${clubButton} ${club === name ? 'border-brand bg-brand-soft text-brand-hover' : 'border-gray-200 bg-white text-gray-800 hover:border-gray-300 hover:text-gray-950'}`}
+                >
+                  {name ?? L.all}
+                  <span className={`text-[12px] font-normal tabular-nums ${club === name ? 'text-brand' : 'text-gray-400'}`}>
+                    {number(name ? (counts.get(name) ?? 0) : clubRepos.length)}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {guide && clubs.length > 0 && <ClubGuide onClose={() => setGuide(false)} />}
           </div>
         )}
 
