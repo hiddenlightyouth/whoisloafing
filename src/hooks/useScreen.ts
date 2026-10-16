@@ -32,7 +32,6 @@ function trackPage(page: Page) {
     case 'about':
     case 'app-login':
     case 'resume':
-    case 'plans':
       return trackPageView(page.kind)
     case 'deep':
     case 'portfolio':

@@ -148,7 +148,7 @@ export function ModelMenu({ up = false, className = '' }: { /** 위로 펼쳐요
                 type="button"
                 onClick={() => {
                   setOpen(false)
-                  openPlans()
+                  openPlans('model')
                 }}
                 className="mt-1.5 text-[12px] font-medium text-brand hover:text-brand-hover"
               >

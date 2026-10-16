@@ -19,8 +19,6 @@ const DeepAppOnly = lazy(() => import('./DeepAppOnly').then((module) => ({ defau
 const Portfolio = lazy(() => import('./Portfolio').then((module) => ({ default: module.Portfolio })))
 const Resume = lazy(() => import('./Resume').then((module) => ({ default: module.Resume })))
 
-// 요금제와 사용량 화면도 열 때만 받아요.
-const Plans = lazy(() => import('./Plans').then((module) => ({ default: module.Plans })))
 
 const Explore = lazy(() => import('./Explore').then((module) => ({ default: module.Explore })))
 
@@ -98,8 +96,6 @@ export function PageView({
         <Portfolio repo={page.repo} onOpen={onPortfolio} onNew={onHome} refreshKey={chatsVersion} />
       ) : page.kind === 'resume' && signedIn ? (
         <Resume onNew={onHome} refreshKey={chatsVersion} />
-      ) : page.kind === 'plans' ? (
-        <Plans />
       ) : page.kind === 'explore' ? (
         <Explore category={page.category} onCategory={onExplore} clubs={clubs} onPick={onExplorePick} />
       ) : page.kind === 'admin' ? (

@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { track } from './analytics'
 import { authFetch } from './auth'
 import { readItem, writeItem } from './storage'
 
@@ -164,14 +165,32 @@ export function useModel(): ModelId {
   )
 }
 
-let plansOpener: (() => void) | null = null
+let plansOpen = false
+const plansListeners = new Set<() => void>()
 
-/** 요금제 화면을 여는 함수를 등록해요. 화면을 고르는 App이 한 번 등록해요. */
-export function setPlansOpener(open: (() => void) | null) {
-  plansOpener = open
+function setPlansOpen(open: boolean) {
+  plansOpen = open
+  for (const listener of plansListeners) listener()
 }
 
-/** 요금제와 사용량 화면을 열어요. 말풍선의 버튼이나 모델 메뉴처럼 화면을 직접 옮기지 못하는 곳에서 써요. */
-export function openPlans() {
-  plansOpener?.()
+/** 요금제 창을 열어요. 계정 메뉴, 모델 메뉴, 말풍선 어디서든 같은 창이 떠요. */
+export function openPlans(from: 'menu' | 'model' | 'chat') {
+  track('plans_open', { from })
+  setPlansOpen(true)
+}
+
+export function closePlans() {
+  setPlansOpen(false)
+}
+
+/** 요금제 창이 열려 있는지. App이 한 번 읽어서 창을 그려요. */
+export function usePlansOpen(): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      plansListeners.add(listener)
+      return () => plansListeners.delete(listener)
+    },
+    () => plansOpen,
+    () => false,
+  )
 }

@@ -28,11 +28,13 @@ import { showToast } from './lib/toast'
 import { localizePath, messages, pick, useLang } from './lib/i18n'
 import { applyMeta, HOME_META } from './lib/meta'
 import { chatIdFromPath } from './lib/routes'
-import { refreshUsage, setPlansOpener } from './lib/usage'
+import { closePlans, refreshUsage, usePlansOpen } from './lib/usage'
 import type { AccountPage } from './components/Account'
 
 // 소셜 로그인에서 돌아온 화면과 탐색 목록은 필요할 때만 받아요. 탐색 목록은 앱의 새 분석 화면에서만 쓰여요.
 const SocialCallback = lazy(() => import('./components/Social').then((module) => ({ default: module.SocialCallback })))
+// 요금제 창은 열 때만 받아요.
+const PlansModal = lazy(() => import('./components/Plans').then((module) => ({ default: module.PlansModal })))
 const ExplorePreview = lazy(() => import('./components/Explore').then((module) => ({ default: module.ExplorePreview })))
 
 async function copyLink(): Promise<boolean> {
@@ -65,6 +67,7 @@ type LeaveTarget = 'home' | 'about' | 'articles' | AccountPage
 export default function App() {
   const analysis = useAnalysis()
   const { messages, busy, paused, send, resume, stop, abandon, reset, settle, chatId } = analysis
+  const plansOpen = usePlansOpen()
 
   // 화면을 처음 맞추기 전에 분석 도구를 켜 둬요.
   useEffect(() => {
@@ -133,17 +136,6 @@ export default function App() {
     },
     [goHome, page],
   )
-
-  /** 요금제와 사용량 화면을 열어요. 브라우저의 소개 화면에서는 웹의 /app으로 가요. */
-  const openPlansPage = useCallback(() => {
-    if (appShell) openAppPage('/plans')
-    else window.location.assign('/app/plans')
-  }, [openAppPage])
-
-  useEffect(() => {
-    setPlansOpener(openPlansPage)
-    return () => setPlansOpener(null)
-  }, [openPlansPage])
 
   // 로그인하거나 로그아웃하면 한도가 바뀌어서, 이번 주 사용량을 새로 받아요.
   useEffect(() => {
@@ -453,6 +445,11 @@ export default function App() {
         <LeaveDialog home={leaveTo === 'home'} onStay={handleStay} onLeave={handleLeave} onLogin={storage && tokens === null && !account ? handleLeaveLogin : undefined} />
       )}
       {isApp && <ShortcutTip />}
+      {plansOpen && (
+        <Suspense fallback={null}>
+          <PlansModal onClose={closePlans} />
+        </Suspense>
+      )}
       <Toast />
     </div>
   )
@@ -466,7 +463,7 @@ export default function App() {
       sidebar={{
         activeChatId: page ? null : chatIdFromPath(),
         page:
-          page?.kind === 'deep' || page?.kind === 'portfolio' || page?.kind === 'resume' || page?.kind === 'plans' || page?.kind === 'explore' || page?.kind === 'admin'
+          page?.kind === 'deep' || page?.kind === 'portfolio' || page?.kind === 'resume' || page?.kind === 'explore' || page?.kind === 'admin'
             ? page.kind
             : account === 'me'
               ? 'me'
@@ -485,7 +482,6 @@ export default function App() {
             }
           : undefined,
         onAdmin: isAdmin(me) ? () => openAdmin() : undefined,
-        onPlans: openPlansPage,
         refreshKey: `${busy}:${account ?? ''}:${page?.kind === 'deep' ? 'deep' : ''}:${page?.kind === 'portfolio' || page?.kind === 'resume' ? page.kind : ''}:${page?.kind === 'explore' ? 'explore' : ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`,
         onNew: handleHome,
         onOpenChat: (id) => {

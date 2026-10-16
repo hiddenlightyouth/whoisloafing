@@ -252,7 +252,7 @@ export function Bubble({ message, busy, isLast, onSend, docked = false, onNewRep
         {event.type === 'error' && ((event.action === 'retry' && request) || event.action === 'plans' || (event.home && onNewRepo)) && (
           <div className="mb-1.5 flex flex-wrap gap-2">
             {event.action === 'plans' && (
-              <button type="button" onClick={openPlans} className={actionButton}>
+              <button type="button" onClick={() => openPlans('chat')} className={actionButton}>
                 {text.plans}
               </button>
             )}
