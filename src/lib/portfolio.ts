@@ -1,6 +1,6 @@
 import { authFetch } from './auth'
 import { DEEP_ERRORS } from './api'
-import { messages, pick } from './i18n'
+import { getLang, messages, pick } from './i18n'
 
 /** 포트폴리오에 넣을 수 있는 항목. 서버의 PortfolioSection과 맞춰요. */
 export type PortfolioKey = 'intro' | 'period' | 'team' | 'stack' | 'role' | 'features' | 'trouble' | 'result'
@@ -115,15 +115,15 @@ const json = (body: unknown): RequestInit => ({
 })
 
 export function fetchPortfolioPeople(repo: string) {
-  return call<PortfolioPerson[]>(`/portfolio/people?url=${encodeURIComponent(repo)}`)
+  return call<PortfolioPerson[]>(`/portfolio/people?url=${encodeURIComponent(repo)}&lang=${getLang()}`)
 }
 
 export function createPortfolio(repo: string, sections: PortfolioKey[], plan: string, person: string | null) {
-  return call<{ repo: string; sections: PortfolioSection[] }>('/portfolio', json({ url: repo, sections, plan: plan || null, person }))
+  return call<{ repo: string; sections: PortfolioSection[] }>('/portfolio', json({ url: repo, sections, plan: plan || null, person, lang: getLang() }))
 }
 
 export function revisePortfolio(repo: string, section: PortfolioKey, revision: RevisionKey, content: string, plan: string, person: string | null) {
-  return call<PortfolioSection>('/portfolio/revise', json({ url: repo, section, revision, content, plan: plan || null, person }))
+  return call<PortfolioSection>('/portfolio/revise', json({ url: repo, section, revision, content, plan: plan || null, person, lang: getLang() }))
 }
 
 const SAVED_PREFIX = 'whoisloafing:portfolio:v1:'

@@ -125,7 +125,7 @@ export async function fetchDeepReport(
   since?: string,
 ): Promise<{ report: DeepReport } | { error: string }> {
   try {
-    const query = `url=${encodeURIComponent(repo)}${since ? `&since=${encodeURIComponent(since)}` : ''}`
+    const query = `url=${encodeURIComponent(repo)}&lang=${getLang()}${since ? `&since=${encodeURIComponent(since)}` : ''}`
     const result = await authFetch<DeepReport>(`/deep/${section}?${query}`)
     if (result.ok && result.data) return { report: result.data }
     return { error: (result.code && pick(DEEP_ERRORS)[result.code]) || pick(DEEP_ERRORS).failed }

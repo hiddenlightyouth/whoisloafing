@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { messages, pick } from './i18n'
+import { getLang, messages, pick, useLang } from './i18n'
 
 /**
  * IP 주소가 대략 어디인지 알려줘요. 위치는 키 없이 쓰는 공개 서비스(ipwho.is)에 물어보고,
@@ -7,7 +7,8 @@ import { messages, pick } from './i18n'
  * 통신사가 주소를 나눠 주는 곳 기준이라 실제 위치와 다를 수 있어요.
  */
 const LOOKUP_URL = 'https://ipwho.is/'
-const STORAGE_KEY = 'whoisloafing:ip-places'
+/** 도시와 나라 코드를 적어 두고, 나라 이름은 보여줄 때 화면 언어로 바꿔요. */
+const STORAGE_KEY = 'whoisloafing:ip-places:v2'
 /** 이 기기에 적어 두는 주소 수. 넘으면 오래된 것부터 버려요. */
 const STORED_LIMIT = 200
 const LOCAL_PLACE_TEXT = messages({ ko: '내부 네트워크', en: 'Local network' })
@@ -38,15 +39,22 @@ function store(ip: string, place: string) {
   }
 }
 
-let countryNames: Intl.DisplayNames | null = null
+const countryNames: Partial<Record<string, Intl.DisplayNames>> = {}
 
 function countryName(code: string | undefined, fallback: string | undefined): string {
   try {
-    countryNames ??= new Intl.DisplayNames('ko', { type: 'region' })
-    return (code && countryNames.of(code)) || fallback || ''
+    const lang = getLang()
+    const names = (countryNames[lang] ??= new Intl.DisplayNames(lang, { type: 'region' }))
+    return (code && names.of(code)) || fallback || ''
   } catch {
     return fallback ?? ''
   }
+}
+
+/** 적어 둔 값은 "도시|나라 코드|나라 이름"이에요. */
+function formatPlace(stored: string): string {
+  const [city, code, country] = stored.split('|')
+  return [city, countryName(code || undefined, country || undefined)].filter(Boolean).join(', ')
 }
 
 interface Lookup {
@@ -61,7 +69,7 @@ interface Lookup {
 const pending = new Map<string, Promise<string | null>>()
 
 function lookupIpPlace(ip: string): Promise<string | null> {
-  if (isPrivateIp(ip)) return Promise.resolve(pick(LOCAL_PLACE_TEXT))
+  if (isPrivateIp(ip)) return Promise.resolve(null)
   const stored = readStored()[ip]
   if (stored) return Promise.resolve(stored)
 
@@ -71,8 +79,8 @@ function lookupIpPlace(ip: string): Promise<string | null> {
       .then((res) => (res.ok ? (res.json() as Promise<Lookup>) : null))
       .then((data) => {
         if (!data || data.success === false) return null
-        const place = [data.city || data.region, countryName(data.country_code, data.country)].filter(Boolean).join(', ')
-        if (!place) return null
+        const place = [data.city || data.region || '', data.country_code ?? '', data.country ?? ''].join('|')
+        if (!formatPlace(place)) return null
         store(ip, place)
         return place
       })
@@ -84,7 +92,8 @@ function lookupIpPlace(ip: string): Promise<string | null> {
 
 /** IP 주소의 위치를 돌려줘요. 아직 모르거나 알아내지 못했으면 null이에요. */
 export function useIpPlace(ip: string | null | undefined): string | null {
-  const [place, setPlace] = useState<string | null>(() => (ip ? (isPrivateIp(ip) ? pick(LOCAL_PLACE_TEXT) : (readStored()[ip] ?? null)) : null))
+  useLang()
+  const [place, setPlace] = useState<string | null>(() => (ip && !isPrivateIp(ip) ? (readStored()[ip] ?? null) : null))
 
   useEffect(() => {
     if (!ip) {
@@ -100,5 +109,6 @@ export function useIpPlace(ip: string | null | undefined): string | null {
     }
   }, [ip])
 
-  return place
+  if (ip && isPrivateIp(ip)) return pick(LOCAL_PLACE_TEXT)
+  return place ? formatPlace(place) : null
 }

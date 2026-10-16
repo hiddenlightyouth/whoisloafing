@@ -18,7 +18,7 @@ import { RichText } from './RichText'
 import { Bone } from './Skeleton'
 import { Stack } from './Stack'
 import { StructureMap } from './StructureMap'
-import { messages, pick, useMessages } from '../lib/i18n'
+import { getLang, messages, pick, useLang, useMessages } from '../lib/i18n'
 
 interface Props {
   /** 살펴볼 레포(소유자/레포). null이면 레포를 고르는 화면이에요. */
@@ -79,12 +79,15 @@ type Loaded = 'loading' | { report: DeepReport } | { error: string }
 
 const SAVED_PREFIX = 'whoisloafing:deep:v3:'
 
+/** 서버가 언어마다 다른 글을 보내서, 영어로 받은 결과는 따로 저장해요. */
+const savedKey = (repo: string, section: DeepSection) => `${SAVED_PREFIX}${repo.toLowerCase()}:${section}${getLang() === 'en' ? ':en' : ''}`
+
 /** 분석한 결과는 이 기기에 저장해 둬요. 다음에 열면 분석하기를 다시 누르지 않아도 바로 보여요. */
 function readSaved(repo: string): Partial<Record<DeepSection, Loaded>> {
   const saved: Partial<Record<DeepSection, Loaded>> = {}
   for (const section of DEEP_SECTIONS) {
     try {
-      const raw = localStorage.getItem(`${SAVED_PREFIX}${repo.toLowerCase()}:${section}`)
+      const raw = localStorage.getItem(savedKey(repo, section))
       if (raw) saved[section] = { report: JSON.parse(raw) as DeepReport }
     } catch {
       continue
@@ -103,7 +106,7 @@ function clearPeople(repo: string) {
 
 function writeSaved(repo: string, section: DeepSection, report: DeepReport) {
   try {
-    localStorage.setItem(`${SAVED_PREFIX}${repo.toLowerCase()}:${section}`, JSON.stringify(report))
+    localStorage.setItem(savedKey(repo, section), JSON.stringify(report))
   } catch {
     // 저장 공간이 모자라면 저장하지 않아요. 화면에는 그대로 보여요.
   }
@@ -115,6 +118,7 @@ function writeSaved(repo: string, section: DeepSection, report: DeepReport) {
  */
 export function Deep({ repo, onOpen, onNew, refreshKey, chatHint = false }: Props) {
   const L = useMessages(TEXT)
+  const lang = useLang()
   // 채팅을 지우면 갤러리를 처음부터 다시 받아요.
   if (!repo) {
     return (
@@ -129,8 +133,8 @@ export function Deep({ repo, onOpen, onNew, refreshKey, chatHint = false }: Prop
       />
     )
   }
-  // 레포가 바뀌면 받아 둔 내용과 보던 탭을 처음으로 되돌려요.
-  return <Dashboard key={repo} repo={repo} onOpen={onOpen} refreshKey={refreshKey} chatHint={chatHint} />
+  // 레포나 언어가 바뀌면 받아 둔 내용과 보던 탭을 처음으로 되돌려요.
+  return <Dashboard key={`${repo}:${lang}`} repo={repo} onOpen={onOpen} refreshKey={refreshKey} chatHint={chatHint} />
 }
 
 /** 채팅으로 이동 버튼에 쓸 채팅을 찾을 때, 내 작업을 이만큼까지만 넘겨 봐요. */
