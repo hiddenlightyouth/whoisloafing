@@ -3,7 +3,7 @@ import { track } from '../lib/analytics'
 import {
   changeUserRole,
   deleteUser,
-  DEVICE_LABELS,
+  deviceLabels,
   fetchAdminUser,
   fetchAdminUsers,
   revokeUserSession,
@@ -22,28 +22,23 @@ import { tag, toolButton } from './DeepParts'
 import { ConfirmDialog, DeviceTags, Empty, Failed, full, MoreButton, rowButton, RowsSkeleton, SearchBox, Segmented, tableWrap, td, th, useDebounced, usePaged } from './AdminParts'
 import { IpPlace } from './IpPlace'
 import { Bone } from './Skeleton'
+import { messages, pick, useMessages } from '../lib/i18n'
 
-const FILTERS: [AdminUserFilter, string][] = [
-  ['ALL', '전체'],
-  ['APP', '앱'],
-  ['MOBILE', '모바일'],
-  ['DESKTOP', 'PC'],
-  ['ADMIN', '관리자'],
-  ['SUSPENDED', '정지'],
-]
 
 function StatusTags({ user, self }: { user: AdminUser; self: boolean }) {
+  const L = useMessages(TEXT)
   return (
     <span className="flex flex-wrap gap-1">
-      {user.role === 'ADMIN' && <span className={`${tag} text-brand-hover`}>관리자</span>}
-      {user.suspended && <span className={`${tag} text-red-500`}>정지됨</span>}
-      {self && <span className={tag}>내 계정</span>}
+      {user.role === 'ADMIN' && <span className={`${tag} text-brand-hover`}>{L.admin}</span>}
+      {user.suspended && <span className={`${tag} text-red-500`}>{L.suspended}</span>}
+      {self && <span className={tag}>{L.self}</span>}
     </span>
   )
 }
 
 /** 관리자 화면의 회원 탭이에요. 회원을 찾고, 어떤 기기로 쓰는지 보고, 눌러서 관리해요. */
 export function AdminUsers({ onOpenChat }: { onOpenChat: (id: string) => void }) {
+  const L = useMessages(TEXT)
   const { me } = useAuth()
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<AdminUserFilter>('ALL')
@@ -55,8 +50,8 @@ export function AdminUsers({ onOpenChat }: { onOpenChat: (id: string) => void })
   return (
     <>
       <div className="flex flex-wrap items-center gap-3">
-        <SearchBox value={query} onChange={setQuery} placeholder="이메일이나 이름으로 찾기" />
-        <Segmented label="회원 종류" options={FILTERS} value={filter} onChange={setFilter} />
+        <SearchBox value={query} onChange={setQuery} placeholder={L.search} />
+        <Segmented label={L.kind} options={L.filters} value={filter} onChange={setFilter} />
       </div>
 
       {list.items === null ? (
@@ -66,19 +61,19 @@ export function AdminUsers({ onOpenChat }: { onOpenChat: (id: string) => void })
           <RowsSkeleton />
         )
       ) : list.items.length === 0 ? (
-        <Empty>조건에 맞는 회원이 없어요.</Empty>
+        <Empty>{L.empty}</Empty>
       ) : (
         <>
           <div className={tableWrap}>
             <table className="w-full min-w-[760px] text-[13px] text-gray-700 tabular-nums">
               <thead>
                 <tr>
-                  <th className={th}>회원</th>
-                  <th className={th}>상태</th>
-                  <th className={th}>사용 기기</th>
-                  <th className={`${th} text-right`}>채팅</th>
-                  <th className={th}>마지막 로그인</th>
-                  <th className={th}>가입</th>
+                  <th className={th}>{L.member}</th>
+                  <th className={th}>{L.status}</th>
+                  <th className={th}>{L.devices}</th>
+                  <th className={`${th} text-right`}>{L.chats}</th>
+                  <th className={th}>{L.lastLogin}</th>
+                  <th className={th}>{L.joined}</th>
                 </tr>
               </thead>
               <tbody>
@@ -86,7 +81,7 @@ export function AdminUsers({ onOpenChat }: { onOpenChat: (id: string) => void })
                   <tr
                     key={user.id}
                     tabIndex={0}
-                    aria-label={`${user.name} 회원 관리`}
+                    aria-label={L.manage(user.name)}
                     onClick={() => {
                       track('admin_user_open')
                       setOpenId(user.id)
@@ -107,7 +102,7 @@ export function AdminUsers({ onOpenChat }: { onOpenChat: (id: string) => void })
                       <DeviceTags app={user.usesApp} mobile={user.usesMobile} desktop={user.usesDesktop} />
                     </td>
                     <td className={`${td} text-right`}>{full(user.chatCount)}</td>
-                    <td className={`${td} whitespace-nowrap text-gray-500`}>{formatWhen(user.lastLoginAt) || '없음'}</td>
+                    <td className={`${td} whitespace-nowrap text-gray-500`}>{formatWhen(user.lastLoginAt) || L.none}</td>
                     <td className={`${td} whitespace-nowrap text-gray-500`}>{formatWhen(user.registeredAt)}</td>
                   </tr>
                 ))}
@@ -139,60 +134,194 @@ export function AdminUsers({ onOpenChat }: { onOpenChat: (id: string) => void })
 type Action = 'promote' | 'demote' | 'suspend' | 'unsuspend' | 'logout' | 'delete'
 
 interface ActionSpec {
-  title: string
-  body: (name: string) => string
-  confirm: string
   danger?: boolean
   run: (id: number) => Promise<Result<null>>
-  done: string
 }
 
 const ACTIONS: Record<Action, ActionSpec> = {
-  promote: {
-    title: '관리자로 올릴까요?',
-    body: (name) => `${name} 님이 관리자 화면을 쓰고 다른 회원을 관리할 수 있게 돼요. 새 권한이 반영되게 이 회원의 모든 기기가 로그아웃돼요.`,
-    confirm: '관리자로 올리기',
-    run: (id) => changeUserRole(id, 'ADMIN'),
-    done: '관리자로 올렸어요.',
-  },
-  demote: {
-    title: '일반 회원으로 내릴까요?',
-    body: (name) => `${name} 님이 더 이상 관리자 화면을 쓸 수 없어요. 이 회원의 모든 기기가 로그아웃돼요.`,
-    confirm: '일반 회원으로 내리기',
-    run: (id) => changeUserRole(id, 'USER'),
-    done: '일반 회원으로 내렸어요.',
-  },
-  suspend: {
-    title: '이 회원을 정지할까요?',
-    body: (name) => `${name} 님의 모든 기기가 로그아웃되고, 정지를 풀 때까지 다시 로그인할 수 없어요. 채팅과 기록은 그대로 남아요.`,
-    confirm: '정지하기',
-    danger: true,
-    run: suspendUser,
-    done: '회원을 정지했어요.',
-  },
-  unsuspend: {
-    title: '정지를 풀까요?',
-    body: (name) => `${name} 님이 다시 로그인할 수 있게 돼요.`,
-    confirm: '정지 풀기',
-    run: unsuspendUser,
-    done: '정지를 풀었어요.',
-  },
-  logout: {
-    title: '모든 기기에서 로그아웃시킬까요?',
-    body: (name) => `${name} 님이 로그인한 모든 기기가 로그아웃돼요. 다시 로그인하면 계속 쓸 수 있어요.`,
-    confirm: '모두 로그아웃',
-    run: revokeUserSessions,
-    done: '모든 기기를 로그아웃시켰어요.',
-  },
-  delete: {
-    title: '이 회원을 지울까요?',
-    body: (name) => `${name} 님의 계정과 로그인 기록, 분석한 채팅을 모두 지워요. 공유한 링크도 더 이상 열리지 않고, 지운 뒤에는 되돌릴 수 없어요.`,
-    confirm: '회원 지우기',
-    danger: true,
-    run: deleteUser,
-    done: '회원을 지웠어요.',
-  },
+  promote: { run: (id) => changeUserRole(id, 'ADMIN') },
+  demote: { run: (id) => changeUserRole(id, 'USER') },
+  suspend: { danger: true, run: suspendUser },
+  unsuspend: { run: unsuspendUser },
+  logout: { run: revokeUserSessions },
+  delete: { danger: true, run: deleteUser },
 }
+
+interface ActionText {
+  title: string
+  body: (name: string) => string
+  confirm: string
+  done: string
+}
+
+const TEXT = messages({
+  ko: {
+    filters: [['ALL', '전체'], ['APP', '앱'], ['MOBILE', '모바일'], ['DESKTOP', 'PC'], ['ADMIN', '관리자'], ['SUSPENDED', '정지']] as [AdminUserFilter, string][],
+    admin: '관리자',
+    suspended: '정지됨',
+    self: '내 계정',
+    search: '이메일이나 이름으로 찾기',
+    kind: '회원 종류',
+    empty: '조건에 맞는 회원이 없어요.',
+    member: '회원',
+    status: '상태',
+    devices: '사용 기기',
+    chats: '채팅',
+    lastLogin: '마지막 로그인',
+    joined: '가입',
+    manage: (name: string) => `${name} 회원 관리`,
+    none: '없음',
+    unknown: '모름',
+    actions: {
+      promote: {
+        title: '관리자로 올릴까요?',
+        body: (name) => `${name} 님이 관리자 화면을 쓰고 다른 회원을 관리할 수 있게 돼요. 새 권한이 반영되게 이 회원의 모든 기기가 로그아웃돼요.`,
+        confirm: '관리자로 올리기',
+        done: '관리자로 올렸어요.',
+      },
+      demote: {
+        title: '일반 회원으로 내릴까요?',
+        body: (name) => `${name} 님이 더 이상 관리자 화면을 쓸 수 없어요. 이 회원의 모든 기기가 로그아웃돼요.`,
+        confirm: '일반 회원으로 내리기',
+        done: '일반 회원으로 내렸어요.',
+      },
+      suspend: {
+        title: '이 회원을 정지할까요?',
+        body: (name) => `${name} 님의 모든 기기가 로그아웃되고, 정지를 풀 때까지 다시 로그인할 수 없어요. 채팅과 기록은 그대로 남아요.`,
+        confirm: '정지하기',
+        done: '회원을 정지했어요.',
+      },
+      unsuspend: {
+        title: '정지를 풀까요?',
+        body: (name) => `${name} 님이 다시 로그인할 수 있게 돼요.`,
+        confirm: '정지 풀기',
+        done: '정지를 풀었어요.',
+      },
+      logout: {
+        title: '모든 기기에서 로그아웃시킬까요?',
+        body: (name) => `${name} 님이 로그인한 모든 기기가 로그아웃돼요. 다시 로그인하면 계속 쓸 수 있어요.`,
+        confirm: '모두 로그아웃',
+        done: '모든 기기를 로그아웃시켰어요.',
+      },
+      delete: {
+        title: '이 회원을 지울까요?',
+        body: (name) => `${name} 님의 계정과 로그인 기록, 분석한 채팅을 모두 지워요. 공유한 링크도 더 이상 열리지 않고, 지운 뒤에는 되돌릴 수 없어요.`,
+        confirm: '회원 지우기',
+        done: '회원을 지웠어요.',
+      },
+    } as Record<Action, ActionText>,
+    deviceLoggedOut: '그 기기를 로그아웃시켰어요.',
+    panel: '회원 관리',
+    close: '닫기',
+    loading: '불러오고 있어요.',
+    registeredAt: '가입한 때',
+    loginCount: '로그인한 횟수',
+    times: (n: string) => `${n}번`,
+    chatCount: '분석한 채팅',
+    count: (n: string) => `${n}개`,
+    app: '앱 사용',
+    usedApp: '앱으로 로그인한 적이 있어요',
+    noApp: '앱으로 로그인한 적이 없어요',
+    suspendedAt: '정지한 때',
+    manageTitle: '관리',
+    selfNote: '내 계정의 권한을 바꾸거나 정지, 삭제할 수는 없어요.',
+    logoutAll: '모든 기기 로그아웃',
+    sessions: '로그인한 기기',
+    noSessions: '지금 로그인한 기기가 없어요.',
+    lastUsed: (when: string) => `마지막 사용 ${when}`,
+    logout: '로그아웃',
+    logins: '최근 로그인',
+    noLogins: '로그인한 기록이 없어요.',
+    noIp: '주소를 알 수 없어요',
+    recentChats: '최근 채팅',
+    noChats: '분석한 채팅이 없어요.',
+    chatMeta: (n: string, when: string) => `말풍선 ${n}개, ${when}`,
+    open: '열기',
+  },
+  en: {
+    filters: [['ALL', 'All'], ['APP', 'App'], ['MOBILE', 'Mobile'], ['DESKTOP', 'Desktop'], ['ADMIN', 'Admin'], ['SUSPENDED', 'Suspended']],
+    admin: 'Admin',
+    suspended: 'Suspended',
+    self: 'You',
+    search: 'Search by email or name',
+    kind: 'Member type',
+    empty: 'No members match.',
+    member: 'Member',
+    status: 'Status',
+    devices: 'Devices',
+    chats: 'Chats',
+    lastLogin: 'Last sign-in',
+    joined: 'Joined',
+    manage: (name: string) => `Manage ${name}`,
+    none: 'None',
+    unknown: 'Unknown',
+    actions: {
+      promote: {
+        title: 'Make this member an admin?',
+        body: (name) => `${name} will be able to use the admin page and manage other members. All of their devices will be signed out so the new role applies.`,
+        confirm: 'Make admin',
+        done: 'Made them an admin.',
+      },
+      demote: {
+        title: 'Change to a regular member?',
+        body: (name) => `${name} will no longer be able to use the admin page. All of their devices will be signed out.`,
+        confirm: 'Make regular member',
+        done: 'Changed to a regular member.',
+      },
+      suspend: {
+        title: 'Suspend this member?',
+        body: (name) => `All of ${name}'s devices will be signed out, and they can't sign in until the suspension is lifted. Their chats and history stay.`,
+        confirm: 'Suspend',
+        done: 'Member suspended.',
+      },
+      unsuspend: {
+        title: 'Lift the suspension?',
+        body: (name) => `${name} will be able to sign in again.`,
+        confirm: 'Lift suspension',
+        done: 'Suspension lifted.',
+      },
+      logout: {
+        title: 'Sign out of all devices?',
+        body: (name) => `Every device ${name} is signed in on will be signed out. They can keep using it after signing in again.`,
+        confirm: 'Sign out all',
+        done: 'Signed out of all devices.',
+      },
+      delete: {
+        title: 'Delete this member?',
+        body: (name) => `${name}'s account, sign-in history, and analyzed chats will all be deleted. Shared links will stop working, and this can't be undone.`,
+        confirm: 'Delete member',
+        done: 'Member deleted.',
+      },
+    },
+    deviceLoggedOut: 'Signed out that device.',
+    panel: 'Manage member',
+    close: 'Close',
+    loading: 'Loading.',
+    registeredAt: 'Joined',
+    loginCount: 'Sign-ins',
+    times: (n: string) => `${n}`,
+    chatCount: 'Analyzed chats',
+    count: (n: string) => `${n}`,
+    app: 'App',
+    usedApp: 'Has signed in with the app',
+    noApp: 'Has never signed in with the app',
+    suspendedAt: 'Suspended at',
+    manageTitle: 'Manage',
+    selfNote: "You can't change the role of, suspend, or delete your own account.",
+    logoutAll: 'Sign out all devices',
+    sessions: 'Signed-in devices',
+    noSessions: 'No devices are signed in right now.',
+    lastUsed: (when: string) => `Last used ${when}`,
+    logout: 'Sign out',
+    logins: 'Recent sign-ins',
+    noLogins: 'No sign-in history.',
+    noIp: 'Unknown address',
+    recentChats: 'Recent chats',
+    noChats: 'No analyzed chats.',
+    chatMeta: (n: string, when: string) => `${n} messages, ${when}`,
+    open: 'Open',
+  },
+})
 
 const heading = 'mt-7 text-[12.5px] font-medium text-gray-400'
 
@@ -208,6 +337,7 @@ interface PanelProps {
 
 /** 회원 한 명을 오른쪽에서 열어 보는 칸이에요. 로그인한 기기와 기록, 채팅을 보고 권한 변경, 정지, 로그아웃, 삭제를 해요. */
 function UserPanel({ id, selfId, onClose, onChanged, onDeleted, onOpenChat }: PanelProps) {
+  const L = useMessages(TEXT)
   const [detail, setDetail] = useState<AdminUserDetail | null>(null)
   const [error, setError] = useState('')
   const [version, setVersion] = useState(0)
@@ -248,7 +378,7 @@ function UserPanel({ id, selfId, onClose, onChanged, onDeleted, onOpenChat }: Pa
       return
     }
     setAsking(null)
-    showToast(ACTIONS[action].done)
+    showToast(pick(TEXT).actions[action].done)
     if (action === 'delete') onDeleted()
     else {
       setVersion((value) => value + 1)
@@ -259,7 +389,7 @@ function UserPanel({ id, selfId, onClose, onChanged, onDeleted, onOpenChat }: Pa
   async function logoutDevice(sessionId: string) {
     const result = await revokeUserSession(id, sessionId)
     track('admin_user_action', { action: 'logout_device', success: result.ok })
-    showToast(result.ok ? '그 기기를 로그아웃시켰어요.' : result.message)
+    showToast(result.ok ? pick(TEXT).deviceLoggedOut : result.message)
     setVersion((value) => value + 1)
   }
 
@@ -269,9 +399,9 @@ function UserPanel({ id, selfId, onClose, onChanged, onDeleted, onOpenChat }: Pa
   return (
     <>
       <div className="fixed inset-0 z-20" onPointerDown={onClose} aria-hidden />
-      <aside aria-label="회원 관리" className="fixed inset-y-0 right-0 z-30 flex w-full max-w-[440px] animate-slide-in flex-col border-l border-gray-200 bg-white">
+      <aside aria-label={L.panel} className="fixed inset-y-0 right-0 z-30 flex w-full max-w-[440px] animate-slide-in flex-col border-l border-gray-200 bg-white">
         <div className="flex h-14 shrink-0 items-center justify-end px-4">
-          <button type="button" aria-label="닫기" onClick={onClose} className="flex size-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
+          <button type="button" aria-label={L.close} onClick={onClose} className="flex size-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-4" aria-hidden="true">
               <path d="M4 4l8 8M12 4l-8 8" />
             </svg>
@@ -283,7 +413,7 @@ function UserPanel({ id, selfId, onClose, onChanged, onDeleted, onOpenChat }: Pa
             <Failed message={error} onRetry={() => setVersion((value) => value + 1)} />
           ) : (
             <div aria-busy="true" className="px-6">
-              <span className="sr-only">불러오고 있어요.</span>
+              <span className="sr-only">{L.loading}</span>
               <Bone className="h-5 w-32" />
               <Bone className="mt-2.5 h-3.5 w-48" />
               <Bone className="mt-8 h-3 w-full" />
@@ -302,12 +432,12 @@ function UserPanel({ id, selfId, onClose, onChanged, onDeleted, onOpenChat }: Pa
 
             <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 text-[13px]">
               {[
-                ['가입한 때', formatDateTime(user.registeredAt) || '모름'],
-                ['마지막 로그인', formatDateTime(user.lastLoginAt) || '없음'],
-                ['로그인한 횟수', `${full(user.loginCount)}번`],
-                ['분석한 채팅', `${full(user.chatCount)}개`],
-                ['앱 사용', user.usesApp ? '앱으로 로그인한 적이 있어요' : '앱으로 로그인한 적이 없어요'],
-                ...(user.suspended ? [['정지한 때', formatDateTime(user.suspendedAt)]] : []),
+                [L.registeredAt, formatDateTime(user.registeredAt) || L.unknown],
+                [L.lastLogin, formatDateTime(user.lastLoginAt) || L.none],
+                [L.loginCount, L.times(full(user.loginCount))],
+                [L.chatCount, L.count(full(user.chatCount))],
+                [L.app, user.usesApp ? L.usedApp : L.noApp],
+                ...(user.suspended ? [[L.suspendedAt, formatDateTime(user.suspendedAt)]] : []),
               ].map(([label, value]) => (
                 <div key={label}>
                   <dt className="text-[12px] text-gray-400">{label}</dt>
@@ -316,41 +446,41 @@ function UserPanel({ id, selfId, onClose, onChanged, onDeleted, onOpenChat }: Pa
               ))}
             </dl>
 
-            <h3 className={heading}>관리</h3>
+            <h3 className={heading}>{L.manageTitle}</h3>
             {self ? (
-              <p className="mt-2 text-[13px] leading-relaxed text-gray-500">내 계정의 권한을 바꾸거나 정지, 삭제할 수는 없어요.</p>
+              <p className="mt-2 text-[13px] leading-relaxed text-gray-500">{L.selfNote}</p>
             ) : (
               <div className="mt-2 flex flex-wrap gap-2">
                 <button type="button" onClick={() => setAsking(user.role === 'ADMIN' ? 'demote' : 'promote')} className={toolButton}>
-                  {user.role === 'ADMIN' ? '일반 회원으로 내리기' : '관리자로 올리기'}
+                  {user.role === 'ADMIN' ? L.actions.demote.confirm : L.actions.promote.confirm}
                 </button>
                 <button type="button" onClick={() => setAsking(user.suspended ? 'unsuspend' : 'suspend')} className={toolButton}>
-                  {user.suspended ? '정지 풀기' : '정지하기'}
+                  {user.suspended ? L.actions.unsuspend.confirm : L.actions.suspend.confirm}
                 </button>
                 <button type="button" disabled={detail.sessions.length === 0} onClick={() => setAsking('logout')} className={`${toolButton} disabled:text-gray-300 disabled:hover:border-gray-200`}>
-                  모든 기기 로그아웃
+                  {L.logoutAll}
                 </button>
                 <button type="button" onClick={() => setAsking('delete')} className={`${toolButton} text-red-500 hover:text-red-600`}>
-                  회원 지우기
+                  {L.actions.delete.confirm}
                 </button>
               </div>
             )}
 
-            <h3 className={heading}>로그인한 기기</h3>
+            <h3 className={heading}>{L.sessions}</h3>
             {detail.sessions.length === 0 ? (
-              <p className="mt-2 text-[13px] text-gray-500">지금 로그인한 기기가 없어요.</p>
+              <p className="mt-2 text-[13px] text-gray-500">{L.noSessions}</p>
             ) : (
               <ul className="mt-1">
                 {detail.sessions.map((session) => (
                   <li key={session.sessionId} className="flex items-center gap-3 border-b border-gray-100 py-2.5 last:border-b-0">
-                    <span className={tag}>{DEVICE_LABELS[session.device]}</span>
+                    <span className={tag}>{deviceLabels()[session.device]}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13px] text-gray-900">{session.deviceName || describeDevice(session.userAgent)}</span>
-                      <span className="block text-[12px] text-gray-400">마지막 사용 {formatDateTime(session.lastUsedAt)}</span>
+                      <span className="block text-[12px] text-gray-400">{L.lastUsed(formatDateTime(session.lastUsedAt))}</span>
                     </span>
                     {!self && (
                       <button type="button" onClick={() => void logoutDevice(session.sessionId)} className={rowButton}>
-                        로그아웃
+                        {L.logout}
                       </button>
                     )}
                   </li>
@@ -358,17 +488,17 @@ function UserPanel({ id, selfId, onClose, onChanged, onDeleted, onOpenChat }: Pa
               </ul>
             )}
 
-            <h3 className={heading}>최근 로그인</h3>
+            <h3 className={heading}>{L.logins}</h3>
             {detail.logins.length === 0 ? (
-              <p className="mt-2 text-[13px] text-gray-500">로그인한 기록이 없어요.</p>
+              <p className="mt-2 text-[13px] text-gray-500">{L.noLogins}</p>
             ) : (
               <ul className="mt-1">
                 {detail.logins.map((login) => (
                   <li key={login.id} className="flex items-center gap-3 border-b border-gray-100 py-2.5 last:border-b-0">
-                    <span className={tag}>{DEVICE_LABELS[login.device]}</span>
+                    <span className={tag}>{deviceLabels()[login.device]}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13px] text-gray-900">{login.deviceName || describeDevice(login.userAgent)}</span>
-                      <span className="block truncate text-[12px] text-gray-400 tabular-nums">{login.ipAddress ? <IpPlace ip={login.ipAddress} /> : '주소를 알 수 없어요'}</span>
+                      <span className="block truncate text-[12px] text-gray-400 tabular-nums">{login.ipAddress ? <IpPlace ip={login.ipAddress} /> : L.noIp}</span>
                     </span>
                     <span className="shrink-0 text-[12px] text-gray-400 tabular-nums">{formatDateTime(login.loggedInAt)}</span>
                   </li>
@@ -376,9 +506,9 @@ function UserPanel({ id, selfId, onClose, onChanged, onDeleted, onOpenChat }: Pa
               </ul>
             )}
 
-            <h3 className={heading}>최근 채팅</h3>
+            <h3 className={heading}>{L.recentChats}</h3>
             {detail.chats.length === 0 ? (
-              <p className="mt-2 text-[13px] text-gray-500">분석한 채팅이 없어요.</p>
+              <p className="mt-2 text-[13px] text-gray-500">{L.noChats}</p>
             ) : (
               <ul className="mt-1">
                 {detail.chats.map((chat) => (
@@ -386,12 +516,12 @@ function UserPanel({ id, selfId, onClose, onChanged, onDeleted, onOpenChat }: Pa
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[13px] text-gray-900">{chat.repoName}</span>
                       <span className="block text-[12px] text-gray-400 tabular-nums">
-                        말풍선 {full(chat.messageCount)}개, {formatDateTime(chat.updatedAt)}
+                        {L.chatMeta(full(chat.messageCount), formatDateTime(chat.updatedAt))}
                       </span>
                     </span>
                     {chat.shared && (
                       <button type="button" onClick={() => onOpenChat(chat.id)} className={rowButton}>
-                        열기
+                        {L.open}
                       </button>
                     )}
                   </li>
@@ -404,9 +534,9 @@ function UserPanel({ id, selfId, onClose, onChanged, onDeleted, onOpenChat }: Pa
 
       {asking && user && (
         <ConfirmDialog
-          title={ACTIONS[asking].title}
-          body={ACTIONS[asking].body(user.name)}
-          confirm={ACTIONS[asking].confirm}
+          title={L.actions[asking].title}
+          body={L.actions[asking].body(user.name)}
+          confirm={L.actions[asking].confirm}
           danger={ACTIONS[asking].danger}
           working={working}
           onCancel={cancel}

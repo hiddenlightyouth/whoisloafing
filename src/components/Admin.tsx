@@ -7,18 +7,24 @@ import { AdminOverview } from './AdminOverview'
 import { AdminUsage } from './AdminUsage'
 import { AdminUsers } from './AdminUsers'
 import { Kbd } from './Shortcuts'
+import { messages, useMessages } from '../lib/i18n'
 
 export type AdminTab = 'overview' | 'users' | 'chats' | 'feedback' | 'ai'
 
 const ADMIN_TABS: AdminTab[] = ['overview', 'users', 'chats', 'feedback', 'ai']
 
-const TAB_LABELS: Record<AdminTab, string> = {
-  overview: '현황',
-  users: '회원',
-  chats: '채팅',
-  feedback: '피드백',
-  ai: 'AI 사용량',
-}
+const TEXT = messages({
+  ko: {
+    tabs: { overview: '현황', users: '회원', chats: '채팅', feedback: '피드백', ai: 'AI 사용량' } as Record<AdminTab, string>,
+    denied: '관리자 계정만 볼 수 있는 화면이에요.',
+    title: '관리자',
+  },
+  en: {
+    tabs: { overview: 'Overview', users: 'Members', chats: 'Chats', feedback: 'Feedback', ai: 'AI usage' },
+    denied: 'Only admin accounts can see this page.',
+    title: 'Admin',
+  },
+})
 
 interface Props {
   tab: AdminTab
@@ -33,6 +39,7 @@ interface Props {
 
 /** 앱에서 관리자 계정만 보는 화면이에요. 서비스 현황, 회원, 채팅, AI 사용량을 탭으로 나눠서 봐요. */
 export function Admin({ tab, onTab, full, feedback, onOpenChat }: Props) {
+  const L = useMessages(TEXT)
   const { me } = useAuth()
   const allowed = me === null || isAdmin(me)
   const tabs = full ? ADMIN_TABS.filter((item) => feedback || item !== 'feedback') : (['ai'] as AdminTab[])
@@ -49,17 +56,17 @@ export function Admin({ tab, onTab, full, feedback, onOpenChat }: Props) {
   if (!allowed) {
     return (
       <main className="flex min-h-0 flex-1 items-center justify-center px-6 text-center">
-        <p className="text-[14px] leading-relaxed text-gray-600">관리자 계정만 볼 수 있는 화면이에요.</p>
+        <p className="text-[14px] leading-relaxed text-gray-600">{L.denied}</p>
       </main>
     )
   }
 
   return (
     <main className="flex min-h-0 flex-1 flex-col px-6 pt-14 md:px-10">
-      <h1 className="shrink-0 pt-6 text-[22px] leading-snug font-semibold text-gray-900">관리자</h1>
+      <h1 className="shrink-0 pt-6 text-[22px] leading-snug font-semibold text-gray-900">{L.title}</h1>
 
       {tabs.length > 1 && (
-        <div role="tablist" aria-label="관리자" className="mt-4 flex shrink-0 gap-1 border-b border-gray-200">
+        <div role="tablist" aria-label={L.title} className="mt-4 flex shrink-0 gap-1 border-b border-gray-200">
           {tabs.map((item, index) => (
             <button
               key={item}
@@ -71,7 +78,7 @@ export function Admin({ tab, onTab, full, feedback, onOpenChat }: Props) {
                 item === current ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'
               }`}
             >
-              {TAB_LABELS[item]}
+              {L.tabs[item]}
               <Kbd corner>{String(index + 1)}</Kbd>
             </button>
           ))}

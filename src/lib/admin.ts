@@ -1,15 +1,16 @@
 import { authFetch, type Slice } from './auth'
+import { getLang, messages, pick } from './i18n'
 
 export type Result<T> = { ok: true; data: T } | { ok: false; message: string }
 
 export type DeviceKind = 'APP' | 'MOBILE' | 'DESKTOP' | 'UNKNOWN'
 
-export const DEVICE_LABELS: Record<DeviceKind, string> = {
-  APP: '앱',
-  MOBILE: '모바일',
-  DESKTOP: 'PC',
-  UNKNOWN: '알 수 없음',
-}
+const DEVICES = messages<Record<DeviceKind, string>>({
+  ko: { APP: '앱', MOBILE: '모바일', DESKTOP: 'PC', UNKNOWN: '알 수 없음' },
+  en: { APP: 'App', MOBILE: 'Mobile', DESKTOP: 'Desktop', UNKNOWN: 'Unknown' },
+})
+
+export const deviceLabels = () => pick(DEVICES)
 
 export interface AdminOverview {
   users: { total: number; today: number; week: number; admins: number; suspended: number }
@@ -135,27 +136,40 @@ export interface FeedbackSummary {
   bugs: number
 }
 
-const MESSAGES: Record<string, string> = {
-  C404: '없는 기록이에요. 목록을 새로 받아 주세요.',
-  C403: '관리자 계정만 할 수 있어요.',
-  C4035: '내 계정에는 할 수 없는 작업이에요.',
-  C4041: '없는 회원이에요. 목록을 새로 받아 주세요.',
-  C4042: '이미 로그아웃된 기기예요.',
-  C4043: '없는 채팅이에요. 목록을 새로 받아 주세요.',
-}
-
-const NETWORK_MESSAGE = '서버와 연결하지 못했어요. 잠시 뒤에 다시 시도해 주세요.'
-const UNKNOWN_MESSAGE = '문제가 생겼어요. 잠시 뒤에 다시 시도해 주세요.'
+const MESSAGES = messages<Record<string, string>>({
+  ko: {
+    C404: '없는 기록이에요. 목록을 새로 받아 주세요.',
+    C403: '관리자 계정만 할 수 있어요.',
+    C4035: '내 계정에는 할 수 없는 작업이에요.',
+    C4041: '없는 회원이에요. 목록을 새로 받아 주세요.',
+    C4042: '이미 로그아웃된 기기예요.',
+    C4043: '없는 채팅이에요. 목록을 새로 받아 주세요.',
+    network: '서버와 연결하지 못했어요. 잠시 뒤에 다시 시도해 주세요.',
+    unknown: '문제가 생겼어요. 잠시 뒤에 다시 시도해 주세요.',
+    unsupported: '서버가 아직 이 기능을 지원하지 않아요.',
+  },
+  en: {
+    C404: 'This record no longer exists. Please reload the list.',
+    C403: 'Only admin accounts can do this.',
+    C4035: "You can't do this to your own account.",
+    C4041: 'This member no longer exists. Please reload the list.',
+    C4042: 'This device is already signed out.',
+    C4043: 'This chat no longer exists. Please reload the list.',
+    network: "Couldn't connect to the server. Please try again in a moment.",
+    unknown: 'Something went wrong. Please try again in a moment.',
+    unsupported: "The server doesn't support this feature yet.",
+  },
+})
 
 async function request<T>(path: string, init?: RequestInit): Promise<Result<T>> {
   try {
     const result = await authFetch<T>(path, init)
     if (result.ok) return { ok: true, data: result.data as T }
     // 관리자 API가 아직 없는 서버는 없는 주소라고 답해요.
-    if (result.status === 404 && !result.code) return { ok: false, message: '서버가 아직 이 기능을 지원하지 않아요.' }
-    return { ok: false, message: (result.code && MESSAGES[result.code]) || UNKNOWN_MESSAGE }
+    if (result.status === 404 && !result.code) return { ok: false, message: pick(MESSAGES).unsupported }
+    return { ok: false, message: (result.code && pick(MESSAGES)[result.code]) || pick(MESSAGES).unknown }
   } catch {
-    return { ok: false, message: NETWORK_MESSAGE }
+    return { ok: false, message: pick(MESSAGES).network }
   }
 }
 
@@ -225,12 +239,16 @@ export function daysBetween(from: string, to: string): string[] {
   return days
 }
 
+const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
 export function dayLabel(day: string): string {
   const [, month, date] = day.split('-')
+  if (getLang() === 'en') return `${EN_MONTHS[Number(month) - 1]} ${Number(date)}`
   return `${Number(month)}월 ${Number(date)}일`
 }
 
 export function monthLabel(month: string): string {
   const [year, value] = month.split('-')
+  if (getLang() === 'en') return `${EN_MONTHS[Number(value) - 1]} ${year}`
   return `${year}년 ${Number(value)}월`
 }

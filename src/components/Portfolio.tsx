@@ -6,10 +6,10 @@ import {
   createPortfolio,
   DEFAULT_SECTIONS,
   fetchPortfolioPeople,
-  PORTFOLIO_SECTIONS,
+  portfolioSections,
   readPortfolio,
-  REVISIONS,
   revisePortfolio,
+  revisions,
   toMarkdown,
   writePortfolio,
   type PortfolioKey,
@@ -23,6 +23,7 @@ import { ConfirmDialog } from './AdminParts'
 import { MapMenu, toolButton } from './DeepParts'
 import { RepoGallery } from './RepoGallery'
 import { Bone } from './Skeleton'
+import { messages, useMessages } from '../lib/i18n'
 
 interface Props {
   /** 포트폴리오를 만들 레포(소유자/레포). null이면 레포를 고르는 화면이에요. */
@@ -40,11 +41,12 @@ const PLAN_MAX = 8000
  * 만든 뒤에는 왼쪽에서 항목의 순서를 바꾸고 고치며 오른쪽에서 마크다운 미리보기를 봐요.
  */
 export function Portfolio({ repo, onOpen, onNew, refreshKey }: Props) {
+  const L = useMessages(TEXT)
   if (!repo) {
     return (
       <RepoGallery
         key={refreshKey}
-        title="포트폴리오 만들기"
+        title={L.title}
         onNew={onNew}
         onOpen={(picked) => {
           track('portfolio_repo_select', { repo: picked })
@@ -57,6 +59,7 @@ export function Portfolio({ repo, onOpen, onNew, refreshKey }: Props) {
 }
 
 function Builder({ repo, onBack }: { repo: string; onBack: () => void }) {
+  const L = useMessages(TEXT)
   const [saved, setSaved] = useState<SavedPortfolio | null>(() => readPortfolio(repo))
   const [owner, name] = repo.split('/')
   /** 다시 만들기를 누르기 전에 한 번 더 묻는 창이 떠 있는지 */
@@ -73,7 +76,7 @@ function Builder({ repo, onBack }: { repo: string; onBack: () => void }) {
         <div className="flex min-w-0 items-center gap-2">
           <button
             type="button"
-            aria-label="레포 고르는 화면으로 돌아가기"
+            aria-label={L.back}
             onClick={onBack}
             className="-ml-2 flex size-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
           >
@@ -88,7 +91,7 @@ function Builder({ repo, onBack }: { repo: string; onBack: () => void }) {
         </div>
         {saved && (
           <button type="button" onClick={() => setRestarting(true)} className={toolButton}>
-            처음부터 다시 만들기
+            {L.restart}
           </button>
         )}
       </div>
@@ -97,9 +100,9 @@ function Builder({ repo, onBack }: { repo: string; onBack: () => void }) {
 
       {restarting && (
         <ConfirmDialog
-          title="처음부터 다시 만들까요?"
-          body="항목과 기획안을 다시 고르고 새로 써요. 지금 만든 포트폴리오는 지워지고 되돌릴 수 없어요."
-          confirm="다시 만들기"
+          title={L.restartTitle}
+          body={L.restartBody}
+          confirm={L.restartConfirm}
           danger
           working={false}
           onCancel={() => setRestarting(false)}
@@ -117,14 +120,100 @@ function Builder({ repo, onBack }: { repo: string; onBack: () => void }) {
 
 type Step = 'sections' | 'plan' | 'person'
 
-const STEPS: { key: Step; label: string }[] = [
-  { key: 'sections', label: '항목 고르기' },
-  { key: 'plan', label: '참고할 기획안' },
-  { key: 'person', label: '나는 누구인가요' },
-]
+const TEXT = messages({
+  ko: {
+    title: '포트폴리오 만들기',
+    back: '레포 고르는 화면으로 돌아가기',
+    restart: '처음부터 다시 만들기',
+    restartTitle: '처음부터 다시 만들까요?',
+    restartBody: '항목과 기획안을 다시 고르고 새로 써요. 지금 만든 포트폴리오는 지워지고 되돌릴 수 없어요.',
+    restartConfirm: '다시 만들기',
+    steps: { sections: '항목 고르기', plan: '참고할 기획안', person: '나는 누구인가요' } as Record<Step, string>,
+    stepsLabel: '진행 단계',
+    sectionsTitle: '어떤 항목으로 포트폴리오를 만들까요?',
+    sectionsHint: '순서는 만든 뒤에 끌어서 바꿀 수 있어요.',
+    planTitle: '참고할 기획안이 있나요?',
+    planHint: '기획 배경과 목적을 기획안에서 가져와요. 없으면 비워 두고 넘어가도 돼요.',
+    planPlaceholder: '기획안이나 서비스 소개 글을 붙여 넣어 주세요',
+    personTitle: '이 프로젝트에서 누구인가요?',
+    personHint: '고른 사람의 커밋과 PR로 맡은 역할을 써요.',
+    prev: '이전',
+    create: '포트폴리오 만들기',
+    skip: '건너뛰기',
+    next: '다음',
+    loading: '불러오고 있어요.',
+    retry: '다시 시도하기',
+    noPeople: '아직 커밋한 참여자가 없는 레포예요.',
+    commits: (count: number) => `${count.toLocaleString()}개의 커밋`,
+    peopleLabel: '나는 누구인가요',
+    writing: '포트폴리오를 쓰고 있어요.',
+    writingLong: '포트폴리오를 쓰고 있어요. 1분 정도 걸려요.',
+    sections: '항목',
+    add: '항목 더하기',
+    removeTitle: '이 항목을 뺄까요?',
+    removeBody: (title: string) => `${title} 항목을 포트폴리오에서 빼요. 항목 더하기로 다시 넣으면 새로 써요.`,
+    removeConfirm: '빼기',
+    copied: '복사했어요',
+    copyFailed: '복사하지 못했어요',
+    copy: '마크다운 복사',
+    empty: '항목 더하기로 포트폴리오에 넣을 항목을 골라 주세요.',
+    reorder: (title: string) => `${title} 순서 바꾸기. 위아래 방향키로 옮겨요`,
+    revising: '고치고 있어요',
+    pending: '쓰고 있어요',
+    revise: '고치기',
+    remove: (title: string) => `${title} 빼기`,
+    reviseTitle: '어떤 부분을 고칠까요?',
+  },
+  en: {
+    title: 'Build a portfolio',
+    back: 'Back to repositories',
+    restart: 'Start over',
+    restartTitle: 'Start over?',
+    restartBody: 'You will pick sections and a plan again and write it from scratch. The current portfolio will be deleted and cannot be restored.',
+    restartConfirm: 'Start over',
+    steps: { sections: 'Sections', plan: 'Reference plan', person: 'Who are you?' },
+    stepsLabel: 'Steps',
+    sectionsTitle: 'Which sections should your portfolio have?',
+    sectionsHint: 'You can drag to reorder them after it is written.',
+    planTitle: 'Do you have a plan to reference?',
+    planHint: 'Background and goals are taken from your plan. You can leave it empty and move on.',
+    planPlaceholder: 'Paste a project plan or a description of the service',
+    personTitle: 'Who are you in this project?',
+    personHint: 'Your role is written from this person\'s commits and PRs.',
+    prev: 'Back',
+    create: 'Build portfolio',
+    skip: 'Skip',
+    next: 'Next',
+    loading: 'Loading.',
+    retry: 'Try again',
+    noPeople: 'No one has committed to this repo yet.',
+    commits: (count: number) => `${count.toLocaleString()} ${count === 1 ? 'commit' : 'commits'}`,
+    peopleLabel: 'Who are you?',
+    writing: 'Writing your portfolio.',
+    writingLong: 'Writing your portfolio. This takes about a minute.',
+    sections: 'Sections',
+    add: 'Add section',
+    removeTitle: 'Remove this section?',
+    removeBody: (title: string) => `${title} will be removed from the portfolio. If you add it back, it will be written again.`,
+    removeConfirm: 'Remove',
+    copied: 'Copied',
+    copyFailed: 'Could not copy',
+    copy: 'Copy Markdown',
+    empty: 'Use Add section to choose what goes into your portfolio.',
+    reorder: (title: string) => `Reorder ${title}. Use the up and down arrow keys`,
+    revising: 'Revising',
+    pending: 'Writing',
+    revise: 'Revise',
+    remove: (title: string) => `Remove ${title}`,
+    reviseTitle: 'What should change?',
+  },
+})
+
+const STEPS: { key: Step }[] = [{ key: 'sections' }, { key: 'plan' }, { key: 'person' }]
 
 /** 항목, 기획안, 내가 누구인지를 차례로 정하고 포트폴리오를 만들어요. */
 function Setup({ repo, onDone }: { repo: string; onDone: (saved: SavedPortfolio) => void }) {
+  const L = useMessages(TEXT)
   const [step, setStep] = useState<Step>('sections')
   const [picked, setPicked] = useState<PortfolioKey[]>(DEFAULT_SECTIONS)
   const [plan, setPlan] = useState('')
@@ -147,7 +236,7 @@ function Setup({ repo, onDone }: { repo: string; onDone: (saved: SavedPortfolio)
 
   async function create() {
     // 고른 항목은 처음에 늘어놓은 순서대로 써요. 순서는 만든 뒤에 끌어서 바꿔요.
-    const sections = PORTFOLIO_SECTIONS.map((item) => item.key).filter((key) => picked.includes(key))
+    const sections = portfolioSections().map((item) => item.key).filter((key) => picked.includes(key))
     setWorking(true)
     setError('')
     const result = await createPortfolio(repo, sections, plan.trim(), person)
@@ -175,7 +264,7 @@ function Setup({ repo, onDone }: { repo: string; onDone: (saved: SavedPortfolio)
     <div className="-mx-6 flex min-h-0 flex-1 flex-col border-t border-gray-200 bg-gray-50 md:-mx-10">
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-8 md:px-10">
         <div className="mx-auto w-full max-w-[640px]">
-          <ol className="flex flex-wrap items-center gap-2" aria-label="진행 단계">
+          <ol className="flex flex-wrap items-center gap-2" aria-label={L.stepsLabel}>
             {STEPS.map((item, order) => (
               <li key={item.key} className="flex items-center gap-2">
                 <button
@@ -194,7 +283,7 @@ function Setup({ repo, onDone }: { repo: string; onDone: (saved: SavedPortfolio)
                   >
                     {order + 1}
                   </span>
-                  {item.label}
+                  {L.steps[item.key]}
                 </button>
                 {order < STEPS.length - 1 && <span aria-hidden className="h-px w-4 bg-gray-300" />}
               </li>
@@ -204,10 +293,10 @@ function Setup({ repo, onDone }: { repo: string; onDone: (saved: SavedPortfolio)
           <div key={step} className="mt-8 animate-rise">
             {step === 'sections' ? (
               <>
-                <h2 className="text-[19px] font-semibold text-gray-900">어떤 항목으로 포트폴리오를 만들까요?</h2>
-                <p className="mt-1.5 text-[13.5px] text-gray-500">순서는 만든 뒤에 끌어서 바꿀 수 있어요.</p>
+                <h2 className="text-[19px] font-semibold text-gray-900">{L.sectionsTitle}</h2>
+                <p className="mt-1.5 text-[13.5px] text-gray-500">{L.sectionsHint}</p>
                 <ul className="mt-5 grid gap-2 sm:grid-cols-2">
-                  {PORTFOLIO_SECTIONS.map((item) => {
+                  {portfolioSections().map((item) => {
                     const on = picked.includes(item.key)
                     return (
                       <li key={item.key}>
@@ -233,15 +322,15 @@ function Setup({ repo, onDone }: { repo: string; onDone: (saved: SavedPortfolio)
               </>
             ) : step === 'plan' ? (
               <>
-                <h2 className="text-[19px] font-semibold text-gray-900">참고할 기획안이 있나요?</h2>
+                <h2 className="text-[19px] font-semibold text-gray-900">{L.planTitle}</h2>
                 <p className="mt-1.5 text-[13.5px] text-gray-500">
-                  기획 배경과 목적을 기획안에서 가져와요. 없으면 비워 두고 넘어가도 돼요.
+                  {L.planHint}
                 </p>
                 <textarea
                   value={plan}
                   maxLength={PLAN_MAX}
                   onChange={(event) => setPlan(event.target.value)}
-                  placeholder="기획안이나 서비스 소개 글을 붙여 넣어 주세요"
+                  placeholder={L.planPlaceholder}
                   className="mt-5 h-72 w-full resize-none rounded-xl border border-gray-200 bg-white p-4 text-[14px] leading-relaxed text-gray-900 outline-none placeholder:text-gray-400 focus:border-brand"
                 />
                 <p className="mt-1.5 text-right text-[12px] text-gray-400 tabular-nums">
@@ -250,8 +339,8 @@ function Setup({ repo, onDone }: { repo: string; onDone: (saved: SavedPortfolio)
               </>
             ) : (
               <>
-                <h2 className="text-[19px] font-semibold text-gray-900">이 프로젝트에서 누구인가요?</h2>
-                <p className="mt-1.5 text-[13.5px] text-gray-500">고른 사람의 커밋과 PR로 맡은 역할을 써요.</p>
+                <h2 className="text-[19px] font-semibold text-gray-900">{L.personTitle}</h2>
+                <p className="mt-1.5 text-[13.5px] text-gray-500">{L.personHint}</p>
                 <PeopleList people={people} person={person} onPick={setPerson} onRetry={() => void loadPeople()} />
               </>
             )}
@@ -265,7 +354,7 @@ function Setup({ repo, onDone }: { repo: string; onDone: (saved: SavedPortfolio)
           <div className="flex shrink-0 items-center gap-2">
             {index > 0 && (
               <button type="button" onClick={() => setStep(STEPS[index - 1].key)} className={toolButton}>
-                이전
+                {L.prev}
               </button>
             )}
             <button
@@ -275,7 +364,7 @@ function Setup({ repo, onDone }: { repo: string; onDone: (saved: SavedPortfolio)
               onClick={() => (last ? void create() : setStep(STEPS[index + 1].key))}
               className="h-9 rounded-lg bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover disabled:bg-gray-300"
             >
-              {last ? '포트폴리오 만들기' : step === 'plan' && !plan.trim() ? '건너뛰기' : '다음'}
+              {last ? L.create : step === 'plan' && !plan.trim() ? L.skip : L.next}
             </button>
           </div>
         </div>
@@ -305,10 +394,11 @@ function PeopleList({ people, person, onPick, onRetry }: {
   onPick: (id: string) => void
   onRetry: () => void
 }) {
+  const L = useMessages(TEXT)
   if (people === null || people === 'loading') {
     return (
       <ul className="mt-5 grid gap-2" aria-busy="true">
-        <li className="sr-only">불러오고 있어요.</li>
+        <li className="sr-only">{L.loading}</li>
         {[0, 1, 2, 3].map((item) => (
           <li key={item} aria-hidden className="flex h-[60px] items-center gap-3 rounded-xl border border-gray-200 bg-white px-3.5">
             <Bone className="size-8 rounded-full" />
@@ -323,25 +413,25 @@ function PeopleList({ people, person, onPick, onRetry }: {
       <div className="mt-8 flex flex-col items-center gap-4 text-center">
         <p className="text-[14px] text-gray-600">{people.error}</p>
         <button type="button" onClick={onRetry} className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover">
-          다시 시도하기
+          {L.retry}
         </button>
       </div>
     )
   }
 
   if (people.length === 0) {
-    return <p className="mt-8 text-center text-[14px] text-gray-600">아직 커밋한 참여자가 없는 레포예요.</p>
+    return <p className="mt-8 text-center text-[14px] text-gray-600">{L.noPeople}</p>
   }
 
   const options = people.map((item) => ({
     id: item.id,
     name: item.name,
-    detail: `${item.login ? `@${item.login}, ` : ''}${item.commits.toLocaleString()}개의 커밋`,
+    detail: `${item.login ? `@${item.login}, ` : ''}${L.commits(item.commits)}`,
     avatarUrl: item.avatarUrl,
   }))
 
   return (
-    <ul className="mt-5 grid gap-2" role="radiogroup" aria-label="나는 누구인가요">
+    <ul className="mt-5 grid gap-2" role="radiogroup" aria-label={L.peopleLabel}>
       {options.map((item) => {
         const on = person === item.id
         return (
@@ -382,11 +472,12 @@ function PeopleList({ people, person, onPick, onRetry }: {
 
 /** 포트폴리오를 쓰는 동안 보여줘요. 다 쓰면 나올 두 칸 화면과 같은 배치예요. */
 function Writing() {
+  const L = useMessages(TEXT)
   return (
     <div className="-mx-6 flex min-h-0 flex-1 border-t border-gray-200 md:-mx-10" aria-busy="true">
-      <p role="status" className="sr-only">포트폴리오를 쓰고 있어요.</p>
+      <p role="status" className="sr-only">{L.writing}</p>
       <div className="flex w-[340px] shrink-0 flex-col gap-2 border-r border-gray-200 bg-gray-50 p-4">
-        <p className="mb-2 text-[13px] font-medium text-gray-500">포트폴리오를 쓰고 있어요. 1분 정도 걸려요.</p>
+        <p className="mb-2 text-[13px] font-medium text-gray-500">{L.writingLong}</p>
         {[0, 1, 2, 3].map((item) => (
           <div key={item} aria-hidden className="flex h-[58px] items-center gap-3 rounded-xl border border-gray-200 bg-white px-3">
             <Bone className="h-4 w-4" />
@@ -423,6 +514,7 @@ const markdown = new Marked({
 
 /** 만든 포트폴리오를 고치는 화면이에요. 왼쪽은 항목의 순서와 고치기, 오른쪽은 마크다운 미리보기예요. */
 function Editor({ saved, name, onChange }: { saved: SavedPortfolio; name: string; onChange: (next: SavedPortfolio) => void }) {
+  const L = useMessages(TEXT)
   const sections = saved.sections
   /** 지금 고치는 중인 항목 */
   const [revising, setRevising] = useState<PortfolioKey | null>(null)
@@ -464,16 +556,16 @@ function Editor({ saved, name, onChange }: { saved: SavedPortfolio; name: string
     else update(now.map((item) => (item.key === key ? { ...item, content: result.data.content } : item)))
   }
 
-  const missing = PORTFOLIO_SECTIONS.filter((item) => !sections.some((section) => section.key === item.key))
+  const missing = portfolioSections().filter((item) => !sections.some((section) => section.key === item.key))
 
   return (
     <div className="-mx-6 flex min-h-0 flex-1 border-t border-gray-200 md:-mx-10">
       <aside className="flex w-[340px] shrink-0 flex-col border-r border-gray-200 bg-gray-50">
         <div className="flex shrink-0 items-center justify-between gap-2 px-4 pt-4 pb-2">
-          <h2 className="text-[13px] font-medium text-gray-500">항목</h2>
+          <h2 className="text-[13px] font-medium text-gray-500">{L.sections}</h2>
           {missing.length > 0 && (
             <MapMenu
-              label="항목 더하기"
+              label={L.add}
               groups={[
                 {
                   items: missing.map((item) => ({
@@ -537,9 +629,9 @@ function Editor({ saved, name, onChange }: { saved: SavedPortfolio; name: string
 
       {removing && (
         <ConfirmDialog
-          title="이 항목을 뺄까요?"
-          body={`${removing.title} 항목을 포트폴리오에서 빼요. 항목 더하기로 다시 넣으면 새로 써요.`}
-          confirm="빼기"
+          title={L.removeTitle}
+          body={L.removeBody(removing.title)}
+          confirm={L.removeConfirm}
           danger
           working={false}
           onCancel={() => setRemoving(null)}
@@ -554,6 +646,7 @@ function Editor({ saved, name, onChange }: { saved: SavedPortfolio; name: string
 }
 
 function CopyMarkdown({ text, repo }: { text: string; repo: string }) {
+  const L = useMessages(TEXT)
   const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle')
 
   async function copy() {
@@ -572,7 +665,7 @@ function CopyMarkdown({ text, repo }: { text: string; repo: string }) {
         <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
         <path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" />
       </svg>
-      {state === 'done' ? '복사했어요' : state === 'failed' ? '복사하지 못했어요' : '마크다운 복사'}
+      {state === 'done' ? L.copied : state === 'failed' ? L.copyFailed : L.copy}
     </button>
   )
 }
@@ -599,6 +692,7 @@ function SectionList({ sections, revising, asking, onAsk, onRevise, onRemove, on
   onReorder: (next: PortfolioSection[]) => void
   onJump: (key: PortfolioKey) => void
 }) {
+  const L = useMessages(TEXT)
   const [order, setOrder] = useState(sections)
   const [drag, setDrag] = useState<Dragging | null>(null)
   const items = useRef(new Map<PortfolioKey, HTMLLIElement>())
@@ -662,7 +756,7 @@ function SectionList({ sections, revising, asking, onAsk, onRevise, onRemove, on
   }
 
   if (order.length === 0) {
-    return <p className="px-4 pt-6 text-[13px] text-gray-500">항목 더하기로 포트폴리오에 넣을 항목을 골라 주세요.</p>
+    return <p className="px-4 pt-6 text-[13px] text-gray-500">{L.empty}</p>
   }
 
   return (
@@ -684,7 +778,7 @@ function SectionList({ sections, revising, asking, onAsk, onRevise, onRemove, on
               <button
                 type="button"
                 data-no-press
-                aria-label={`${section.title} 순서 바꾸기. 위아래 방향키로 옮겨요`}
+                aria-label={L.reorder(section.title)}
                 onPointerDown={(event) => onPointerDown(event, section.key)}
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
@@ -706,7 +800,7 @@ function SectionList({ sections, revising, asking, onAsk, onRevise, onRemove, on
               <button type="button" onClick={() => onJump(section.key)} className="min-w-0 flex-1 py-1 text-left">
                 <span className="block text-[14px] font-semibold text-gray-900">{section.title}</span>
                 <span className="mt-0.5 line-clamp-2 text-[12.5px] leading-snug text-gray-500">
-                  {revising === section.key ? '고치고 있어요' : preview || '쓰고 있어요'}
+                  {revising === section.key ? L.revising : preview || L.pending}
                 </span>
               </button>
               <div className="flex shrink-0 items-center gap-0.5">
@@ -717,11 +811,11 @@ function SectionList({ sections, revising, asking, onAsk, onRevise, onRemove, on
                   onClick={() => onAsk(section.key)}
                   className="h-8 rounded-md px-2 text-[12.5px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:text-gray-300"
                 >
-                  고치기
+                  {L.revise}
                 </button>
                 <button
                   type="button"
-                  aria-label={`${section.title} 빼기`}
+                  aria-label={L.remove(section.title)}
                   disabled={revising === section.key}
                   onClick={() => onRemove(section)}
                   className="flex size-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:text-gray-200"
@@ -744,6 +838,7 @@ function SectionList({ sections, revising, asking, onAsk, onRevise, onRemove, on
 
 /** 항목 아래에 펼쳐지는 작은 창이에요. 고칠 방향을 글로 적지 않고 골라요. */
 function RevisionPicker({ onPick, onClose }: { onPick: (revision: RevisionKey) => void; onClose: () => void }) {
+  const L = useMessages(TEXT)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -764,10 +859,10 @@ function RevisionPicker({ onPick, onClose }: { onPick: (revision: RevisionKey) =
   }, [onClose])
 
   return (
-    <div ref={ref} role="dialog" aria-label="어떤 부분을 고칠까요?" className="origin-top animate-pop border-t border-gray-100 px-3 pt-2.5 pb-3">
-      <p className="text-[12.5px] font-medium text-gray-500">어떤 부분을 고칠까요?</p>
+    <div ref={ref} role="dialog" aria-label={L.reviseTitle} className="origin-top animate-pop border-t border-gray-100 px-3 pt-2.5 pb-3">
+      <p className="text-[12.5px] font-medium text-gray-500">{L.reviseTitle}</p>
       <div className="mt-2 flex flex-wrap gap-1.5">
-        {REVISIONS.map((item) => (
+        {revisions().map((item) => (
           <button
             key={item.key}
             type="button"

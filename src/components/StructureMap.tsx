@@ -4,6 +4,7 @@ import { track } from '../lib/analytics'
 import { fetchDeepReport } from '../lib/api'
 import { useShortcuts } from '../lib/shortcuts'
 import { MapMenu, tag } from './DeepParts'
+import { getLang, messages, useMessages } from '../lib/i18n'
 
 interface Props {
   /** 맵 한가운데서 가지가 뻗어 나가는 뿌리 칸에 적을 이름 (레포 이름) */
@@ -36,7 +37,75 @@ interface Placed {
   parent: Placed | null
 }
 
-const count = (value: number) => value.toLocaleString('ko-KR')
+const count = (value: number) => value.toLocaleString(getLang() === 'ko' ? 'ko-KR' : 'en-US')
+
+const TEXT = messages({
+  ko: {
+    files: (n: string) => `파일 ${n}개`,
+    times: (n: string) => `${n}번`,
+    share: (files: string, percent: number) => `파일 ${files}개, 전체의 ${percent}%`,
+    edited: (name: string, n: string) => `${name}님이 여기 파일을 ${n}번 고쳤어요`,
+    view: '보기',
+    folders: '폴더',
+    main: '주요 폴더만 펼치기',
+    source: '소스 폴더만 펼치기',
+    expandAll: '모두 펼치기',
+    collapseAll: '모두 접기',
+    display: '표시',
+    roles: '폴더 설명',
+    people: '참여자',
+    noCommits: '살펴볼 커밋이 없어요.',
+    all: '전체',
+    commits: (n: string) => `${n}개의 커밋`,
+    horizontal: '가로로 뻗기',
+    vertical: '세로로 뻗기',
+    select: '선택',
+    hand: '손',
+    pen: '펜',
+    rect: '사각형',
+    ellipse: '원',
+    clear: '그림 지우기',
+    reset: '배치 되돌리기',
+    zoomOut: '축소',
+    zoomIn: '확대',
+    smaller: '작게',
+    bigger: '크게',
+    fit: '한눈에 보기',
+  },
+  en: {
+    files: (n: string) => `${n} ${n === '1' ? 'file' : 'files'}`,
+    times: (n: string) => `${n}x`,
+    share: (files: string, percent: number) => `${files} ${files === '1' ? 'file' : 'files'}, ${percent}% of the repo`,
+    edited: (name: string, n: string) => `${name} changed files here ${n} ${n === '1' ? 'time' : 'times'}`,
+    view: 'View',
+    folders: 'Folders',
+    main: 'Expand main folders',
+    source: 'Expand source folders',
+    expandAll: 'Expand all',
+    collapseAll: 'Collapse all',
+    display: 'Display',
+    roles: 'Folder descriptions',
+    people: 'Contributors',
+    noCommits: 'No commits to look at.',
+    all: 'All',
+    commits: (n: string) => `${n} ${n === '1' ? 'commit' : 'commits'}`,
+    horizontal: 'Branch right',
+    vertical: 'Branch down',
+    select: 'Select',
+    hand: 'Hand',
+    pen: 'Pen',
+    rect: 'Rectangle',
+    ellipse: 'Ellipse',
+    clear: 'Clear drawings',
+    reset: 'Reset layout',
+    zoomOut: 'Zoom out',
+    zoomIn: 'Zoom in',
+    smaller: 'Zoom out',
+    bigger: 'Zoom in',
+    fit: 'Fit to screen',
+  },
+})
+
 
 /** 코드가 아니라 설정, 문서, 자료가 들어 있는 폴더 이름. 처음에는 접어 둬요. */
 const SIDE_FOLDERS = new Set([
@@ -230,6 +299,7 @@ function layout(root: StructureNode, open: Set<string>, nodeH: number, direction
  * 칸을 끌면 그 칸과 아래 가지를 마음대로 옮길 수 있고, 배치 되돌리기로 원래 자리에 돌려놔요.
  */
 export function StructureMap({ name, repo, root }: Props) {
+  const L = useMessages(TEXT)
   const [open, setOpen] = useState<Set<string>>(() => sourceFolders(root))
   /** 메뉴에서 고른 펼침 방식. 폴더를 직접 눌러서 바꾸면 어느 것도 아니게 돼요. */
   const [mode, setMode] = useState<'main' | 'source' | 'all' | 'none' | null>('source')
@@ -772,14 +842,14 @@ export function StructureMap({ name, repo, root }: Props) {
                 <span className="block truncate font-mono text-[13px] font-semibold tracking-normal">{isRoot ? name : node.name}</span>
                 {roles && (
                   <span className={`block truncate text-[11.5px] ${isRoot ? 'text-white/70' : 'text-gray-500'}`}>
-                    {isRoot ? `파일 ${count(node.files)}개` : (node.role ?? `파일 ${count(node.files)}개`)}
+                    {isRoot ? L.files(count(node.files)) : (node.role ?? L.files(count(node.files)))}
                   </span>
                 )}
               </span>
               {!isRoot && (
                 <span className={`flex shrink-0 gap-1 ${roles ? 'flex-col items-end' : 'items-center'}`}>
                   <span className={`text-[11px] tabular-nums ${touched ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
-                    {touched !== null ? `${count(touched)}번` : count(node.files)}
+                    {touched !== null ? L.times(count(touched)) : count(node.files)}
                   </span>
                   {expandable && (
                     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className={`size-3 text-gray-400 transition-transform ${vertical ? (expanded ? '-rotate-90' : 'rotate-90') : expanded ? 'rotate-180' : ''}`} aria-hidden="true">
@@ -818,11 +888,11 @@ export function StructureMap({ name, repo, root }: Props) {
           <p className="font-mono text-[12.5px] font-semibold tracking-normal break-all text-gray-900">{focus.node.path}</p>
           {focus.node.role && <p className="mt-1 text-[12.5px] leading-snug text-gray-600">{focus.node.role}</p>}
           <p className="mt-2 text-[12px] text-gray-500 tabular-nums">
-            파일 {count(focus.node.files)}개, 전체의 {Math.round((focus.node.files / Math.max(1, root.files)) * 100)}%
+            {L.share(count(focus.node.files), Math.round((focus.node.files / Math.max(1, root.files)) * 100))}
           </p>
           {person && (
             <p className="mt-1 text-[12px] text-gray-500 tabular-nums">
-              {person.name}님이 여기 파일을 {count(person.folders[focus.node.path] ?? 0)}번 고쳤어요
+              {L.edited(person.name, count(person.folders[focus.node.path] ?? 0))}
             </p>
           )}
           {focus.node.samples && (
@@ -839,35 +909,35 @@ export function StructureMap({ name, repo, root }: Props) {
 
       <div onPointerDown={(event) => event.stopPropagation()} className="absolute top-4 left-4 flex cursor-default items-center gap-2">
         <MapMenu
-          label="보기"
+          label={L.view}
           groups={[
             {
-              title: '폴더',
+              title: L.folders,
               items: [
-                { label: '주요 폴더만 펼치기', shortcut: 'M', checked: mode === 'main', onSelect: () => showFolders(mainFolders(root), 'main') },
-                { label: '소스 폴더만 펼치기', shortcut: 'S', checked: mode === 'source', onSelect: () => showFolders(sourceFolders(root), 'source') },
-                { label: '모두 펼치기', shortcut: 'E', checked: mode === 'all', onSelect: () => showFolders(allFolders(root), 'all') },
-                { label: '모두 접기', shortcut: 'W', checked: mode === 'none', onSelect: () => showFolders(new Set(), 'none') },
+                { label: L.main, shortcut: 'M', checked: mode === 'main', onSelect: () => showFolders(mainFolders(root), 'main') },
+                { label: L.source, shortcut: 'S', checked: mode === 'source', onSelect: () => showFolders(sourceFolders(root), 'source') },
+                { label: L.expandAll, shortcut: 'E', checked: mode === 'all', onSelect: () => showFolders(allFolders(root), 'all') },
+                { label: L.collapseAll, shortcut: 'W', checked: mode === 'none', onSelect: () => showFolders(new Set(), 'none') },
               ],
             },
-            { title: '표시', items: [{ label: '폴더 설명', shortcut: 'I', checked: roles, onSelect: toggleRoles }] },
+            { title: L.display, items: [{ label: L.roles, shortcut: 'I', checked: roles, onSelect: toggleRoles }] },
           ]}
         />
         <MapMenu
-          label="참여자"
+          label={L.people}
           value={person?.name}
           active={person !== null}
           onOpen={() => void loadPeople()}
           groups={[
             {
               loading: people === null || people === 'loading',
-              note: people !== null && people !== 'loading' && !Array.isArray(people) ? people.error : Array.isArray(people) && people.length === 0 ? '살펴볼 커밋이 없어요.' : undefined,
+              note: people !== null && people !== 'loading' && !Array.isArray(people) ? people.error : Array.isArray(people) && people.length === 0 ? L.noCommits : undefined,
               items: Array.isArray(people)
                 ? [
-                    { label: '전체', checked: person === null, onSelect: () => pickPerson(null) },
+                    { label: L.all, checked: person === null, onSelect: () => pickPerson(null) },
                     ...people.map((item) => ({
                       label: item.name,
-                      hint: `${count(item.commits)}개의 커밋`,
+                      hint: L.commits(count(item.commits)),
                       checked: item.id === personId,
                       onSelect: () => pickPerson(item),
                     })),
@@ -882,12 +952,12 @@ export function StructureMap({ name, repo, root }: Props) {
       <div onPointerDown={(event) => event.stopPropagation()} className="absolute top-4 right-4 flex cursor-default items-center gap-0.5 rounded-lg border border-gray-200 bg-white p-1">
         <button
           type="button"
-          aria-label="가로로 뻗기"
+          aria-label={L.horizontal}
           aria-pressed={!vertical}
           onClick={() => changeDirection('horizontal')}
           className={`${control} ${vertical ? '' : chosen}`}
         >
-          <Tip text="가로로 뻗기" keys="L" />
+          <Tip text={L.horizontal} keys="L" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
             <rect x="1.5" y="6" width="4" height="4" rx="1" />
             <rect x="10.5" y="2" width="4" height="4" rx="1" />
@@ -897,12 +967,12 @@ export function StructureMap({ name, repo, root }: Props) {
         </button>
         <button
           type="button"
-          aria-label="세로로 뻗기"
+          aria-label={L.vertical}
           aria-pressed={vertical}
           onClick={() => changeDirection('vertical')}
           className={`${control} ${vertical ? chosen : ''}`}
         >
-          <Tip text="세로로 뻗기" keys="L" />
+          <Tip text={L.vertical} keys="L" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
             <rect x="6" y="1.5" width="4" height="4" rx="1" />
             <rect x="2" y="10.5" width="4" height="4" rx="1" />
@@ -912,45 +982,45 @@ export function StructureMap({ name, repo, root }: Props) {
         </button>
         <span aria-hidden className="mx-1 h-5 w-px bg-gray-200" />
         {/* 선택 도구는 칸을 누르고 옮기고, 빈 곳을 끌어서 여러 칸을 골라요. 손 도구는 어디를 끌어도 맵이 움직여요. */}
-        <button type="button" aria-label="선택" aria-pressed={using === 'select'} onClick={() => pickTool('select')} className={`${control} ${using === 'select' ? chosen : ''}`}>
-          <Tip text="선택" keys="V" />
+        <button type="button" aria-label={L.select} aria-pressed={using === 'select'} onClick={() => pickTool('select')} className={`${control} ${using === 'select' ? chosen : ''}`}>
+          <Tip text={L.select} keys="V" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
             <path d="M3.5 2.5l9 4.2-3.8 1.2-1.3 3.8z" />
           </svg>
         </button>
-        <button type="button" aria-label="손" aria-pressed={using === 'hand'} onClick={() => pickTool('hand')} className={`${control} ${using === 'hand' ? chosen : ''}`}>
-          <Tip text="손" keys="H" />
+        <button type="button" aria-label={L.hand} aria-pressed={using === 'hand'} onClick={() => pickTool('hand')} className={`${control} ${using === 'hand' ? chosen : ''}`}>
+          <Tip text={L.hand} keys="H" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden="true">
             <path d="M5.5 8V3.8a1 1 0 0 1 2 0V7M7.5 7V2.8a1 1 0 0 1 2 0V7M9.5 7V3.8a1 1 0 0 1 2 0M5.5 8.5L4.3 7.3a1 1 0 0 0-1.5 1.3l2.400 3.600a3.500 3.500 0 0 0 2.900 1.500h.9a3.500 3.500 0 0 0 3.500-3.500V4.800" />
           </svg>
         </button>
         {/* 맵 위에 그리는 도구예요. 고른 도구를 다시 누르면 선택 도구로 돌아가요. 그림은 저장하지 않아요. */}
-        <button type="button" aria-label="펜" aria-pressed={tool === 'pen'} onClick={() => pickTool('pen')} className={`${control} ${tool === 'pen' ? chosen : ''}`}>
-          <Tip text="펜" keys="P" />
+        <button type="button" aria-label={L.pen} aria-pressed={tool === 'pen'} onClick={() => pickTool('pen')} className={`${control} ${tool === 'pen' ? chosen : ''}`}>
+          <Tip text={L.pen} keys="P" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden="true">
             <path d="M10.5 3l2.5 2.5L5.5 13H3v-2.5zM9 4.5L11.5 7" />
           </svg>
         </button>
-        <button type="button" aria-label="사각형" aria-pressed={tool === 'rect'} onClick={() => pickTool('rect')} className={`${control} ${tool === 'rect' ? chosen : ''}`}>
-          <Tip text="사각형" keys="R" />
+        <button type="button" aria-label={L.rect} aria-pressed={tool === 'rect'} onClick={() => pickTool('rect')} className={`${control} ${tool === 'rect' ? chosen : ''}`}>
+          <Tip text={L.rect} keys="R" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
             <rect x="2.5" y="3.5" width="11" height="9" rx="1.5" />
           </svg>
         </button>
-        <button type="button" aria-label="원" aria-pressed={tool === 'ellipse'} onClick={() => pickTool('ellipse')} className={`${control} ${tool === 'ellipse' ? chosen : ''}`}>
-          <Tip text="원" keys="O" />
+        <button type="button" aria-label={L.ellipse} aria-pressed={tool === 'ellipse'} onClick={() => pickTool('ellipse')} className={`${control} ${tool === 'ellipse' ? chosen : ''}`}>
+          <Tip text={L.ellipse} keys="O" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" className="size-4" aria-hidden="true">
             <circle cx="8" cy="8" r="5.5" />
           </svg>
         </button>
         <button
           type="button"
-          aria-label="그림 지우기"
+          aria-label={L.clear}
           disabled={shapes.length === 0}
           onClick={clearShapes}
           className={`${control} disabled:text-gray-300 disabled:hover:bg-transparent`}
         >
-          <Tip text="그림 지우기" keys="X" />
+          <Tip text={L.clear} keys="X" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden="true">
             <path d="M9.5 3L13 6.5l-6 6H4.5L3 11zM7 5.5L10.5 9M7 12.5h6" />
           </svg>
@@ -959,33 +1029,33 @@ export function StructureMap({ name, repo, root }: Props) {
         {/* 끌어서 옮긴 칸이 있을 때만 눌러요. 모두 원래 자리로 돌려놔요. */}
         <button
           type="button"
-          aria-label="배치 되돌리기"
+          aria-label={L.reset}
           disabled={!arranged}
           onClick={resetMoves}
           className={`${controlBase} text-red-500 hover:text-red-600 disabled:text-gray-300 disabled:hover:bg-transparent`}
         >
-          <Tip text="배치 되돌리기" />
+          <Tip text={L.reset} />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="size-3.5" aria-hidden="true">
             <path d="M3 8a5 5 0 1 0 1.5-3.57M3 3v2.5h2.5" />
           </svg>
         </button>
         <span aria-hidden className="mx-1 h-5 w-px bg-gray-200" />
-        <button type="button" aria-label="작게" onClick={() => zoomBy(1 / 1.25)} className={control}>
-          <Tip text="축소" keys="-" />
+        <button type="button" aria-label={L.smaller} onClick={() => zoomBy(1 / 1.25)} className={control}>
+          <Tip text={L.zoomOut} keys="-" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
             <path d="M3.5 8h9" />
           </svg>
         </button>
         <span className="w-11 text-center text-[12.5px] text-gray-500 tabular-nums">{Math.round(view.k * 100)}%</span>
-        <button type="button" aria-label="크게" onClick={() => zoomBy(1.25)} className={control}>
-          <Tip text="확대" keys="+" />
+        <button type="button" aria-label={L.bigger} onClick={() => zoomBy(1.25)} className={control}>
+          <Tip text={L.zoomIn} keys="+" />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
             <path d="M3.5 8h9M8 3.5v9" />
           </svg>
         </button>
         {/* 네 모서리가 바깥으로 벌어진 그림이에요. 맵 전체를 화면에 맞춰요. */}
-        <button type="button" aria-label="한눈에 보기" onClick={() => fit()} className={control}>
-          <Tip text="한눈에 보기" keys="0" end />
+        <button type="button" aria-label={L.fit} onClick={() => fit()} className={control}>
+          <Tip text={L.fit} keys="0" end />
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="size-3.5" aria-hidden="true">
             <path d="M6 2.5H2.5V6M10 2.5h3.5V6M6 13.5H2.5V10M10 13.5h3.5V10" />
           </svg>

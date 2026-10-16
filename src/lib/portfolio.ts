@@ -1,34 +1,64 @@
 import { authFetch } from './auth'
 import { DEEP_ERRORS } from './api'
+import { messages, pick } from './i18n'
 
 /** 포트폴리오에 넣을 수 있는 항목. 서버의 PortfolioSection과 맞춰요. */
 export type PortfolioKey = 'intro' | 'period' | 'team' | 'stack' | 'role' | 'features' | 'trouble' | 'result'
 
-export const PORTFOLIO_SECTIONS: { key: PortfolioKey; title: string; hint: string }[] = [
-  { key: 'intro', title: '프로젝트 소개', hint: '어떤 고민에서 시작했고 무엇을 만들었는지' },
-  { key: 'period', title: '개발 기간', hint: '언제부터 언제까지, 얼마나 작업했는지' },
-  { key: 'team', title: '팀 구성', hint: '분야별로 누가 참여했는지' },
-  { key: 'stack', title: '기술 스택', hint: '분야별로 쓴 기술' },
-  { key: 'role', title: '맡은 역할', hint: '내가 맡아서 한 일' },
-  { key: 'features', title: '주요 기능', hint: '서비스의 핵심 기능' },
-  { key: 'trouble', title: '문제 해결 경험', hint: '부딪힌 문제와 해결한 방법' },
-  { key: 'result', title: '성과와 배운 점', hint: '확인되는 성과와 익힌 것' },
-]
+const SECTIONS = messages<{ key: PortfolioKey; title: string; hint: string }[]>({
+  ko: [
+    { key: 'intro', title: '프로젝트 소개', hint: '어떤 고민에서 시작했고 무엇을 만들었는지' },
+    { key: 'period', title: '개발 기간', hint: '언제부터 언제까지, 얼마나 작업했는지' },
+    { key: 'team', title: '팀 구성', hint: '분야별로 누가 참여했는지' },
+    { key: 'stack', title: '기술 스택', hint: '분야별로 쓴 기술' },
+    { key: 'role', title: '맡은 역할', hint: '내가 맡아서 한 일' },
+    { key: 'features', title: '주요 기능', hint: '서비스의 핵심 기능' },
+    { key: 'trouble', title: '문제 해결 경험', hint: '부딪힌 문제와 해결한 방법' },
+    { key: 'result', title: '성과와 배운 점', hint: '확인되는 성과와 익힌 것' },
+  ],
+  en: [
+    { key: 'intro', title: 'Project overview', hint: 'What problem it started from and what was built' },
+    { key: 'period', title: 'Timeline', hint: 'When it ran and how long the work took' },
+    { key: 'team', title: 'Team', hint: 'Who took part, by area' },
+    { key: 'stack', title: 'Tech stack', hint: 'Technologies used, by area' },
+    { key: 'role', title: 'My role', hint: 'What I owned and did' },
+    { key: 'features', title: 'Key features', hint: 'The core features of the product' },
+    { key: 'trouble', title: 'Problem solving', hint: 'Problems I hit and how I solved them' },
+    { key: 'result', title: 'Results and learnings', hint: 'Verifiable results and what I learned' },
+  ],
+})
+
+/** 포트폴리오에 넣을 수 있는 항목 목록. 지금 화면 언어의 이름이에요. */
+export const portfolioSections = () => pick(SECTIONS)
 
 export const DEFAULT_SECTIONS: PortfolioKey[] = ['intro', 'team', 'stack', 'role']
 
 /** 항목을 고칠 때 고르는 요청. 서버의 PortfolioRevision과 맞춰요. */
 export type RevisionKey = 'shorter' | 'longer' | 'numbers' | 'formal' | 'list' | 'story' | 'rewrite'
 
-export const REVISIONS: { key: RevisionKey; label: string }[] = [
-  { key: 'shorter', label: '더 짧게' },
-  { key: 'longer', label: '더 자세하게' },
-  { key: 'numbers', label: '수치를 넣어서' },
-  { key: 'formal', label: '더 전문적인 말투로' },
-  { key: 'list', label: '목록으로 정리' },
-  { key: 'story', label: '문장으로 풀어서' },
-  { key: 'rewrite', label: '다시 쓰기' },
-]
+const REVISION_LABELS = messages<{ key: RevisionKey; label: string }[]>({
+  ko: [
+    { key: 'shorter', label: '더 짧게' },
+    { key: 'longer', label: '더 자세하게' },
+    { key: 'numbers', label: '수치를 넣어서' },
+    { key: 'formal', label: '더 전문적인 말투로' },
+    { key: 'list', label: '목록으로 정리' },
+    { key: 'story', label: '문장으로 풀어서' },
+    { key: 'rewrite', label: '다시 쓰기' },
+  ],
+  en: [
+    { key: 'shorter', label: 'Shorter' },
+    { key: 'longer', label: 'More detailed' },
+    { key: 'numbers', label: 'Add numbers' },
+    { key: 'formal', label: 'More professional' },
+    { key: 'list', label: 'As a list' },
+    { key: 'story', label: 'As prose' },
+    { key: 'rewrite', label: 'Rewrite' },
+  ],
+})
+
+/** 항목을 고칠 때 고르는 요청 목록. 지금 화면 언어의 이름이에요. */
+export const revisions = () => pick(REVISION_LABELS)
 
 export interface PortfolioSection {
   key: PortfolioKey
@@ -53,10 +83,18 @@ export interface SavedPortfolio {
   createdAt: string
 }
 
-const ERRORS: Record<string, string> = {
-  ...DEEP_ERRORS,
-  C5031: '글을 쓰지 못했어요. 잠시 뒤에 다시 시도해 주세요.',
-}
+const ERRORS = messages<Record<string, string>>({
+  ko: {
+    ...DEEP_ERRORS.ko,
+    C5031: '글을 쓰지 못했어요. 잠시 뒤에 다시 시도해 주세요.',
+    failed: '포트폴리오를 만들지 못했어요. 잠시 뒤에 다시 시도해 주세요.',
+  },
+  en: {
+    ...DEEP_ERRORS.en,
+    C5031: "Couldn't write it. Please try again in a moment.",
+    failed: "Couldn't create the portfolio. Please try again in a moment.",
+  },
+})
 
 type Outcome<T> = { data: T } | { error: string }
 
@@ -64,9 +102,9 @@ async function call<T>(path: string, init?: RequestInit): Promise<Outcome<T>> {
   try {
     const result = await authFetch<T>(path, init)
     if (result.ok && result.data) return { data: result.data }
-    return { error: (result.code && ERRORS[result.code]) || '포트폴리오를 만들지 못했어요. 잠시 뒤에 다시 시도해 주세요.' }
+    return { error: (result.code && pick(ERRORS)[result.code]) || pick(ERRORS).failed }
   } catch {
-    return { error: '서버와 연결하지 못했어요. 잠시 뒤에 다시 시도해 주세요.' }
+    return { error: pick(ERRORS).network }
   }
 }
 

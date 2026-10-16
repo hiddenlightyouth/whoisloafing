@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { messages, pick } from './i18n'
 
 /**
  * IP 주소가 대략 어디인지 알려줘요. 위치는 키 없이 쓰는 공개 서비스(ipwho.is)에 물어보고,
@@ -9,7 +10,7 @@ const LOOKUP_URL = 'https://ipwho.is/'
 const STORAGE_KEY = 'whoisloafing:ip-places'
 /** 이 기기에 적어 두는 주소 수. 넘으면 오래된 것부터 버려요. */
 const STORED_LIMIT = 200
-const LOCAL_PLACE = '내부 네트워크'
+const LOCAL_PLACE_TEXT = messages({ ko: '내부 네트워크', en: 'Local network' })
 
 const PRIVATE_V4 = /^(?:127\.|10\.|192\.168\.|169\.254\.|172\.(?:1[6-9]|2\d|3[01])\.)/
 const PRIVATE_V6 = /^(?:::1$|(?:0:){7}1$|f[cd][0-9a-f]{2}:|fe[89ab][0-9a-f]:)/i
@@ -60,7 +61,7 @@ interface Lookup {
 const pending = new Map<string, Promise<string | null>>()
 
 function lookupIpPlace(ip: string): Promise<string | null> {
-  if (isPrivateIp(ip)) return Promise.resolve(LOCAL_PLACE)
+  if (isPrivateIp(ip)) return Promise.resolve(pick(LOCAL_PLACE_TEXT))
   const stored = readStored()[ip]
   if (stored) return Promise.resolve(stored)
 
@@ -83,7 +84,7 @@ function lookupIpPlace(ip: string): Promise<string | null> {
 
 /** IP 주소의 위치를 돌려줘요. 아직 모르거나 알아내지 못했으면 null이에요. */
 export function useIpPlace(ip: string | null | undefined): string | null {
-  const [place, setPlace] = useState<string | null>(() => (ip ? (isPrivateIp(ip) ? LOCAL_PLACE : (readStored()[ip] ?? null)) : null))
+  const [place, setPlace] = useState<string | null>(() => (ip ? (isPrivateIp(ip) ? pick(LOCAL_PLACE_TEXT) : (readStored()[ip] ?? null)) : null))
 
   useEffect(() => {
     if (!ip) {

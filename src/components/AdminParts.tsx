@@ -4,19 +4,46 @@ import type { Result } from '../lib/admin'
 import type { Slice } from '../lib/auth'
 import { tag, toolButton } from './DeepParts'
 import { Bone } from './Skeleton'
-import { messages, pick } from '../lib/i18n'
+import { getLang, messages, pick, useMessages } from '../lib/i18n'
 
 const CANCEL = messages({ ko: '취소', en: 'Cancel' })
+
+const TEXT = messages({
+  ko: {
+    share: (percent: string) => `전체의 ${percent}%`,
+    none: '기록 없음',
+    app: '앱',
+    mobile: '모바일',
+    working: '처리 중',
+    retry: '다시 시도하기',
+    loading: '불러오고 있어요.',
+    more: '더 보기',
+  },
+  en: {
+    share: (percent: string) => `${percent}% of total`,
+    none: 'No record',
+    app: 'App',
+    mobile: 'Mobile',
+    working: 'Working',
+    retry: 'Try again',
+    loading: 'Loading.',
+    more: 'Show more',
+  },
+})
 
 export const card = 'rounded-2xl border border-gray-200 bg-white p-4'
 export const sectionTitle = 'text-[15px] font-semibold text-gray-900'
 /** 표의 줄 안에 두는 작은 글자 버튼이에요. */
 export const rowButton = 'h-7 shrink-0 rounded-md px-2 text-[12.5px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:text-gray-300'
 
-export const full = (value: number) => value.toLocaleString('ko-KR')
-const compactFormat = new Intl.NumberFormat('ko-KR', { notation: 'compact', maximumFractionDigits: 1 })
-export const compact = (value: number) => compactFormat.format(value)
-export const share = (part: number, total: number) => (total > 0 ? `전체의 ${((part / total) * 100).toFixed(1)}%` : '전체의 0%')
+const LOCALES = { ko: 'ko-KR', en: 'en-US' } as const
+export const full = (value: number) => value.toLocaleString(LOCALES[getLang()])
+const compactFormats = {
+  ko: new Intl.NumberFormat('ko-KR', { notation: 'compact', maximumFractionDigits: 1 }),
+  en: new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 }),
+}
+export const compact = (value: number) => compactFormats[getLang()].format(value)
+export const share = (part: number, total: number) => pick(TEXT).share(total > 0 ? ((part / total) * 100).toFixed(1) : '0')
 
 /** 여러 값 중 하나를 고르는 칸이에요. 기간, 그래프에 보여줄 값, 목록의 필터에 같이 써요. */
 export function Segmented<T extends string | number>({ label, options, value, onChange }: {
@@ -100,11 +127,12 @@ export function BarChart({ bars, label, first, last }: { bars: Bar[]; label: str
 
 /** 그 회원이 로그인한 적이 있는 기기 종류예요. */
 export function DeviceTags({ app, mobile, desktop }: { app: boolean; mobile: boolean; desktop: boolean }) {
-  if (!app && !mobile && !desktop) return <span className="text-[12.5px] text-gray-400">기록 없음</span>
+  const L = useMessages(TEXT)
+  if (!app && !mobile && !desktop) return <span className="text-[12.5px] text-gray-400">{L.none}</span>
   return (
     <span className="flex flex-wrap gap-1">
-      {app && <span className={tag}>앱</span>}
-      {mobile && <span className={tag}>모바일</span>}
+      {app && <span className={tag}>{L.app}</span>}
+      {mobile && <span className={tag}>{L.mobile}</span>}
       {desktop && <span className={tag}>PC</span>}
     </span>
   )
@@ -120,6 +148,7 @@ export function ConfirmDialog({ title, body, confirm, danger = false, working, o
   onCancel: () => void
   onConfirm: () => void
 }) {
+  const L = useMessages(TEXT)
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -157,7 +186,7 @@ export function ConfirmDialog({ title, body, confirm, danger = false, working, o
               danger ? 'bg-red-500 hover:bg-red-600' : 'bg-brand hover:bg-brand-hover'
             }`}
           >
-            {working ? '처리 중' : confirm}
+            {working ? L.working : confirm}
           </button>
         </div>
       </div>
@@ -259,11 +288,12 @@ export function usePaged<T>(load: (page: number) => Promise<Result<Slice<T>>>, k
 }
 
 export function Failed({ message, onRetry }: { message: string; onRetry: () => void }) {
+  const L = useMessages(TEXT)
   return (
     <div className="mt-16 flex flex-col items-center gap-4 text-center">
       <p className="text-[14px] leading-relaxed text-gray-600">{message}</p>
       <button type="button" onClick={onRetry} className={toolButton}>
-        다시 시도하기
+        {L.retry}
       </button>
     </div>
   )
@@ -275,9 +305,10 @@ export function Empty({ children }: { children: ReactNode }) {
 
 /** 표와 같은 자리에 두는 스켈레톤이에요. */
 export function RowsSkeleton({ rows = 8 }: { rows?: number }) {
+  const L = useMessages(TEXT)
   return (
     <div aria-busy="true" className="mt-3 overflow-hidden rounded-2xl border border-gray-200 bg-white">
-      <span className="sr-only">불러오고 있어요.</span>
+      <span className="sr-only">{L.loading}</span>
       {Array.from({ length: rows }, (_, row) => (
         <div key={row} aria-hidden className="flex h-[57px] items-center gap-6 border-t border-gray-100 px-4 first:border-t-0">
           <div className="min-w-0 flex-1">
@@ -294,6 +325,7 @@ export function RowsSkeleton({ rows = 8 }: { rows?: number }) {
 }
 
 export function MoreButton({ loading, onClick }: { loading: boolean; onClick: () => void }) {
+  const L = useMessages(TEXT)
   return (
     <button
       type="button"
@@ -301,7 +333,7 @@ export function MoreButton({ loading, onClick }: { loading: boolean; onClick: ()
       onClick={onClick}
       className="mt-4 h-9 rounded-full bg-gray-100 px-4 text-[13px] font-medium text-gray-700 transition-colors hover:text-brand disabled:text-gray-400"
     >
-      {loading ? '처리 중' : '더 보기'}
+      {loading ? L.working : L.more}
     </button>
   )
 }

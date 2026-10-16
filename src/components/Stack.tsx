@@ -1,14 +1,18 @@
 import type { TechGroup } from '../../shared/types'
+import { messages, useMessages } from '../lib/i18n'
+
+const TEXT = messages({ ko: { empty: '아직 살펴볼 기술이 없어요.' }, en: { empty: 'No technologies to show yet.' } })
 
 /**
  * 심층 분석의 기술 스택 탭이에요. 종류마다 한 줄로 세우고, 기술마다 구조 맵의 칸과 같은 모양의 칸에 이름, 버전, 이 프로젝트에서 맡은 역할을 적어요.
  * 언어는 코드에서 차지하는 비율을 오른쪽 숫자와 칸 아래의 가는 선으로 같이 보여줘요.
  */
 export function Stack({ groups }: { groups: TechGroup[] }) {
+  const L = useMessages(TEXT)
   if (groups.length === 0) {
     return (
       <div className="flex min-h-0 min-w-0 flex-1 items-center justify-center bg-gray-50 px-6">
-        <p className="animate-rise text-center text-[14px] leading-relaxed text-gray-600">아직 살펴볼 기술이 없어요.</p>
+        <p className="animate-rise text-center text-[14px] leading-relaxed text-gray-600">{L.empty}</p>
       </div>
     )
   }

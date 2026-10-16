@@ -1,12 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { track } from '../lib/analytics'
 import { Kbd } from './Shortcuts'
+import { messages, useMessages } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: { copied: '복사했어요', copyFailed: '복사하지 못했어요', copy: '복사', loading: '불러오고 있어요.' },
+  en: { copied: 'Copied', copyFailed: "Couldn't copy", copy: 'Copy', loading: 'Loading.' },
+})
 
 /** 심층 분석의 작은 이름표 모양이에요. 작동 조건, 라벨, 고를 수 있는 값, 파일 이름에 같이 써요. */
 export const tag = 'inline-flex h-7 max-w-full items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 text-[12.5px] text-gray-700'
 
 /** 원문을 클립보드에 복사하는 작은 버튼이에요. */
 function CopyText({ text, kind }: { text: string; kind: string }) {
+  const L = useMessages(TEXT)
   const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle')
 
   async function copy() {
@@ -21,7 +28,7 @@ function CopyText({ text, kind }: { text: string; kind: string }) {
 
   return (
     <button type="button" onClick={copy} className={`${toolButton} shrink-0`}>
-      {state === 'done' ? '복사했어요' : state === 'failed' ? '복사하지 못했어요' : '복사'}
+      {state === 'done' ? L.copied : state === 'failed' ? L.copyFailed : L.copy}
     </button>
   )
 }
@@ -98,6 +105,7 @@ export function MapMenu({ label, value, active = false, groups, onOpen }: {
   /** 메뉴를 열 때 불러요. 내용을 그때 받아 올 때 써요. */
   onOpen?: () => void
 }) {
+  const L = useMessages(TEXT)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -146,7 +154,7 @@ export function MapMenu({ label, value, active = false, groups, onOpen }: {
               {group.note && <p className="px-3 py-2 text-[13px] leading-relaxed text-gray-500">{group.note}</p>}
               {group.loading && (
                 <div aria-busy="true">
-                  <span className="sr-only">불러오고 있어요.</span>
+                  <span className="sr-only">{L.loading}</span>
                   {['w-24', 'w-32', 'w-20', 'w-28', 'w-24'].map((width, order) => (
                     <div key={order} aria-hidden className="flex h-9 items-center justify-between px-3">
                       <span className={`h-3 rounded-full bg-gray-100 motion-safe:animate-pulse ${width}`} />

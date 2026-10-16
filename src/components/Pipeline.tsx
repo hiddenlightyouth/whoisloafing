@@ -1,6 +1,12 @@
 import { Fragment } from 'react'
 import type { Workflow, WorkflowJob } from '../../shared/types'
 import { Source, tag } from './DeepParts'
+import { messages, useMessages } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: { trigger: '작동 조건', unreadable: '이 파일은 흐름으로 읽지 못했어요. 아래 원문을 확인해 주세요.' },
+  en: { trigger: 'Runs on', unreadable: "This file couldn't be read as a flow. Check the source below." },
+})
 
 /**
  * CI/CD 파이프라인을 흐름으로 보여줘요.
@@ -8,6 +14,7 @@ import { Source, tag } from './DeepParts'
  * 아래의 원문에는 작업이 시작되는 줄마다 같은 번호를 붙여서, 어느 부분이 몇 번째로 도는지 바로 알 수 있어요.
  */
 export function Pipeline({ workflow }: { workflow: Workflow }) {
+  const L = useMessages(TEXT)
   const marks: Record<number, number> = {}
   workflow.stages.forEach((jobs, stage) => {
     for (const job of jobs) if (job.line) marks[job.line] = stage + 1
@@ -19,7 +26,7 @@ export function Pipeline({ workflow }: { workflow: Workflow }) {
     <div className="space-y-4">
       {workflow.triggers.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="mr-1 text-[13px] font-medium text-gray-500">작동 조건</span>
+          <span className="mr-1 text-[13px] font-medium text-gray-500">{L.trigger}</span>
           {workflow.triggers.map((trigger) => (
             <span key={trigger} className={tag}>
               {trigger}
@@ -42,7 +49,7 @@ export function Pipeline({ workflow }: { workflow: Workflow }) {
           ))}
         </div>
       ) : (
-        <p className="text-[13.5px] text-gray-500">이 파일은 흐름으로 읽지 못했어요. 아래 원문을 확인해 주세요.</p>
+        <p className="text-[13.5px] text-gray-500">{L.unreadable}</p>
       )}
 
       <div className="rounded-xl border border-gray-200 bg-white p-5">

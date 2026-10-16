@@ -18,6 +18,7 @@ import { RichText } from './RichText'
 import { Bone } from './Skeleton'
 import { Stack } from './Stack'
 import { StructureMap } from './StructureMap'
+import { messages, pick, useMessages } from '../lib/i18n'
 
 interface Props {
   /** 살펴볼 레포(소유자/레포). null이면 레포를 고르는 화면이에요. */
@@ -35,13 +36,44 @@ interface Props {
 /** 채팅 버튼 아래의 안내를 이만큼 보여주고 치워요. */
 const CHAT_HINT_MS = 6000
 
-const SECTION_LABELS: Record<DeepSection, string> = {
-  structure: '프로젝트 구조',
-  pipeline: 'CI/CD',
-  issues: 'Issues',
-  pulls: 'Pull requests',
-  stack: '기술 스택',
-}
+const TEXT = messages({
+  ko: {
+    sections: { structure: '프로젝트 구조', pipeline: 'CI/CD', issues: 'Issues', pulls: 'Pull requests', stack: '기술 스택' } as Record<DeepSection, string>,
+    title: '심층 분석',
+    unchanged: '기존 분석 이후 새로운 변화가 감지되지 않았어요.',
+    back: '레포 고르는 화면으로 돌아가기',
+    chat: '채팅',
+    chatHint: '여기서 채팅을 계속 이용할 수 있어요',
+    lastAnalyzed: (when: string) => `마지막 분석 ${when}`,
+    reanalyze: '재분석 요청',
+    retry: '다시 시도하기',
+    reanalyzeTitle: '다시 분석할까요?',
+    reanalyzeBody: (section: string) =>
+      `${section} 탭을 처음부터 다시 분석해요. 시간이 조금 걸리고, 지금 보고 있는 결과는 새 결과로 바뀌어요. 레포에 새 커밋이 없으면 지금 결과를 그대로 둬요.`,
+    closeChat: '채팅 닫기',
+    chatLoading: '채팅을 불러오고 있어요.',
+    chatFailed: '이 채팅을 열 수 없어요.',
+    analyzing: '분석하고 있어요.',
+  },
+  en: {
+    sections: { structure: 'Structure', pipeline: 'CI/CD', issues: 'Issues', pulls: 'Pull requests', stack: 'Tech stack' },
+    title: 'Deep dive',
+    unchanged: 'No new changes since the last analysis.',
+    back: 'Back to repositories',
+    chat: 'Chat',
+    chatHint: 'You can keep chatting here',
+    lastAnalyzed: (when: string) => `Last analyzed ${when}`,
+    reanalyze: 'Re-analyze',
+    retry: 'Try again',
+    reanalyzeTitle: 'Analyze again?',
+    reanalyzeBody: (section: string) =>
+      `The ${section} tab will be analyzed from scratch. It takes a little while, and the current result will be replaced. If the repo has no new commits, the current result stays as is.`,
+    closeChat: 'Close chat',
+    chatLoading: 'Loading the chat.',
+    chatFailed: 'This chat cannot be opened.',
+    analyzing: 'Analyzing.',
+  },
+})
 
 type Loaded = 'loading' | { report: DeepReport } | { error: string }
 
@@ -82,12 +114,13 @@ function writeSaved(repo: string, section: DeepSection, report: DeepReport) {
  * 탭은 처음 열 때 한 번만 받아 두고, 다른 탭에 다녀와도 다시 받지 않아요.
  */
 export function Deep({ repo, onOpen, onNew, refreshKey, chatHint = false }: Props) {
+  const L = useMessages(TEXT)
   // 채팅을 지우면 갤러리를 처음부터 다시 받아요.
   if (!repo) {
     return (
       <RepoGallery
         key={refreshKey}
-        title="심층 분석"
+        title={L.title}
         onNew={onNew}
         onOpen={(picked) => {
           track('deep_repo_select', { repo: picked })
@@ -104,6 +137,7 @@ export function Deep({ repo, onOpen, onNew, refreshKey, chatHint = false }: Prop
 const CHAT_LOOKUP_PAGES = 3
 
 function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpen: (repo: string | null) => void; refreshKey: number; chatHint: boolean }) {
+  const L = useMessages(TEXT)
   /** 이 레포를 가장 최근에 분석한 채팅. 찾지 못하면 채팅으로 이동 버튼을 숨겨요. */
   const [chatId, setChatId] = useState<string | null>(null)
   /** 오른쪽의 채팅 칸을 열어 뒀는지 */
@@ -160,7 +194,7 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
     const result = await fetchDeepReport(repo, target, kept?.report.revision)
     if (kept && 'report' in result && result.report.unchanged) {
       track('deep_analyze_unchanged', { repo, section: target })
-      showToast('기존 분석 이후 새로운 변화가 감지되지 않았어요.')
+      showToast(pick(TEXT).unchanged)
       setLoaded((prev) => ({ ...prev, [target]: kept }))
       return
     }
@@ -217,7 +251,7 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
         <div className="flex min-w-0 items-center gap-2">
           <button
             type="button"
-            aria-label="레포 고르는 화면으로 돌아가기"
+            aria-label={L.back}
             onClick={() => onOpen(null)}
             className="-ml-2 flex size-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
           >
@@ -245,20 +279,20 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
                 <path d="M2.5 4.5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H7l-3 2.5V11.5h-.5a1 1 0 0 1-1-1z" />
               </svg>
-              채팅
+              {L.chat}
               <Kbd corner>C</Kbd>
             </button>
             {hinting && !chatOpen && (
               <p role="status" className="pointer-events-none absolute top-full right-0 z-30 mt-2 origin-top-right animate-pop whitespace-nowrap rounded-lg bg-brand px-3 py-1.5 text-[12.5px] font-medium text-white">
                 <span aria-hidden className="absolute -top-1 right-6 size-2 rotate-45 bg-brand" />
-                여기서 채팅을 계속 이용할 수 있어요
+                {L.chatHint}
               </p>
             )}
           </div>
         )}
       </div>
 
-      <div role="tablist" aria-label="심층 분석" className="mt-4 flex shrink-0 gap-1 border-b border-gray-200">
+      <div role="tablist" aria-label={L.title} className="mt-4 flex shrink-0 gap-1 border-b border-gray-200">
         {sections.map((item) => (
           <button
             key={item}
@@ -273,7 +307,7 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
               item === section ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'
             }`}
           >
-            {SECTION_LABELS[item]}
+            {L.sections[item]}
             <Kbd corner>{String(sections.indexOf(item) + 1)}</Kbd>
           </button>
         ))}
@@ -281,13 +315,13 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
         {current && current !== 'loading' && 'report' in current && (
           <div className="mb-1.5 ml-auto flex items-center gap-1 self-end">
             {/* 탭마다 따로 분석하니, 지금 보는 탭을 마지막으로 분석한 때를 알려줘요. */}
-            {analyzedAt && <span className="text-[12.5px] text-gray-400 tabular-nums">마지막 분석 {analyzedAt}</span>}
+            {analyzedAt && <span className="text-[12.5px] text-gray-400 tabular-nums">{L.lastAnalyzed(analyzedAt)}</span>}
             <button
               type="button"
               onClick={() => setAsking(true)}
               className="relative flex h-8 items-center rounded-lg px-3 text-[13px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
             >
-              재분석 요청
+              {L.reanalyze}
               <Kbd corner>⇧R</Kbd>
             </button>
           </div>
@@ -312,7 +346,7 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
               onClick={() => void analyze(section, true)}
               className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover"
             >
-              다시 시도하기
+              {L.retry}
             </button>
           </div>
         ) : (
@@ -323,9 +357,9 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
       {chatOpen && chatId && <SideChat key={chatId} chatId={chatId} onClose={() => setChatOpen(false)} />}
       {asking && (
         <ConfirmDialog
-          title="다시 분석할까요?"
-          body={`${SECTION_LABELS[section]} 탭을 처음부터 다시 분석해요. 시간이 조금 걸리고, 지금 보고 있는 결과는 새 결과로 바뀌어요. 레포에 새 커밋이 없으면 지금 결과를 그대로 둬요.`}
-          confirm="재분석 요청"
+          title={L.reanalyzeTitle}
+          body={L.reanalyzeBody(L.sections[section])}
+          confirm={L.reanalyze}
           working={false}
           onCancel={() => setAsking(false)}
           onConfirm={() => {
@@ -343,6 +377,7 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
  * 여기서 주고받은 말풍선도 같은 채팅에 저장돼요.
  */
 function SideChat({ chatId, onClose }: { chatId: string; onClose: () => void }) {
+  const L = useMessages(TEXT)
   const { messages, busy, paused, send, resume, load, abandon } = useAnalysis()
   const [state, setState] = useState<'loading' | 'ready' | 'missing'>('loading')
   const [readOnly, setReadOnly] = useState(false)
@@ -371,10 +406,10 @@ function SideChat({ chatId, onClose }: { chatId: string; onClose: () => void }) 
   return (
     <aside className="flex w-[400px] shrink-0 animate-slide-in flex-col border-l border-gray-200 bg-white pt-14">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-100 py-2.5 pr-3 pl-4">
-        <h2 className="text-[14px] font-semibold text-gray-900">채팅</h2>
+        <h2 className="text-[14px] font-semibold text-gray-900">{L.chat}</h2>
         <button
           type="button"
-          aria-label="채팅 닫기"
+          aria-label={L.closeChat}
           onClick={onClose}
           className="flex size-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
         >
@@ -385,13 +420,13 @@ function SideChat({ chatId, onClose }: { chatId: string; onClose: () => void }) 
       </div>
       {state === 'loading' ? (
         <div className="space-y-2.5 p-4" aria-busy="true">
-          <span className="sr-only">채팅을 불러오고 있어요.</span>
+          <span className="sr-only">{L.chatLoading}</span>
           <div aria-hidden className="h-11 w-2/3 rounded-2xl bg-gray-100 motion-safe:animate-pulse" />
           <div aria-hidden className="h-32 w-full rounded-2xl bg-gray-100 motion-safe:animate-pulse" />
           <div aria-hidden className="h-11 w-1/2 rounded-2xl bg-gray-100 motion-safe:animate-pulse" />
         </div>
       ) : state === 'missing' ? (
-        <p className="p-4 text-[13.5px] leading-relaxed text-gray-500">이 채팅을 열 수 없어요.</p>
+        <p className="p-4 text-[13.5px] leading-relaxed text-gray-500">{L.chatFailed}</p>
       ) : (
         <Chat compact messages={messages} busy={busy} paused={paused} readOnly={readOnly} onResume={resume} onSend={send} onHome={onClose} onNewRepo={onClose} />
       )}
@@ -472,10 +507,11 @@ function Node({ left, top }: { left: number; top: number }) {
  * 프로젝트 구조는 가지가 뻗은 맵, CI/CD는 작동 조건과 작업 카드와 원문, Issues와 Pull requests는 양식과 원문 카드 모양이에요.
  */
 function Loading({ section }: { section: DeepSection }) {
+  const L = useMessages(TEXT)
   if (section === 'structure') {
     return (
       <div className="relative min-h-0 flex-1 overflow-hidden bg-gray-50" aria-busy="true">
-        <span className="sr-only">분석하고 있어요.</span>
+        <span className="sr-only">{L.analyzing}</span>
         <div aria-hidden>
           <div className="absolute top-4 left-4 flex gap-2">
             <div className={`h-9 w-[72px] ${shade}`} />
@@ -502,7 +538,7 @@ function Loading({ section }: { section: DeepSection }) {
   if (section === 'stack') {
     return (
       <div className="min-h-0 flex-1 overflow-hidden bg-gray-50 p-4" aria-busy="true">
-        <span className="sr-only">분석하고 있어요.</span>
+        <span className="sr-only">{L.analyzing}</span>
         <div className="flex flex-wrap items-start gap-x-4 gap-y-8" aria-hidden>
           {[3, 4, 2, 3, 5].map((items, column) => (
             <div key={column} className="w-60">
@@ -527,7 +563,7 @@ function Loading({ section }: { section: DeepSection }) {
   if (section === 'pipeline') {
     return (
       <div className="min-h-0 flex-1 overflow-hidden bg-gray-50 p-4" aria-busy="true">
-        <span className="sr-only">분석하고 있어요.</span>
+        <span className="sr-only">{L.analyzing}</span>
         <div className="space-y-4" aria-hidden>
           <div className="flex items-center gap-2">
             <div className={`h-4 w-14 ${shade}`} />
@@ -568,7 +604,7 @@ function Loading({ section }: { section: DeepSection }) {
 
   return (
     <div className="min-h-0 flex-1 overflow-hidden bg-gray-50 p-4" aria-busy="true">
-      <span className="sr-only">분석하고 있어요.</span>
+      <span className="sr-only">{L.analyzing}</span>
       <div className="space-y-4" aria-hidden>
         {[0, 1].map((row) => (
           <div key={row} className="grid gap-4 lg:grid-cols-2">

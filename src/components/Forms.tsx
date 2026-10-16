@@ -1,6 +1,30 @@
 import type { ReactNode } from 'react'
 import type { FormField, FormTemplate, RepoLabel } from '../../shared/types'
 import { Source, tag } from './DeepParts'
+import { messages, useMessages } from '../lib/i18n'
+
+const TEXT = messages({
+  ko: {
+    title: '제목',
+    free: (issue: boolean) => `따로 나눈 항목 없이 자유롭게 쓰는 ${issue ? '이슈' : 'PR'} 양식이에요.`,
+    labelsUsed: '이 라벨이 사용됨',
+    assignees: '자동으로 정해지는 담당자',
+    required: '필수',
+    labels: '라벨',
+    issues: (count: number) => `${count.toLocaleString('ko-KR')}개의 이슈`,
+    more: (count: number) => `그 밖에 ${count}개`,
+  },
+  en: {
+    title: 'Title',
+    free: (issue: boolean) => `A free-form ${issue ? 'issue' : 'PR'} template with no separate sections.`,
+    labelsUsed: 'Labels applied',
+    assignees: 'Auto-assigned to',
+    required: 'Required',
+    labels: 'Labels',
+    issues: (count: number) => `${count.toLocaleString('en-US')} ${count === 1 ? 'issue' : 'issues'}`,
+    more: (count: number) => `${count} more`,
+  },
+})
 
 interface Props {
   kind: 'issue' | 'pull'
@@ -44,6 +68,7 @@ export function Forms({ kind, templates, labels = [], large }: Props) {
 }
 
 function Preview({ template, kind, labels, scroll }: { template: FormTemplate; kind: 'issue' | 'pull'; labels: RepoLabel[]; scroll: boolean }) {
+  const L = useMessages(TEXT)
   const colorOf = (name: string) => labels.find((label) => label.name === name)?.color ?? ''
 
   return (
@@ -53,7 +78,7 @@ function Preview({ template, kind, labels, scroll }: { template: FormTemplate; k
 
       <div className="mt-5 space-y-5">
         {template.title && (
-          <Field label="제목">
+          <Field label={L.title}>
             <Box>{template.title}</Box>
           </Field>
         )}
@@ -62,7 +87,7 @@ function Preview({ template, kind, labels, scroll }: { template: FormTemplate; k
         ))}
         {template.fields.length === 0 && (
           <p className="text-[13px] text-gray-500">
-            따로 나눈 항목 없이 자유롭게 쓰는 {kind === 'issue' ? '이슈' : 'PR'} 양식이에요.
+            {L.free(kind === 'issue')}
           </p>
         )}
       </div>
@@ -71,7 +96,7 @@ function Preview({ template, kind, labels, scroll }: { template: FormTemplate; k
         <dl className="mt-6 space-y-3 border-t border-gray-100 pt-4">
           {template.labels.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
-              <dt className="mr-1 text-[13px] text-gray-500">이 라벨이 사용됨</dt>
+              <dt className="mr-1 text-[13px] text-gray-500">{L.labelsUsed}</dt>
               {template.labels.map((name) => (
                 <dd key={name}>
                   <LabelChip name={name} color={colorOf(name)} />
@@ -81,7 +106,7 @@ function Preview({ template, kind, labels, scroll }: { template: FormTemplate; k
           )}
           {template.assignees.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
-              <dt className="mr-1 text-[13px] text-gray-500">자동으로 정해지는 담당자</dt>
+              <dt className="mr-1 text-[13px] text-gray-500">{L.assignees}</dt>
               {template.assignees.map((name) => (
                 <dd key={name} className={tag}>
                   {name}
@@ -139,11 +164,12 @@ function FieldView({ field }: { field: FormField }) {
 }
 
 function Field({ label, hint, required, children }: { label: string; hint?: string; required?: boolean; children: ReactNode }) {
+  const L = useMessages(TEXT)
   return (
     <div>
       <p className="text-[13.5px] font-medium text-gray-900">
         {label}
-        {required && <span className="ml-2 text-[12px] font-medium text-brand">필수</span>}
+        {required && <span className="ml-2 text-[12px] font-medium text-brand">{L.required}</span>}
       </p>
       {hint && <p className="mt-1 text-[12.5px] leading-snug text-gray-500">{hint}</p>}
       <div className="mt-2">{children}</div>
@@ -165,12 +191,13 @@ function Box({ children, tall = false, muted = false }: { children: ReactNode; t
 }
 
 function Labels({ labels, large }: { labels: RepoLabel[]; large: boolean }) {
+  const L = useMessages(TEXT)
   const shown = large ? labels : labels.slice(0, COMPACT_LABELS)
   const hidden = labels.length - shown.length
 
   return (
     <div>
-      <p className="mb-3 text-[13px] font-medium text-gray-500">라벨</p>
+      <p className="mb-3 text-[13px] font-medium text-gray-500">{L.labels}</p>
       {large ? (
         <ul className="divide-y divide-gray-100">
           {shown.map((label) => (
@@ -179,7 +206,7 @@ function Labels({ labels, large }: { labels: RepoLabel[]; large: boolean }) {
                 <LabelChip name={label.name} color={label.color} />
               </span>
               <span className="min-w-0 flex-1 truncate text-[13px] text-gray-500">{label.description ?? ''}</span>
-              <span className="shrink-0 text-[12.5px] text-gray-500 tabular-nums">{label.count.toLocaleString('ko-KR')}개의 이슈</span>
+              <span className="shrink-0 text-[12.5px] text-gray-500 tabular-nums">{L.issues(label.count)}</span>
             </li>
           ))}
         </ul>
@@ -188,7 +215,7 @@ function Labels({ labels, large }: { labels: RepoLabel[]; large: boolean }) {
           {shown.map((label) => (
             <LabelChip key={label.name} name={label.name} color={label.color} count={label.count} />
           ))}
-          {hidden > 0 && <span className="self-center text-[12px] text-gray-400">그 밖에 {hidden}개</span>}
+          {hidden > 0 && <span className="self-center text-[12px] text-gray-400">{L.more(hidden)}</span>}
         </div>
       )}
     </div>

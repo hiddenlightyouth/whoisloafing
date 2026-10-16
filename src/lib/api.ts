@@ -1,7 +1,7 @@
 import type { AnalyzeRequest, ChatEvent, ChatSnapshot, DeepReport, DeepSection } from '../../shared/types'
 import { authFetch, authHeaders } from './auth'
 import { apiUrl, ownerHeaders, readResult } from './http'
-import { getLang } from './i18n'
+import { getLang, messages, pick, type Lang } from './i18n'
 
 export interface ServerConfig {
   /** 채팅 저장과 공유 기능이 켜져 있는지 */
@@ -87,22 +87,35 @@ export interface ExploreRepo {
 }
 
 /** GitHub에서 인기 있는 공개 레포 목록을 받아요. 받지 못하면 null을 돌려줘요. */
-export async function fetchExplore(kind: ExploreKind): Promise<ExploreRepo[] | null> {
+export async function fetchExplore(kind: ExploreKind, lang: Lang = getLang()): Promise<ExploreRepo[] | null> {
   try {
-    const result = await authFetch<ExploreRepo[]>(`/explore?kind=${kind}`)
+    const result = await authFetch<ExploreRepo[]>(`/explore?kind=${kind}&lang=${lang}`)
     return result.ok ? result.data : null
   } catch {
     return null
   }
 }
 
-export const DEEP_ERRORS: Record<string, string> = {
-  C003: '레포 주소가 올바르지 않아요.',
-  C4044: '찾을 수 없는 레포예요. 주소를 다시 확인해 주세요.',
-  C4032: '비공개 레포는 분석할 수 없어요.',
-  C4033: '서버가 이 레포에 접근할 수 없어요. 레포의 조직이 접근을 제한하고 있을 수 있어요.',
-  C429: '요청이 너무 많아요. 잠시 뒤에 다시 시도해 주세요.',
-}
+export const DEEP_ERRORS = messages<Record<string, string>>({
+  ko: {
+    C003: '레포 주소가 올바르지 않아요.',
+    C4044: '찾을 수 없는 레포예요. 주소를 다시 확인해 주세요.',
+    C4032: '비공개 레포는 분석할 수 없어요.',
+    C4033: '서버가 이 레포에 접근할 수 없어요. 레포의 조직이 접근을 제한하고 있을 수 있어요.',
+    C429: '요청이 너무 많아요. 잠시 뒤에 다시 시도해 주세요.',
+    failed: '분석하지 못했어요. 잠시 뒤에 다시 시도해 주세요.',
+    network: '서버와 연결하지 못했어요. 잠시 뒤에 다시 시도해 주세요.',
+  },
+  en: {
+    C003: 'The repository link is invalid.',
+    C4044: "This repository can't be found. Please check the link.",
+    C4032: "Private repositories can't be analyzed.",
+    C4033: "The server can't access this repository. Its organization may be restricting access.",
+    C429: 'Too many requests. Please try again in a moment.',
+    failed: "Couldn't analyze it. Please try again in a moment.",
+    network: "Couldn't reach the server. Please try again in a moment.",
+  },
+})
 
 /** 심층 분석의 탭 하나를 받아요. 로그인해야 받을 수 있어요. 실패하면 화면에 보여줄 안내를 돌려줘요. */
 export async function fetchDeepReport(
@@ -115,9 +128,9 @@ export async function fetchDeepReport(
     const query = `url=${encodeURIComponent(repo)}${since ? `&since=${encodeURIComponent(since)}` : ''}`
     const result = await authFetch<DeepReport>(`/deep/${section}?${query}`)
     if (result.ok && result.data) return { report: result.data }
-    return { error: (result.code && DEEP_ERRORS[result.code]) || '분석하지 못했어요. 잠시 뒤에 다시 시도해 주세요.' }
+    return { error: (result.code && pick(DEEP_ERRORS)[result.code]) || pick(DEEP_ERRORS).failed }
   } catch {
-    return { error: '서버와 연결하지 못했어요. 잠시 뒤에 다시 시도해 주세요.' }
+    return { error: pick(DEEP_ERRORS).network }
   }
 }
 

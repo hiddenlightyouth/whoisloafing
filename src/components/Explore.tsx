@@ -5,30 +5,73 @@ import { fetchExplore, type ExploreKind, type ExploreRepo } from '../lib/api'
 import { Avatar } from './History'
 import { MapMenu } from './DeepParts'
 import { ExploreCardsSkeleton } from './Skeleton'
+import { getLang, messages, useLang, useMessages, type Lang } from '../lib/i18n'
 
 /** 탐색의 큰 갈래. GitHub는 GitHub 전체에서 인기 있는 레포, 동아리는 IT 연합 동아리와 커뮤니티가 만든 레포예요. */
 export type ExploreCategory = 'github' | 'clubs'
 type Category = ExploreCategory
 
-const CATEGORIES: [Category, string][] = [
-  ['github', 'GitHub'],
-  ['clubs', '연합 동아리 & 커뮤니티'],
-]
+const CATEGORIES: Category[] = ['github', 'clubs']
 
 /** GitHub 갈래 안에서 고르는 목록 종류 */
-const KINDS: ['popular' | 'rising', string][] = [
-  ['popular', '인기'],
-  ['rising', '요즘 뜨는'],
-]
+const KINDS: ('popular' | 'rising')[] = ['popular', 'rising']
 
 /** 동아리 레포를 늘어놓는 순서 */
 type Sort = 'stars' | 'recent' | 'name'
 
-const SORTS: [Sort, string][] = [
-  ['stars', '스타순'],
-  ['recent', '최근 업데이트순'],
-  ['name', '이름순'],
-]
+const SORTS: Sort[] = ['stars', 'recent', 'name']
+
+const TEXT = messages({
+  ko: {
+    categories: { github: 'GitHub', clubs: '연합 동아리 & 커뮤니티' } as Record<Category, string>,
+    kinds: { popular: '인기', rising: '요즘 뜨는' } as Record<'popular' | 'rising', string>,
+    sorts: { stars: '스타순', recent: '최근 업데이트순', name: '이름순' } as Record<Sort, string>,
+    stars: (count: string) => `별 ${count}개`,
+    failed: '목록을 불러오지 못했어요. 잠시 뒤에 다시 시도해 주세요.',
+    retry: '다시 시도하기',
+    seeAll: '전체 보기',
+    title: '탐색',
+    tabs: '탐색 갈래',
+    clubs: '동아리',
+    schools: '학교',
+    all: '전체',
+    list: '목록',
+    sort: '정렬',
+    items: (count: string) => `${count}개의 항목`,
+    more: '더 보기',
+    confirmTitle: '이 프로젝트를 분석할까요?',
+    cancel: '취소',
+    analyze: '분석하기',
+  },
+  en: {
+    categories: { github: 'GitHub', clubs: 'Student clubs & communities' },
+    kinds: { popular: 'Popular', rising: 'Trending' },
+    sorts: { stars: 'Most stars', recent: 'Recently updated', name: 'Name' },
+    stars: (count: string) => `${count} stars`,
+    failed: "Couldn't load the list. Please try again in a moment.",
+    retry: 'Try again',
+    seeAll: 'See all',
+    title: 'Explore',
+    tabs: 'Explore categories',
+    clubs: 'Clubs',
+    schools: 'Chapters',
+    all: 'All',
+    list: 'List',
+    sort: 'Sort',
+    items: (count: string) => `${count} ${count === '1' ? 'item' : 'items'}`,
+    more: 'Show more',
+    confirmTitle: 'Analyze this project?',
+    cancel: 'Cancel',
+    analyze: 'Analyze',
+  },
+})
+
+/** 숫자를 지금 언어에 맞게 적어요. */
+const number = (value: number) => value.toLocaleString(getLang() === 'ko' ? 'ko-KR' : 'en-US')
+
+/** 동아리 목록은 언어마다 달라요. 영어 화면에는 해외 학생 개발 동아리와 커뮤니티를 보여줘요. */
+const cacheKey = (kind: ExploreKind, lang: Lang) => (kind === 'clubs' ? `clubs:${lang}` : kind)
+
 
 const repoName = (item: ExploreRepo) => item.repo.slice(item.repo.indexOf('/') + 1)
 
@@ -47,8 +90,8 @@ const ROW_SIZE = 8
 type Loaded = ExploreRepo[] | 'failed'
 
 // 받은 목록은 화면을 옮겨 다녀도 남게 화면 바깥에 둬요. 새 분석 화면의 한 줄과 탐색 화면이 같은 목록을 나눠 써서, 종류마다 한 번만 받아요.
-const cache: Partial<Record<ExploreKind, Loaded>> = {}
-const pending = new Set<ExploreKind>()
+const cache: Partial<Record<string, Loaded>> = {}
+const pending = new Set<string>()
 const listeners = new Set<() => void>()
 
 const subscribe = (listener: () => void) => {
@@ -58,41 +101,49 @@ const subscribe = (listener: () => void) => {
   }
 }
 
-function load(kind: ExploreKind) {
-  if (cache[kind] !== undefined || pending.has(kind)) return
-  pending.add(kind)
-  void fetchExplore(kind).then((repos) => {
-    pending.delete(kind)
-    cache[kind] = repos && repos.length > 0 ? repos : 'failed'
+function load(kind: ExploreKind, lang: Lang) {
+  const key = cacheKey(kind, lang)
+  if (cache[key] !== undefined || pending.has(key)) return
+  pending.add(key)
+  void fetchExplore(kind, lang).then((repos) => {
+    pending.delete(key)
+    cache[key] = repos && repos.length > 0 ? repos : 'failed'
     listeners.forEach((listener) => listener())
   })
 }
 
 function retry(kind: ExploreKind) {
-  delete cache[kind]
+  const lang = getLang()
+  delete cache[cacheKey(kind, lang)]
   listeners.forEach((listener) => listener())
-  load(kind)
+  load(kind, lang)
 }
 
 /** 목록 하나를 받아서 돌려줘요. 받는 중이면 undefined예요. enabled가 false면 받지 않아요. */
 function useList(kind: ExploreKind, enabled = true): Loaded | undefined {
-  const list = useSyncExternalStore(subscribe, () => cache[kind])
+  const lang = useLang()
+  const list = useSyncExternalStore(subscribe, () => cache[cacheKey(kind, lang)])
   useEffect(() => {
-    if (enabled) load(kind)
-  }, [kind, enabled, list])
+    if (enabled) load(kind, lang)
+  }, [kind, lang, enabled, list])
   return list
 }
 
 /** 스타 수를 "12.3만"처럼 짧게 적어요. */
 function formatStars(stars: number): string {
+  if (getLang() === 'en') {
+    if (stars >= 1000) return `${(stars / 1000).toFixed(1).replace(/\.0$/, '')}k`
+    return number(stars)
+  }
   if (stars >= 10000) return `${(stars / 10000).toFixed(1).replace(/\.0$/, '')}만`
-  return stars.toLocaleString('ko-KR')
+  return number(stars)
 }
 
 /** 스타 수는 글자 대신 GitHub처럼 별 그림과 숫자로 보여줘요. */
 function Stars({ count }: { count: number }) {
+  const L = useMessages(TEXT)
   return (
-    <span className="inline-flex shrink-0 items-center gap-1" aria-label={`별 ${count.toLocaleString('ko-KR')}개`}>
+    <span className="inline-flex shrink-0 items-center gap-1" aria-label={L.stars(number(count))}>
       <svg viewBox="0 0 16 16" fill="currentColor" className="size-3" aria-hidden="true">
         <path d="M8 1.2l2 4.3 4.7.6-3.5 3.2.9 4.7L8 11.7 3.9 14l.9-4.7L1.3 6.1 6 5.5z" />
       </svg>
@@ -139,11 +190,12 @@ function Card({ item, order, onOpen }: { item: ExploreRepo; order: number; onOpe
 }
 
 function Failed({ onRetry, compact = false }: { onRetry: () => void; compact?: boolean }) {
+  const L = useMessages(TEXT)
   return (
     <div className={`flex flex-col items-center gap-4 text-center ${compact ? 'py-10' : 'mt-16'}`}>
-      <p className="text-[14px] leading-relaxed text-gray-600">목록을 불러오지 못했어요. 잠시 뒤에 다시 시도해 주세요.</p>
+      <p className="text-[14px] leading-relaxed text-gray-600">{L.failed}</p>
       <button type="button" onClick={onRetry} className={primary}>
-        다시 시도하기
+        {L.retry}
       </button>
     </div>
   )
@@ -183,6 +235,7 @@ interface PreviewProps {
  * 더 둘러보려면 "전체 보기"로 탐색 화면에 가요.
  */
 export function ExplorePreview({ onPick, clubs: hasClubs = false, onMore }: PreviewProps) {
+  const L = useMessages(TEXT)
   const github = useList('popular')
   const clubRepos = useList('clubs', hasClubs)
   const topClubs = useMemo(
@@ -202,7 +255,7 @@ export function ExplorePreview({ onPick, clubs: hasClubs = false, onMore }: Prev
         <section key={category} aria-labelledby={`explore-${category}`}>
           <div className="flex items-center justify-between gap-4">
             <h2 id={`explore-${category}`} className="text-[15px] font-semibold text-gray-900">
-              {CATEGORIES.find(([value]) => value === category)?.[1]}
+              {L.categories[category]}
             </h2>
             <button
               type="button"
@@ -212,7 +265,7 @@ export function ExplorePreview({ onPick, clubs: hasClubs = false, onMore }: Prev
               }}
               className="inline-flex h-8 items-center gap-1 text-[13px] font-medium text-gray-500 transition-colors hover:text-brand"
             >
-              전체 보기
+              {L.seeAll}
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="size-3.5" aria-hidden="true">
                 <path d="M6 3.5 10.5 8 6 12.5" />
               </svg>
@@ -251,6 +304,7 @@ interface Props {
  * GitHub에서 인기 있는 레포와, IT 연합 동아리와 커뮤니티가 만든 레포 두 갈래로 나눠서 보여줘요.
  */
 export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs = false }: Props) {
+  const L = useMessages(TEXT)
   const category: Category = hasClubs ? wanted : 'github'
   const [githubKind, setGithubKind] = useState<'popular' | 'rising'>('popular')
   const kind: ExploreKind = category === 'clubs' ? 'clubs' : githubKind
@@ -291,10 +345,10 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
   return (
     <main className="flex min-h-0 flex-1 flex-col">
       <div className="shrink-0 px-6 pt-16 md:px-10">
-        <h1 className="text-[20px] leading-tight font-semibold text-gray-900">탐색</h1>
+        <h1 className="text-[20px] leading-tight font-semibold text-gray-900">{L.title}</h1>
         {/* 심층 분석의 탭과 같은 모양이에요. 갈래가 하나뿐이면 탭을 두지 않아요. */}
-        <div role="tablist" aria-label="탐색 갈래" className={`mt-4 flex gap-1 border-b border-gray-200 ${hasClubs ? '' : 'h-0 overflow-hidden'}`}>
-          {CATEGORIES.map(([value, label]) => (
+        <div role="tablist" aria-label={L.tabs} className={`mt-4 flex gap-1 border-b border-gray-200 ${hasClubs ? '' : 'h-0 overflow-hidden'}`}>
+          {CATEGORIES.map((value) => (
             <button
               key={value}
               type="button"
@@ -309,7 +363,7 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
                 category === value ? 'border-brand text-gray-900' : 'border-transparent text-gray-500 hover:text-gray-900'
               }`}
             >
-              {label}
+              {L.categories[value]}
             </button>
           ))}
         </div>
@@ -318,7 +372,7 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
       <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 px-6 pt-4 pb-16 md:px-10">
         {/* 동아리는 메뉴에 넣지 않고 한눈에 보이게 늘어놓아요. */}
         {category === 'clubs' && clubRepos && (
-          <div role="radiogroup" aria-label="동아리" className="mb-3 flex flex-wrap gap-2">
+          <div role="radiogroup" aria-label={L.clubs} className="mb-3 flex flex-wrap gap-2">
             {[null, ...clubs].map((name) => (
               <button
                 key={name ?? ''}
@@ -333,9 +387,9 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
                 }}
                 className={`${clubButton} ${club === name ? 'border-brand bg-brand-soft text-brand-hover' : 'border-gray-200 bg-white text-gray-800 hover:border-gray-300 hover:text-gray-950'}`}
               >
-                {name ?? '전체'}
+                {name ?? L.all}
                 <span className={`text-[12px] font-normal tabular-nums ${club === name ? 'text-brand' : 'text-gray-400'}`}>
-                  {(name ? (counts.get(name) ?? 0) : clubRepos.length).toLocaleString('ko-KR')}
+                  {number(name ? (counts.get(name) ?? 0) : clubRepos.length)}
                 </span>
               </button>
             ))}
@@ -344,7 +398,7 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
 
         {/* 학교마다 조직이 따로 있는 동아리를 고르면, 학교를 한 번 더 고를 수 있어요. */}
         {category === 'clubs' && club && groups.length > 1 && (
-          <div role="radiogroup" aria-label="학교" className="mb-3 flex animate-rise flex-wrap gap-2">
+          <div role="radiogroup" aria-label={L.schools} className="mb-3 flex animate-rise flex-wrap gap-2">
             {[null, ...groups.map(([name]) => name)].map((name) => (
               <button
                 key={name ?? ''}
@@ -358,9 +412,9 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
                 }}
                 className={`${clubButton} ${group === name ? 'border-brand bg-brand-soft text-brand-hover' : 'border-gray-200 bg-white text-gray-800 hover:border-gray-300 hover:text-gray-950'}`}
               >
-                {name ?? '전체'}
+                {name ?? L.all}
                 <span className={`text-[12px] font-normal tabular-nums ${group === name ? 'text-brand' : 'text-gray-400'}`}>
-                  {(name ? (groups.find(([key]) => key === name)?.[1] ?? 0) : (counts.get(club) ?? 0)).toLocaleString('ko-KR')}
+                  {number(name ? (groups.find(([key]) => key === name)?.[1] ?? 0) : (counts.get(club) ?? 0))}
                 </span>
               </button>
             ))}
@@ -371,12 +425,12 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
         <div className="flex flex-wrap items-center gap-2">
           {category === 'github' ? (
             <MapMenu
-              label="목록"
-              value={KINDS.find(([value]) => value === githubKind)?.[1]}
+              label={L.list}
+              value={L.kinds[githubKind]}
               groups={[
                 {
-                  items: KINDS.map(([value, label]) => ({
-                    label,
+                  items: KINDS.map((value) => ({
+                    label: L.kinds[value],
                     checked: githubKind === value,
                     onSelect: () => {
                       track('explore_kind_change', { kind: value })
@@ -389,12 +443,12 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
           ) : (
             <>
               <MapMenu
-                label="정렬"
-                value={SORTS.find(([value]) => value === sort)?.[1]}
+                label={L.sort}
+                value={L.sorts[sort]}
                 groups={[
                   {
-                    items: SORTS.map(([value, label]) => ({
-                      label,
+                    items: SORTS.map((value) => ({
+                      label: L.sorts[value],
                       checked: sort === value,
                       onSelect: () => {
                         track('explore_sort_change', { sort: value })
@@ -405,7 +459,7 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
                   },
                 ]}
               />
-              {clubRepos && <p className="ml-auto text-[13px] text-gray-500 tabular-nums">{sorted.length.toLocaleString('ko-KR')}개의 항목</p>}
+              {clubRepos && <p className="ml-auto text-[13px] text-gray-500 tabular-nums">{L.items(number(sorted.length))}</p>}
             </>
           )}
         </div>
@@ -429,7 +483,7 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
               onClick={() => setShown((prev) => prev + PAGE_SIZE)}
               className="h-10 rounded-full border border-gray-200 bg-white px-5 text-[13px] font-medium text-gray-700 transition-colors hover:text-brand"
             >
-              더 보기
+              {L.more}
             </button>
           </div>
         )}
@@ -444,6 +498,7 @@ const primary = 'h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-w
 
 /** 카드를 누르면 바로 분석하지 않고, 어떤 레포인지 보여주면서 한 번 물어봐요. 바깥을 누르거나 Esc를 누르면 닫혀요. */
 function ConfirmDialog({ repo, onCancel, onConfirm }: { repo: ExploreRepo; onCancel: () => void; onConfirm: () => void }) {
+  const L = useMessages(TEXT)
   const [owner, name] = repo.repo.split('/')
 
   useEffect(() => {
@@ -464,7 +519,7 @@ function ConfirmDialog({ repo, onCancel, onConfirm }: { repo: ExploreRepo; onCan
     >
       <div role="alertdialog" aria-modal="true" aria-labelledby="explore-confirm-title" className="w-full max-w-sm animate-pop rounded-2xl border border-gray-200 bg-white p-5">
         <h2 id="explore-confirm-title" className="text-[15px] font-semibold text-gray-900">
-          이 프로젝트를 분석할까요?
+          {L.confirmTitle}
         </h2>
         <div className="mt-3.5 flex items-center gap-3">
           <Avatar owner={owner} />
@@ -480,10 +535,10 @@ function ConfirmDialog({ repo, onCancel, onConfirm }: { repo: ExploreRepo; onCan
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <button type="button" onClick={onCancel} className={quiet}>
-            취소
+            {L.cancel}
           </button>
           <button type="button" autoFocus onClick={onConfirm} className={primary}>
-            분석하기
+            {L.analyze}
           </button>
         </div>
       </div>
