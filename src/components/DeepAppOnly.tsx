@@ -6,23 +6,21 @@ import { AppleLogo } from './Header'
 
 const TEXT = messages({
   ko: {
-    title: '심층 분석은 macOS 앱에서 쓸 수 있어요',
-    body: '레포 하나를 한 화면에 펼쳐 놓고 살펴보는 대시보드라, 넓은 화면의 앱에서만 열어 둬요.',
+    title: '잠시만요!',
+    body: '심층 분석을 사용하려면 macOS 앱에서 계속하세요.',
     download: 'macOS 앱 다운로드',
     soon: 'macOS 앱은 곧 받을 수 있어요.',
-    back: '새 분석으로',
   },
   en: {
-    title: 'Deep dive lives in the Mac app',
-    body: 'It lays out a whole repo on one dashboard, so it is available in the macOS app only.',
+    title: 'Hold on!',
+    body: 'To use deep dive, continue in the macOS app.',
     download: 'Download for macOS',
     soon: 'The macOS app is coming soon.',
-    back: 'New analysis',
   },
 })
 
 /** 웹의 /app에서 심층 분석을 열면 대시보드 대신 보여주는 안내예요. 앱에서 할 수 있는 일과 앱을 받는 버튼이 있어요. */
-export function DeepAppOnly({ onHome }: { onHome: () => void }) {
+export function DeepAppOnly() {
   const text = useMessages(TEXT)
   const features = useMessages(APP_NUDGE_TEXT).FEATURES
 
@@ -53,13 +51,6 @@ export function DeepAppOnly({ onHome }: { onHome: () => void }) {
               {text.download}
             </a>
           )}
-          <button
-            type="button"
-            onClick={onHome}
-            className="inline-flex h-11 items-center rounded-full border border-gray-300 px-5 text-[14px] font-medium text-gray-800 transition-colors hover:border-gray-500"
-          >
-            {text.back}
-          </button>
         </div>
         <p className="mt-3 text-[12.5px] text-gray-400">{MAC_DOWNLOAD_OPEN ? MAC_SUPPORT : text.soon}</p>
       </div>

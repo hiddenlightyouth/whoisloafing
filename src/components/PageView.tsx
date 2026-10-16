@@ -87,7 +87,7 @@ export function PageView({
       {page.kind === 'app-login' ? (
         <AppLogin onCancel={onHome} />
       ) : page.kind === 'deep' && !isApp ? (
-        <DeepAppOnly onHome={onHome} />
+        <DeepAppOnly />
       ) : page.kind === 'deep' ? (
         <Deep repo={page.repo} onOpen={(repo) => onDeep(repo)} onNew={onHome} refreshKey={chatsVersion} chatHint={deepChatHint} />
       ) : page.kind === 'portfolio' && signedIn ? (
