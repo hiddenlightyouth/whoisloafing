@@ -11,8 +11,8 @@ interface Props {
 
 const CLOSED_KEY = 'whoisloafing:app-nudge-closed'
 
-/** 웹에서는 못 쓰고 앱에서만 쓸 수 있는 기능(FEATURES)이에요. 앱의 심층 분석 탭과 맞춰요. */
-const TEXT = messages({
+/** 웹에서는 못 쓰고 앱에서만 쓸 수 있는 기능(FEATURES)이에요. 앱의 심층 분석 탭과 맞춰요. 웹 /app의 심층 분석 안내도 같은 목록을 써요. */
+export const APP_NUDGE_TEXT = messages({
   ko: {
     FEATURES: ['프로젝트 구조를 맵으로 둘러보기', 'CI/CD가 도는 순서 한눈에 보기', '이슈와 PR 템플릿 모아 보기', '참여자가 고친 폴더 살펴보기', '기술 스택과 버전 한눈에 보기'],
     open: '앱 안내 열기',
@@ -39,7 +39,7 @@ const closedBefore = () => readFlag(CLOSED_KEY)
  */
 export function AppNudge({ raised }: Props) {
   const [closed, setClosed] = useState(closedBefore)
-  const text = useMessages(TEXT)
+  const text = useMessages(APP_NUDGE_TEXT)
 
   useEffect(() => {
     if (!closed) track('app_nudge_view')

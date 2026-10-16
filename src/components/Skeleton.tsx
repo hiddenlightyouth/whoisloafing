@@ -1,4 +1,4 @@
-import { isApp } from '../lib/app'
+import { appShell } from '../lib/app'
 import { messages, useMessages } from '../lib/i18n'
 
 const TEXT = messages({
@@ -17,8 +17,8 @@ export function ChatSkeleton() {
   return (
     <main className="flex min-h-0 flex-1 flex-col" aria-busy="true">
       <span className="sr-only">{text.chat}</span>
-      <div className={`flex-1 overflow-hidden pt-14 ${isApp ? 'px-6 md:pl-10 xl:pr-[348px]' : 'px-4 sm:px-6'}`} aria-hidden>
-        <div className={`flex max-w-2xl flex-col gap-2.5 pt-6 ${isApp ? 'mr-auto' : 'mx-auto'}`}>
+      <div className={`flex-1 overflow-hidden pt-14 ${appShell ? 'px-6 md:pl-10 xl:pr-[348px]' : 'px-4 sm:px-6'}`} aria-hidden>
+        <div className={`flex max-w-2xl flex-col gap-2.5 pt-6 ${appShell ? 'mr-auto' : 'mx-auto'}`}>
           <div className={`${bubble} ml-auto h-11 w-3/5 rounded-br-md bg-brand-soft`} />
           <div className={`${bubble} h-11 w-2/3 bg-gray-100`} />
           <div className={`${bubble} h-40 w-[85%] bg-gray-100`} />

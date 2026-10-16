@@ -18,6 +18,10 @@ function replaceOnce(html, pattern, replacement) {
   return html.replace(pattern, replacement)
 }
 
+const SHELL_GUARD =
+  '<script>if(location.pathname!=="/"||/WhoIsLoafingApp\\//.test(navigator.userAgent))document.documentElement.dataset.shell=""</script>' +
+  '<style>html[data-shell] #root{display:none}</style>'
+
 const { pages } = await import(pathToFileURL(path.join(ssrDir, 'prerender.js')).href)
 const template = await readFile(path.join(dist, 'index.html'), 'utf8')
 
@@ -51,14 +55,16 @@ for (const page of pages) {
   html = replaceOnce(html, /(<meta property="og:image" content=")[^"]*"/, `$1${page.image}"`)
   html = replaceOnce(html, /(<meta name="twitter:image" content=")[^"]*"/, `$1${page.image}"`)
   if (page.html) html = replaceOnce(html, /<div id="root"><\/div>/, () => `<div id="root">${page.html}</div>`)
+  // index.html은 없는 주소(/app, /c/아이디 등)에도 대신 가는 파일이에요. 거기서는 미리 그린 소개 화면이 잠깐 비치지 않게 숨기고,
+  // src/main.tsx가 그리기 전에 비워요. macOS 앱의 메인 주소는 새 분석 화면이라 앱에서도 숨겨요.
+  if (page.path === '/') html = replaceOnce(html, /<\/head>/, () => `  ${SHELL_GUARD}\n  </head>`)
 
-  const file = path.join(dist, `${page.path.slice(1)}.html`)
+  const file = path.join(dist, page.path === '/' ? 'index.html' : `${page.path.slice(1)}.html`)
   await mkdir(path.dirname(file), { recursive: true })
   await writeFile(file, html)
 }
 
-const entries = [{ path: '/', alternates: { ko: '/', en: '/en' } }, ...pages.filter((page) => page.path !== '/')]
-const urls = entries.map(
+const urls = pages.map(
   (page) =>
     `  <url>\n    <loc>${SITE}${page.path}</loc>\n` +
     Object.entries(page.alternates)

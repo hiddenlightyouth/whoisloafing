@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AccountPage } from '../components/Account'
 import { repoLabel, track, trackPageView } from '../lib/analytics'
 import { fetchChat } from '../lib/api'
-import { isApp } from '../lib/app'
+import { appShell } from '../lib/app'
 import { localizePath } from '../lib/i18n'
 import { chatIdFromPath, isAppOnly, pageFromPath, type Page } from '../lib/routes'
 import type { useAnalysis } from './useAnalysis'
@@ -21,10 +21,10 @@ export interface LoginReturn {
 
 type Analysis = Pick<ReturnType<typeof useAnalysis>, 'messages' | 'abandon' | 'reset' | 'load' | 'chatId'>
 
-/** 브라우저에서는 앱 전용 화면을 열지 않아요. */
+/** 앱 화면이 아니면 앱 전용 화면을 열지 않아요. */
 function initialPage(): Page | null {
   const page = pageFromPath()
-  return page && isAppOnly(page) && !isApp ? null : page
+  return page && isAppOnly(page) && !appShell ? null : page
 }
 
 function trackPage(page: Page) {
@@ -63,9 +63,9 @@ export function useScreen({ messages, abandon, reset, load, chatId }: Analysis) 
   // 주소에 맞는 화면을 준비해요. 처음 들어왔을 때와 뒤로 가기, 앞으로 가기에서 불러요.
   const openFromLocation = useCallback(async () => {
     let next = pageFromPath()
-    // 심층 분석, 포트폴리오 만들기, 탐색, 관리자 화면은 앱에서만 써요. 브라우저에서 이 주소로 들어오면 메인 화면으로 보내요.
+    // 심층 분석, 포트폴리오 만들기, 탐색, 관리자 화면은 앱 화면에서만 써요. 앱 화면이 아닌데 이 주소로 들어오면 메인 화면으로 보내요.
     // 관리자 화면의 권한은 서버가 확인하고, 관리자가 아니면 화면이 안내만 보여줘요.
-    if (next && isAppOnly(next) && !isApp) {
+    if (next && isAppOnly(next) && !appShell) {
       window.history.replaceState(null, '', '/')
       next = null
     }
@@ -126,6 +126,11 @@ export function useScreen({ messages, abandon, reset, load, chatId }: Analysis) 
   const article = page?.kind === 'article'
 
   const goHome = useCallback(() => {
+    // 브라우저의 메인 주소는 소개 화면이라, 새 분석은 /app에서 시작해요. 앱 화면은 처음 열 때 정해져서 페이지를 새로 열어요.
+    if (!appShell) {
+      window.location.assign('/app')
+      return
+    }
     if (!reset()) return
     loginReturn.current = null
     track('home_click', { from: account ?? (article ? 'articles' : chat?.shared ? 'shared_chat' : messages.length > 0 ? 'chat' : 'home') })
@@ -153,7 +158,8 @@ export function useScreen({ messages, abandon, reset, load, chatId }: Analysis) 
   const openAbout = useCallback(() => {
     if (!reset()) return
     loginReturn.current = null
-    window.history.pushState(null, '', localizePath('/about'))
+    // 브라우저의 소개 화면은 메인 주소(/)에 있어요.
+    window.history.pushState(null, '', localizePath(appShell ? '/about' : '/'))
     void openFromLocation()
   }, [openFromLocation, reset])
 
@@ -168,8 +174,8 @@ export function useScreen({ messages, abandon, reset, load, chatId }: Analysis) 
       }
       setMissing(false)
       setPage({ kind: 'account', page: next })
-      if (replace) window.history.replaceState(null, '', `/${next}`)
-      else window.history.pushState(null, '', `/${next}`)
+      if (replace) window.history.replaceState(null, '', localizePath(`/${next}`))
+      else window.history.pushState(null, '', localizePath(`/${next}`))
       trackPageView(next)
     },
     [chatId, reset],
@@ -178,8 +184,8 @@ export function useScreen({ messages, abandon, reset, load, chatId }: Analysis) 
   const openChat = useCallback(
     (id: string, replace = false) => {
       loginReturn.current = null
-      if (replace) window.history.replaceState(null, '', `/c/${id}`)
-      else window.history.pushState(null, '', `/c/${id}`)
+      if (replace) window.history.replaceState(null, '', localizePath(`/c/${id}`))
+      else window.history.pushState(null, '', localizePath(`/c/${id}`))
       void openFromLocation()
     },
     [openFromLocation],
@@ -190,7 +196,7 @@ export function useScreen({ messages, abandon, reset, load, chatId }: Analysis) 
     (path: string) => {
       loginReturn.current = null
       abandon()
-      window.history.pushState(null, '', path)
+      window.history.pushState(null, '', localizePath(path))
       void openFromLocation()
     },
     [abandon, openFromLocation],

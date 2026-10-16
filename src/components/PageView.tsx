@@ -3,6 +3,7 @@ import type { AccountPage } from './Account'
 import type { AdminTab } from './Admin'
 import type { ExploreCategory } from './Explore'
 import { track } from '../lib/analytics'
+import { isApp } from '../lib/app'
 import type { Page } from '../lib/routes'
 
 // 앱이 브라우저로 열어 주는 로그인 화면은 필요할 때만 받아요.
@@ -10,6 +11,9 @@ const AppLogin = lazy(() => import('./AppLogin').then((module) => ({ default: mo
 
 // 심층 분석 대시보드는 앱에서만 쓰는 화면이라, 열 때만 받아요.
 const Deep = lazy(() => import('./Deep').then((module) => ({ default: module.Deep })))
+
+// 웹의 /app에서는 심층 분석 대신 앱을 권하는 안내를 보여줘요.
+const DeepAppOnly = lazy(() => import('./DeepAppOnly').then((module) => ({ default: module.DeepAppOnly })))
 
 // 포트폴리오 만들기도 앱에서만 쓰는 화면이라, 열 때만 받아요.
 const Portfolio = lazy(() => import('./Portfolio').then((module) => ({ default: module.Portfolio })))
@@ -50,6 +54,8 @@ interface Props {
   clubs: boolean
   adminApi: boolean
   feedback: boolean
+  /** 로그인했는지. 웹의 /app에서 로그인하지 않고 포트폴리오 주소로 들어오면 로그인 화면을 보여줘요. */
+  signedIn: boolean
 }
 
 /** 채팅과 메인 화면을 뺀, 주소로 여는 화면을 그려요. 화면 코드는 열 때만 받아요. */
@@ -72,14 +78,19 @@ export function PageView({
   clubs,
   adminApi,
   feedback,
+  signedIn,
 }: Props) {
+  // 포트폴리오는 내 작업의 채팅으로 만들어서 로그인해야 써요. 로그인하면 이 화면을 이어서 보여줘요.
+  const accountPage = page.kind === 'account' ? page.page : page.kind === 'portfolio' && !signedIn ? 'login' : null
   return (
     <Suspense fallback={<main className="flex-1" />}>
       {page.kind === 'app-login' ? (
         <AppLogin onCancel={onHome} />
+      ) : page.kind === 'deep' && !isApp ? (
+        <DeepAppOnly onHome={onHome} />
       ) : page.kind === 'deep' ? (
         <Deep repo={page.repo} onOpen={(repo) => onDeep(repo)} onNew={onHome} refreshKey={chatsVersion} chatHint={deepChatHint} />
-      ) : page.kind === 'portfolio' ? (
+      ) : page.kind === 'portfolio' && signedIn ? (
         <Portfolio repo={page.repo} onOpen={onPortfolio} onNew={onHome} refreshKey={chatsVersion} />
       ) : page.kind === 'explore' ? (
         <Explore category={page.category} onCategory={onExplore} clubs={clubs} onPick={onExplorePick} />
@@ -89,9 +100,9 @@ export function PageView({
         <About onHome={onHome} />
       ) : page.kind === 'article' ? (
         <Articles slug={page.slug} onOpen={onArticle} onHome={onHome} />
-      ) : (
+      ) : accountPage ? (
         <Account
-          page={page.page}
+          page={accountPage}
           onNavigate={onAccount}
           onSignedIn={onSignedIn}
           notice={loginNotice}
@@ -102,7 +113,7 @@ export function PageView({
           }}
           onHome={onHome}
         />
-      )}
+      ) : null}
     </Suspense>
   )
 }

@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, type CSSProperties, type MouseEvent } from 'react'
 import { track } from '../lib/analytics'
 import { MAC_DOWNLOAD, MAC_DOWNLOAD_OPEN } from '../lib/app'
-import { localizePath, messages, useLang, useMessages } from '../lib/i18n'
-import { applyMeta, HOME_META, SITE_TITLE } from '../lib/meta'
+import { messages, useLang, useMessages } from '../lib/i18n'
+import { applyMeta, HOME_META } from '../lib/meta'
 import { Footer } from './Footer'
 import { AppleLogo } from './Header'
 
@@ -36,11 +36,9 @@ type FeatureText = Omit<Feature, 'shot' | 'tag'>
  */
 export const ABOUT_TEXT = messages({
   ko: {
-    pageTitle: '소개',
-    metaDescription: 'GitHub 레포 링크 하나로 누가 얼마나, 무엇을, 어떻게 만들었는지 읽어 드려요. 기여도와 맡은 기능, 협업 방식을 대화로 풀어 줘요.',
     title: '레포를 더 쉽게 분석하기',
     lead: 'GitHub Repository 링크를 입력하여 누가 프로젝트에 가장 많이 기여했는지, 어떤 기능을 개발했는지 그리고 이 프로젝트의 협업 방식을 알아보거나 훔칠 수도 있답니다.',
-    start: '시작하기',
+    start: '사용해보기',
     download: 'macOS 앱 다운로드',
     appOnly: '앱 전용',
     trust: '기여도 숫자는 판결이 아니라 참고할 신호예요. 누군가의 일을 이 숫자 하나로만 재지 말고, 더 나은 대화를 위한 맥락으로 써 주세요.',
@@ -56,11 +54,9 @@ export const ABOUT_TEXT = messages({
     ] as FeatureText[],
   },
   en: {
-    pageTitle: 'About',
-    metaDescription: 'Turn any GitHub repository into a clear story of contribution, ownership, and teamwork.',
     title: 'Who built what in your GitHub repo?',
     lead: 'Turn any GitHub repository into a clear story of contribution, ownership, and teamwork. Understand the project, contributors, feature ownership, activity patterns, and team workflow from a single repo link.',
-    start: 'Get started',
+    start: 'Try it',
     download: 'Download for macOS',
     appOnly: 'Mac app',
     trust: "Contribution numbers are signals, not verdicts. Use them as context for better conversations, not as the only measure of someone's work.",
@@ -126,8 +122,8 @@ export function About({ onHome }: Props) {
   }))
 
   useEffect(() => {
-    applyMeta({ title: `${ABOUT_TEXT[lang].pageTitle} | ${SITE_TITLE}`, description: ABOUT_TEXT[lang].metaDescription }, lang, '/about')
-    return () => applyMeta(HOME_META[lang], lang, '/')
+    // 소개 화면은 브라우저의 메인 화면이라 메인 화면의 제목과 미리보기 태그를 써요.
+    applyMeta(HOME_META[lang], lang, '/')
   }, [lang])
 
   // 스크롤해서 화면에 들어온 기능부터 떠오르게 해요. 처음부터 보이는 것은 그리기 전에 바로 표시해서 깜빡이지 않게 해요.
@@ -170,7 +166,7 @@ export function About({ onHome }: Props) {
           {text.lead}
         </p>
         <div className="mt-9 flex flex-wrap justify-center gap-2.5">
-          <a href={localizePath('/')} onClick={start} className={primaryButton}>
+          <a href="/app" onClick={start} className={primaryButton}>
             {text.start}
           </a>
           {MAC_DOWNLOAD_OPEN && (

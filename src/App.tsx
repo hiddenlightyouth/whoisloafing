@@ -17,14 +17,14 @@ import { useScreen } from './hooks/useScreen'
 import { useServerConfig } from './hooks/useServerConfig'
 import { initAnalytics, repoLabel, track, trackPageView } from './lib/analytics'
 import { shareChat } from './lib/api'
-import { isApp, isMac, MAC_DOWNLOAD_OPEN } from './lib/app'
+import { appShell, isApp, isMac, MAC_DOWNLOAD_OPEN } from './lib/app'
 import './lib/theme'
 import { claimChats, isAdmin, loadMe, useAuth } from './lib/auth'
 import { socialFromPath } from './lib/social'
 import { useFeedback } from './lib/feedback'
 import { useShortcuts } from './lib/shortcuts'
 import { showToast } from './lib/toast'
-import { messages, pick, useLang } from './lib/i18n'
+import { localizePath, messages, pick, useLang } from './lib/i18n'
 import { applyMeta, HOME_META } from './lib/meta'
 import { chatIdFromPath } from './lib/routes'
 import type { AccountPage } from './components/Account'
@@ -110,7 +110,7 @@ export default function App() {
       const id = storage ? crypto.randomUUID() : null
       if (!reset(id)) return
       if (id) {
-        window.history.pushState(null, '', `/c/${id}`)
+        window.history.pushState(null, '', localizePath(`/c/${id}`))
         setChat({ mine: true, shared: false })
       }
       loginNudge.countChat()
@@ -146,9 +146,13 @@ export default function App() {
   // 로그인 화면에서 로그인하면, 보던 채팅이 있으면 그리로 돌아가고 아니면 내 작업으로 가요.
   const [claimWhenIdle, setClaimWhenIdle] = useState(false)
   const handleSignedIn = useCallback(() => {
+    // 포트폴리오 주소에서 로그인했으면 그 화면을 그대로 이어서 보여줘요.
+    if (page?.kind === 'portfolio') return
     const id = loginReturn.current?.id
     if (!id) {
-      openAccount('history', true)
+      // 웹의 /app에서는 내 작업을 사이드바가 보여줘서, 새 분석 화면으로 가요.
+      if (appShell) goHome()
+      else openAccount('history', true)
       return
     }
     if (id === chatId.current) {
@@ -157,7 +161,7 @@ export default function App() {
       trackPageView('chat', { is_owner: true })
     }
     openChat(id, true)
-  }, [chatId, loginReturn, openAccount, openChat])
+  }, [chatId, goHome, loginReturn, openAccount, openChat, page])
 
   useEffect(() => {
     if (busy || !claimWhenIdle) return
@@ -213,8 +217,9 @@ export default function App() {
   // 헤더의 링크는 어느 화면에서나 똑같이 보여주고, 잃어버릴 작업이 있을 때만 떠나기 전에 물어봐요.
   const leaveFor = useCallback(
     (target: LeaveTarget) => {
-      // 앱에서는 늘 로그인한 상태라 채팅이 내 작업에 남아요. 묻지 않고 바로 옮기고, 돌던 분석은 서버가 끝까지 마쳐서 저장해요.
-      if (isApp) {
+      // 앱에서 로그인한 상태면 채팅이 내 작업에 남아요. 묻지 않고 바로 옮기고, 돌던 분석은 서버가 끝까지 마쳐서 저장해요.
+      // 웹의 /app은 로그인하지 않고도 쓸 수 있어서, 로그인하지 않았으면 웹처럼 떠나기 전에 물어봐요.
+      if (appShell && tokens !== null) {
         abandon()
         go(target)
         return
@@ -226,7 +231,7 @@ export default function App() {
       track('leave_confirm_open', { busy, to: target })
       setLeaveTo(target)
     },
-    [abandon, busy, go, working],
+    [abandon, busy, go, tokens, working],
   )
 
   const handleHome = useCallback(() => leaveFor('home'), [leaveFor])
@@ -284,11 +289,11 @@ export default function App() {
   useShortcuts(
     {
       KeyN: handleHome,
-      KeyA: isApp ? undefined : () => leaveFor('articles'),
+      KeyA: appShell ? undefined : () => leaveFor('articles'),
       Slash: () => document.querySelector<HTMLInputElement>('input[data-repo-input]')?.focus(),
-      KeyD: isApp && deep ? () => openDeep(null) : undefined,
-      KeyT: isApp && exploreReady ? () => openExplore() : undefined,
-      KeyB: isApp ? () => toggleSidebar(!sidebarOpen) : undefined,
+      KeyD: appShell && deep ? () => openDeep(null) : undefined,
+      KeyT: appShell && exploreReady ? () => openExplore() : undefined,
+      KeyB: appShell ? () => toggleSidebar(!sidebarOpen) : undefined,
     },
     !(isApp && tokens === null) && page?.kind !== 'app-login',
   )
@@ -307,11 +312,14 @@ export default function App() {
   const navFrom = account ?? (article ? 'articles' : messages.length > 0 ? 'chat' : 'home')
 
   const screen = (
-    <div className={isApp ? 'relative flex min-w-0 flex-1 flex-col bg-white' : 'relative flex h-dvh flex-col bg-white'}>
+    <div className={appShell ? 'relative flex min-w-0 flex-1 flex-col bg-white' : 'relative flex h-dvh flex-col bg-white'}>
       <Header
-        app={isApp}
-        onHome={handleHome}
-        home={messages.length === 0 && !page && !opening && !missing}
+        app={appShell}
+        // 브라우저의 메인 주소는 소개 화면이라, 로고를 누르면 소개 화면으로 가요.
+        onHome={appShell ? handleHome : openAbout}
+        tryApp={!appShell}
+        // 브라우저의 메인 화면(소개)에서만 앱 다운로드 아래에 앱을 권하는 툴팁을 띄워요.
+        home={!appShell && page?.kind === 'about'}
         inChat={messages.length > 0 && !readOnly && !account}
         storage={storage}
         busy={busy}
@@ -321,29 +329,34 @@ export default function App() {
         onCopyLink={handleCopyLink}
         onLoginToShare={handleLoginToShare}
         onDeep={
-          isApp && deep && messages.length > 0 && !account && chatRepo?.includes('/')
+          appShell && deep && messages.length > 0 && !account && chatRepo?.includes('/')
             ? () => {
                 track('deep_open', { from: 'chat', repo: chatRepo })
                 openDeep(chatRepo, true)
               }
             : undefined
         }
-        onAbout={() => {
-          if (page?.kind === 'about') return
-          track('about_nav_click', { from: navFrom })
-          leaveFor('about')
-        }}
+        onAbout={
+          appShell
+            ? () => {
+                if (page?.kind === 'about') return
+                track('about_nav_click', { from: navFrom })
+                leaveFor('about')
+              }
+            : undefined
+        }
         onArticles={() => {
           track('article_nav_click', { from: navFrom })
           leaveFor('articles')
         }}
         signedIn={tokens !== null}
-        onAccount={(next) => {
+        // 계정 화면은 웹의 /app 안에 있어요. 소개와 아티클 화면에서는 사용해보기 버튼이 대신해요.
+        onAccount={appShell ? (next) => {
           // 분석하던 중에 로그인하러 가면 채팅을 들고 가서, 로그인한 뒤에 그대로 이어가요.
           if (next === account && working) return
           if (next === 'login' && working && storage && !account && chatId.current) loginFromChat(pick(TEXT).loginToContinue)
           else leaveFor(next)
-        }}
+        } : undefined}
       />
       {page ? (
         <PageView
@@ -368,6 +381,7 @@ export default function App() {
           clubs={config?.clubs === true}
           adminApi={config?.admin === true}
           feedback={feedback.ready}
+          signedIn={tokens !== null}
         />
       ) : opening ? (
         <ChatSkeleton />
@@ -378,7 +392,7 @@ export default function App() {
           onSubmit={handleSubmit}
           below={
             // 탐색이 있는지 아직 모를 때도 뼈대로 자리를 잡아 둬서, 입력창이 가운데에 있다가 위로 튀어 오르지 않게 해요.
-            !isApp || exploreReady === false ? undefined : exploreReady ? (
+            !appShell || exploreReady === false ? undefined : exploreReady ? (
               <Suspense fallback={<ExploreSkeleton />}>
                 <ExplorePreview clubs={config?.clubs === true} onMore={openExplore} onPick={(repo) => handleSubmit(`https://github.com/${repo}`)} />
               </Suspense>
@@ -415,7 +429,7 @@ export default function App() {
     </div>
   )
 
-  if (!isApp) return screen
+  if (!appShell) return screen
 
   return (
     <AppFrame
@@ -433,7 +447,8 @@ export default function App() {
                 : null,
         onDeep: deep ? () => openDeep(null) : undefined,
         onExplore: exploreReady ? () => openExplore() : undefined,
-        onPortfolio: config?.portfolio ? () => openPortfolio(null) : undefined,
+        // 포트폴리오는 내 작업의 채팅으로 만들어서, 로그인했을 때만 보여줘요.
+        onPortfolio: config?.portfolio && tokens !== null ? () => openPortfolio(null) : undefined,
         onDeepRepo: deep
           ? (repo) => {
               track('deep_open', { from: 'sidebar', repo })
@@ -461,6 +476,13 @@ export default function App() {
         },
         onMe: () => {
           if (account !== 'me') leaveFor('me')
+        },
+        signedIn: tokens !== null,
+        onLogin: () => {
+          if (account === 'login') return
+          // 분석하던 중에 로그인하러 가면 채팅을 들고 가서, 로그인한 뒤에 그대로 이어가요.
+          if (working && storage && !page && chatId.current) loginFromChat(pick(TEXT).loginToContinue)
+          else leaveFor('login')
         },
       }}
     >

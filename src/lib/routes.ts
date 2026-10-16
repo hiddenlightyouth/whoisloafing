@@ -2,6 +2,7 @@ import type { AccountPage } from '../components/Account'
 import type { AdminTab } from '../components/Admin'
 import type { ExploreCategory } from '../components/Explore'
 import { currentPath } from './i18n'
+import { appShell } from './shell'
 
 // 주소에서 지금 보여줄 화면을 읽어요. 언어 앞머리(/en)는 떼고 봐요.
 
@@ -19,7 +20,8 @@ export function articleFromPath(): { slug: string | null } | null {
 
 const ABOUT_PATH = /^\/about\/?$/
 
-export const aboutFromPath = () => ABOUT_PATH.test(currentPath())
+/** 브라우저의 메인 주소(/)는 소개 화면이에요. 앱 화면(macOS 앱, 웹의 /app)의 메인 주소는 새 분석 화면이에요. */
+export const aboutFromPath = () => ABOUT_PATH.test(currentPath()) || (!appShell && currentPath() === '/')
 
 const ACCOUNT_PATH = /^\/(login|signup|me|history)\/?$/
 
@@ -72,7 +74,7 @@ export type Page =
   | { kind: 'account'; page: AccountPage }
   | { kind: 'article'; slug: string | null }
 
-/** 심층 분석, 포트폴리오 만들기, 탐색, 관리자 화면은 앱에서만 써요. */
+/** 심층 분석, 포트폴리오 만들기, 탐색, 관리자 화면은 앱 화면(macOS 앱, 웹의 /app)에서만 써요. 심층 분석은 웹의 /app에서 앱을 권하는 안내만 보여줘요. */
 export const isAppOnly = (page: Page) => page.kind === 'deep' || page.kind === 'portfolio' || page.kind === 'explore' || page.kind === 'admin'
 
 /** 주소에서 지금 보여줄 화면을 읽어요. 앱 전용 화면인지는 따지지 않아요. */

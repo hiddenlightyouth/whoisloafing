@@ -18,6 +18,7 @@
   --animate-rise: rise 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-pop: pop 0.32s cubic-bezier(0.34, 1.45, 0.64, 1) both;
   --animate-slide-in: slide-in 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-slide-in-left: slide-in-left 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-fade: fade 0.2s ease-out both;
   --animate-grow: grow 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-grow-up: grow-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
@@ -97,6 +98,18 @@
     from {
       opacity: 0;
       transform: translateX(32px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* 웹의 /app에서 좁은 화면의 사이드바 서랍이 왼쪽에서 미끄러져 들어와요. */
+  @keyframes slide-in-left {
+    from {
+      opacity: 0;
+      transform: translateX(-32px);
     }
     to {
       opacity: 1;

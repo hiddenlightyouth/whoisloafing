@@ -1,7 +1,8 @@
 import { useSyncExternalStore } from 'react'
+import { isApp } from './shell'
 
-/** macOS 앱의 웹뷰는 User-Agent 끝에 WhoIsLoafingApp/버전을 붙여요. 앱 안에서 열렸을 때만 앱 화면을 보여줘요. */
-export const isApp = typeof navigator !== 'undefined' && /WhoIsLoafingApp\//.test(navigator.userAgent)
+/** macOS 앱 안에서 열렸는지와, 웹의 /app까지 포함해서 앱 화면으로 보여줄지는 shell.ts에서 정해요. */
+export { appShell, isApp, isWebApp } from './shell'
 
 /** 앱의 버전 (예: 1.1). 앱 안이 아니면 null이에요. */
 export const appVersion = typeof navigator !== 'undefined' ? (/WhoIsLoafingApp\/([\d.]+)/.exec(navigator.userAgent)?.[1] ?? null) : null

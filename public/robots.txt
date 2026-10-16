@@ -10,5 +10,6 @@ Disallow: /deep
 Disallow: /portfolio
 Disallow: /explore
 Disallow: /admin
+Disallow: /app/
 
 Sitemap: https://whoisloafing.hidly.dev/sitemap.xml

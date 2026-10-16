@@ -190,6 +190,8 @@ export function Settings({ onClose }: { onClose: () => void }) {
         </Section>
       )}
 
+      {/* 버전과 업데이트 확인은 macOS 앱에서만 보여줘요. 웹의 /app에는 버전이 없어요. */}
+      {appVersion && (
       <Section title={text.app}>
         <Row label={text.version}>
           <span className="flex items-center gap-3">
@@ -210,6 +212,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
           </span>
         </Row>
       </Section>
+      )}
       </div>
     </Modal>
   )

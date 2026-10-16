@@ -5,6 +5,7 @@
  * 문구는 화면 파일마다 `messages({ ko, en })`로 모아 두고 `useMessages`로 꺼내 써요.
  */
 import { useSyncExternalStore } from 'react'
+import { stripApp, withApp } from './shell'
 
 export type Lang = 'ko' | 'en'
 
@@ -22,12 +23,17 @@ const LOCALIZED = /^\/(?:about|articles(?:\/[^/]+)?)?\/?$/
 /** 주소 앞의 /en을 떼요. 화면을 고를 때는 이 값을 봐요. */
 export const stripLocale = (path: string) => path.replace(EN_PREFIX, '') || '/'
 
-/** 지금 주소에서 언어 표시(/en)를 뗀 경로 */
-export const currentPath = () => stripLocale(window.location.pathname)
+/** 지금 주소에서 언어 표시(/en)와 웹 앱 표시(/app)를 뗀 경로 */
+export const currentPath = () => stripApp(stripLocale(window.location.pathname))
 
-/** 이 경로를 주어진 언어의 주소로 바꿔요. 언어마다 주소가 따로 없는 화면은 그대로 둬요. */
+/**
+ * 이 경로를 주어진 언어의 주소로 바꿔요. 언어마다 주소가 따로 없는 화면은 그대로 둬요.
+ * 웹의 /app에서는 소개와 아티클을 뺀 화면에 /app을 붙이고, 언어 표시는 붙이지 않아요.
+ */
 export function localizePath(path: string, lang: Lang = current): string {
-  const bare = stripLocale(path)
+  const bare = stripApp(stripLocale(path))
+  const inApp = withApp(bare)
+  if (inApp !== bare) return inApp
   if (lang !== 'en' || !LOCALIZED.test(bare)) return bare
   return bare === '/' ? '/en' : `/en${bare}`
 }

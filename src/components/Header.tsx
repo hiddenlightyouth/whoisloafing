@@ -23,8 +23,8 @@ interface Props {
   onLoginToShare: () => void
   /** 앱에서 보고 있는 채팅의 레포를 심층 분석으로 열어요. 넘기지 않으면 버튼이 보이지 않아요. */
   onDeep?: () => void
-  /** 소개 화면으로 가요. */
-  onAbout: () => void
+  /** 소개 화면으로 가요. 넘기지 않으면 링크가 보이지 않아요. 브라우저에서는 메인 주소가 소개 화면이라 로고가 대신해요. */
+  onAbout?: () => void
   /** 아티클 화면으로 가요. 넘기지 않으면 링크가 보이지 않아요. */
   onArticles?: () => void
   signedIn?: boolean
@@ -33,6 +33,8 @@ interface Props {
   app?: boolean
   /** 메인 화면인지. 이때만 앱 다운로드 아래에 앱을 권하는 툴팁을 띄워요. */
   home?: boolean
+  /** 웹의 /app으로 가는 사용해보기 버튼을 보여줄지. 소개와 아티클 화면에서 계정 링크 대신 둬요. */
+  tryApp?: boolean
 }
 
 const TEXT = messages({
@@ -61,6 +63,7 @@ const TEXT = messages({
     closeMenu: '메뉴 닫기',
     openMenu: '메뉴 열기',
     language: '언어',
+    tryApp: '사용해보기',
   },
   en: {
     shareFailed: "Couldn't share. Please try again in a moment.",
@@ -87,6 +90,7 @@ const TEXT = messages({
     closeMenu: 'Close menu',
     openMenu: 'Open menu',
     language: 'Language',
+    tryApp: 'Try it',
   },
 })
 
@@ -130,6 +134,7 @@ export function Header({
   onAccount,
   app = false,
   home = false,
+  tryApp = false,
 }: Props) {
   const text = useMessages(TEXT)
   const [confirming, setConfirming] = useState(false)
@@ -177,7 +182,7 @@ export function Header({
     event.preventDefault()
     setMenuOpen(false)
     setDownloadOpen(false)
-    onAbout()
+    onAbout?.()
   }
 
   function goArticles(event: MouseEvent<HTMLAnchorElement>) {
@@ -220,9 +225,11 @@ export function Header({
 
         <div ref={actionsRef} className="relative flex items-center gap-1 sm:gap-2">
           <nav className={app ? 'hidden' : 'hidden items-center gap-1 sm:flex sm:gap-2'}>
-            <a href={localizePath('/about')} onClick={goAbout} className={`${quiet} inline-flex items-center text-gray-600 hover:text-gray-900`}>
-              {text.about}
-            </a>
+            {onAbout && (
+              <a href={localizePath('/about')} onClick={goAbout} className={`${quiet} inline-flex items-center text-gray-600 hover:text-gray-900`}>
+                {text.about}
+              </a>
+            )}
 
             <div ref={downloadRef} className="relative">
               <button
@@ -317,6 +324,12 @@ export function Header({
 
             <LangSwitch className={`${quiet} inline-flex items-center text-gray-400 hover:text-gray-900`} onSwitch={() => setDownloadOpen(false)} />
           </nav>
+
+          {tryApp && (
+            <a href="/app" onClick={() => track('try_app_click', { from: 'header' })} className={`${quiet} inline-flex items-center bg-brand text-white hover:bg-brand-hover`}>
+              {text.tryApp}
+            </a>
+          )}
 
           {onDeep && (
             <button type="button" onClick={onDeep} className={`${quiet} bg-gray-100 text-gray-700 hover:text-brand`}>
@@ -423,9 +436,11 @@ export function Header({
           }}
         >
           <nav className="flex flex-col px-4 pt-2 pb-6">
-            <a href={localizePath('/about')} onClick={goAbout} className={mobileItem}>
-              {text.about}
-            </a>
+            {onAbout && (
+              <a href={localizePath('/about')} onClick={goAbout} className={mobileItem}>
+                {text.about}
+              </a>
+            )}
 
             <button
               type="button"

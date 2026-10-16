@@ -2,7 +2,8 @@ import { useState, type FormEvent, type InputHTMLAttributes } from 'react'
 import { track } from '../lib/analytics'
 import { signIn, signUp } from '../lib/auth'
 import { SocialButtons, useSocialClients } from './Social'
-import { messages, useMessages } from '../lib/i18n'
+import { currentPath, localizePath, messages, useMessages } from '../lib/i18n'
+import { appShell } from '../lib/app'
 
 const TEXT = messages({
   ko: {
@@ -56,7 +57,10 @@ interface Props {
 /** 소셜 로그인을 마치고 돌아갈 주소를 정해요. 앱 로그인, 내 정보, 내 작업처럼 로그인 화면이 대신 떠 있던 주소면 그 주소로 돌아가요. */
 function defaultReturn(): string {
   const { pathname, search } = window.location
-  return pathname === '/login' || pathname === '/signup' ? '/history' : `${pathname}${search}`
+  const path = currentPath()
+  // 웹의 /app에서는 내 작업을 사이드바가 보여줘서 새 분석 화면으로 돌아가요.
+  if (path === '/login' || path === '/signup') return appShell ? localizePath('/') : '/history'
+  return `${pathname}${search}`
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

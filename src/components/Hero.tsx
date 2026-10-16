@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { isApp } from '../lib/app'
+import { appShell } from '../lib/app'
 import { messages, useMessages } from '../lib/i18n'
 import { useAppSettings } from '../lib/theme'
 import { ContributionBackdrop } from './ContributionBackdrop'
@@ -33,7 +33,7 @@ const WORD_STAGGER_MS = 80
 /** 타이틀을 어절 단위로 나눠요. 어절이 하나씩 흐릿하게 떠오르며 나타나요. */
 function Title() {
   const text = useMessages(TEXT)
-  const TITLE = isApp ? text.appTitle : text.title
+  const TITLE = appShell ? text.appTitle : text.title
   const TITLE_WORDS = TITLE.split(' ')
   return (
     <h1
@@ -98,7 +98,7 @@ export function Hero({ onSubmit, below }: Props) {
           className="mt-3 mb-7 animate-rise text-balance break-keep text-center text-[13px] leading-relaxed text-gray-500 sm:mb-8 sm:text-[14px]"
           style={{ animationDelay: '250ms' }}
         >
-          {isApp ? text.appDescription : text.description}
+          {appShell ? text.appDescription : text.description}
         </p>
         <div className="animate-rise" style={{ animationDelay: '350ms' }}>
           <RepoInput onSubmit={onSubmit} />

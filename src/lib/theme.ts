@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { isApp, postToApp, type AppTheme } from './app'
+import { appShell, isApp, postToApp, type AppTheme } from './app'
 
 const THEME_STORAGE = 'whoisloafing:app-theme'
 const BACKDROP_STORAGE = 'whoisloafing:app-backdrop'
@@ -31,7 +31,7 @@ function readSettings(): AppSettings {
   return { theme: theme && THEMES.includes(theme) ? theme : 'system', backdrop: read(BACKDROP_STORAGE) === '1', shield: read(SHIELD_STORAGE) !== '0' }
 }
 
-let settings: AppSettings = isApp ? readSettings() : { theme: 'light', backdrop: true, shield: false }
+let settings: AppSettings = appShell ? readSettings() : { theme: 'light', backdrop: true, shield: false }
 const listeners = new Set<() => void>()
 
 const systemDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -82,10 +82,12 @@ export function useAppSettings(): AppSettings {
   )
 }
 
-// 화면 설정은 앱에서만 써요. 브라우저로 들어온 화면은 늘 밝은 화면에 배경 그림이 있어요.
-if (isApp) {
+// 화면 설정은 앱 화면(macOS 앱, 웹의 /app)에서만 써요. 소개와 아티클은 늘 밝은 화면이에요.
+if (appShell) {
   apply()
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', apply)
+}
+if (isApp) {
   window.addEventListener(SETTINGS_EVENT, (event) => {
     const detail = (event as CustomEvent<Partial<AppSettings>>).detail ?? {}
     store({

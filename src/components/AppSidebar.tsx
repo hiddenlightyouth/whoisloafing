@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react'
 import { useDismiss } from '../hooks/useDismiss'
+import { isWebApp } from '../lib/app'
 import { track } from '../lib/analytics'
 import { canPinChats, deleteChat, pinChat, reorderPinned, unshareChat } from '../lib/api'
 import { fetchMyChats, signOut, useAuth, type ChatSummary, type Me } from '../lib/auth'
@@ -9,7 +10,7 @@ import { showToast } from '../lib/toast'
 import { CHAT_LIST_TEXT, copyChatLink, DeleteDialog } from './History'
 import { Kbd } from './Shortcuts'
 import { Bone } from './Skeleton'
-import { messages, pick, useMessages } from '../lib/i18n'
+import { messages, pick, useLang, useMessages } from '../lib/i18n'
 
 const TEXT = messages({
   ko: {
@@ -24,6 +25,9 @@ const TEXT = messages({
     signOut: '로그아웃',
     settings: '설정',
     bug: '버그 신고',
+    login: '로그인',
+    signedOut: '로그인하면 분석한 채팅이 여기에 모이고, 다른 기기에서도 이어서 볼 수 있어요.',
+    intro: 'WhoIsLoafing 소개로',
   },
   en: {
     sharedChat: 'Shared chat',
@@ -37,6 +41,9 @@ const TEXT = messages({
     signOut: 'Sign out',
     settings: 'Settings',
     bug: 'Report a bug',
+    login: 'Sign in',
+    signedOut: 'Sign in to keep your chats here and pick them up on any device.',
+    intro: 'Back to the WhoIsLoafing intro',
   },
 })
 
@@ -66,6 +73,10 @@ interface Props {
   settingsOpen: boolean
   /** 관리자 화면을 열어요. 관리자 계정일 때만 넘기고, 아니면 메뉴에 보여주지 않아요. */
   onAdmin?: () => void
+  /** 로그인했는지. 웹의 /app은 로그인하지 않고도 써서, 그때는 내 작업 대신 로그인 안내를 보여줘요. */
+  signedIn: boolean
+  /** 로그인 화면을 열어요. */
+  onLogin?: () => void
 }
 
 const SKELETON_ROWS = ['w-4/5', 'w-3/5', 'w-2/3', 'w-1/2']
@@ -205,8 +216,9 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
 }
 
 /** 앱 화면 왼쪽의 사이드바예요. 새 분석, 내 작업 목록과 관리, 아티클과 내 정보로 가는 링크가 있어요. */
-export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPortfolio, onExplore, onOpenChat, onDeepRepo, onChatChanged, onMe, onSettings, settingsOpen, onAdmin }: Props) {
+export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPortfolio, onExplore, onOpenChat, onDeepRepo, onChatChanged, onMe, onSettings, settingsOpen, onAdmin, signedIn, onLogin }: Props) {
   const { me } = useAuth()
+  const lang = useLang()
   const list = useMessages(CHAT_LIST_TEXT)
   const text = useMessages(TEXT)
   const [chats, setChats] = useState<ChatSummary[] | null>(null)
@@ -223,6 +235,7 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
   }, [])
 
   useEffect(() => {
+    if (!signedIn) return
     let stale = false
     void fetchMyChats(0).then((result) => {
       if (stale) return
@@ -237,7 +250,7 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
     return () => {
       stale = true
     }
-  }, [refreshKey])
+  }, [refreshKey, signedIn])
 
   const closeMenu = useCallback(() => setMenuFor(null), [])
   const cancelDelete = useCallback(() => setDeleting(null), [])
@@ -305,7 +318,16 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
 
   return (
     <aside className="relative z-30 flex w-64 shrink-0 flex-col border-r border-gray-200 bg-gray-50">
-      <div data-app-drag className="h-11 shrink-0" />
+      {isWebApp ? (
+        // 웹에서는 왼쪽 위의 사이드바 버튼 옆에 로고를 두고, 누르면 소개 화면으로 가요. 높이는 헤더와 맞춰요.
+        <div className="flex h-14 shrink-0 items-center pl-12">
+          <a href={lang === 'en' ? '/en' : '/'} aria-label={text.intro} className="inline-flex items-center">
+            <img src="/logo.svg" alt="WhoIsLoafing" width={3403} height={367} draggable={false} className="h-[13px] w-auto translate-y-px" />
+          </a>
+        </div>
+      ) : (
+        <div data-app-drag className="h-11 shrink-0" />
+      )}
 
       <div className="px-3">
         <button
@@ -384,7 +406,9 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
       <h2 className="mt-5 px-6 text-xs font-medium text-gray-400">{list.title}</h2>
 
       <nav className="mt-1.5 min-h-0 flex-1 overflow-y-auto px-3 pb-3">
-        {chats === null ? (
+        {!signedIn ? (
+          <p className="px-3 py-2 text-[13px] leading-relaxed text-gray-500">{text.signedOut}</p>
+        ) : chats === null ? (
           error ? (
             <p className="px-3 py-2 text-[13px] leading-relaxed text-gray-500">{error}</p>
           ) : (
@@ -432,7 +456,7 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
         )}
       </nav>
 
-      <AccountMenu me={me} page={page} onMe={onMe} onSettings={onSettings} settingsOpen={settingsOpen} onAdmin={onAdmin} />
+      <AccountMenu me={signedIn ? me : null} page={page} onMe={onMe} onSettings={onSettings} settingsOpen={settingsOpen} onAdmin={onAdmin} onLogin={signedIn ? undefined : onLogin} />
 
       {deleting && <DeleteDialog chat={deleting} working={working} onCancel={cancelDelete} onConfirm={() => void remove(deleting)} />}
     </aside>
@@ -446,7 +470,24 @@ const menuIcon = 'size-4 shrink-0 text-gray-500'
  * 사이드바 맨 아래의 계정 버튼이에요. 누르면 위로 메뉴가 펼쳐져서 내 정보, 아티클, 관리자 화면으로 가거나 로그아웃해요. 오른쪽에는 설정과 버그 신고 버튼이 있어요.
  * 바깥을 누르거나 Esc를 누르면 닫혀요.
  */
-function AccountMenu({ me, page, onMe, onSettings, settingsOpen, onAdmin }: { me: Me | null; page: Props['page']; onMe: () => void; onSettings: () => void; settingsOpen: boolean; onAdmin?: () => void }) {
+function AccountMenu({
+  me,
+  page,
+  onMe,
+  onSettings,
+  settingsOpen,
+  onAdmin,
+  onLogin,
+}: {
+  me: Me | null
+  page: Props['page']
+  onMe: () => void
+  onSettings: () => void
+  settingsOpen: boolean
+  onAdmin?: () => void
+  /** 로그인하지 않았으면 넘겨요. 계정 버튼 대신 로그인 버튼을 보여줘요. */
+  onLogin?: () => void
+}) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const { ready: canReport } = useFeedback()
@@ -501,6 +542,18 @@ function AccountMenu({ me, page, onMe, onSettings, settingsOpen, onAdmin }: { me
         </div>
       )}
 
+      {onLogin ? (
+        <button
+          type="button"
+          onClick={() => {
+            track('account_nav_click', { page: 'login', from: 'sidebar' })
+            onLogin()
+          }}
+          className="flex h-10 min-w-0 flex-1 items-center justify-center rounded-xl bg-brand px-3 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-hover"
+        >
+          {text.login}
+        </button>
+      ) : (
       <button
         type="button"
         aria-haspopup="menu"
@@ -522,6 +575,7 @@ function AccountMenu({ me, page, onMe, onSettings, settingsOpen, onAdmin }: { me
           <path d="M5 6.5L8 3.5l3 3M5 9.5l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
+      )}
       {/* 설정 창을 띄우는 버튼이에요. 버그 신고 버튼 왼쪽에 둬요. */}
       <button
         type="button"
