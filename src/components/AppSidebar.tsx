@@ -26,7 +26,7 @@ const TEXT = messages({
     settings: '설정',
     bug: '버그 신고',
     login: '로그인',
-    signedOut: '로그인하면 분석한 채팅이 여기에 모이고, 다른 기기에서도 이어서 볼 수 있어요.',
+    signedOut: '로그인하여 분석 결과를 저장하세요',
     intro: 'WhoIsLoafing 소개로',
   },
   en: {
@@ -42,7 +42,7 @@ const TEXT = messages({
     settings: 'Settings',
     bug: 'Report a bug',
     login: 'Sign in',
-    signedOut: 'Sign in to keep your chats here and pick them up on any device.',
+    signedOut: 'Sign in to save your analyses',
     intro: 'Back to the WhoIsLoafing intro',
   },
 })
