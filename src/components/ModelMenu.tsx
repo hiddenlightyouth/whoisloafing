@@ -11,7 +11,7 @@ const TEXT = messages({
     multiplier: (times: number) => `사용량 ${times}배`,
     usage: '이번 주 사용량',
     used: (percent: number) => `${percent}% 사용`,
-    plans: '요금제 보기',
+    plans: '플랜 변경',
   },
   en: {
     model: 'Choose a model',
@@ -19,7 +19,7 @@ const TEXT = messages({
     multiplier: (times: number) => `${times}x usage`,
     usage: 'Usage this week',
     used: (percent: number) => `${percent}% used`,
-    plans: 'See plans',
+    plans: 'Change plan',
   },
 })
 

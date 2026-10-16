@@ -22,7 +22,7 @@ const BUBBLE_TEXT = messages({
     include: '전부 포함하기',
     exclude: '빼고 계산하기',
     retry: '다시 시도하기',
-    plans: '요금제 보기',
+    plans: '플랜 변경',
     other: '다른 레포 분석하기',
   },
   en: {
@@ -34,7 +34,7 @@ const BUBBLE_TEXT = messages({
     include: 'Include everything',
     exclude: 'Leave them out',
     retry: 'Try again',
-    plans: 'See plans',
+    plans: 'Change plan',
     other: 'Analyze another repo',
   },
 })

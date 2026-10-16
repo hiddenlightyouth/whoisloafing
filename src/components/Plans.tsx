@@ -52,7 +52,7 @@ const TEXT = messages({
   },
 })
 
-/** 요금제 세 개만 보여주는 창이에요. 계정 메뉴의 플랜 변경, 모델 메뉴와 말풍선의 요금제 보기로 열어요. */
+/** 요금제 세 개만 보여주는 창이에요. 계정 메뉴, 모델 메뉴, 말풍선의 플랜 변경 버튼으로 열어요. */
 export function PlansModal({ onClose }: { onClose: () => void }) {
   const L = useMessages(TEXT)
   const lang = useLang()
