@@ -350,7 +350,7 @@ export default function App() {
           leaveFor('articles')
         }}
         signedIn={tokens !== null}
-        // 계정 화면은 웹의 /app 안에 있어요. 소개와 아티클 화면에서는 사용해보기 버튼이 대신해요.
+        // 계정 화면은 웹의 /app 안에 있어요. 소개와 아티클 화면에서는 시작하기 버튼이 대신해요.
         onAccount={appShell ? (next) => {
           // 분석하던 중에 로그인하러 가면 채팅을 들고 가서, 로그인한 뒤에 그대로 이어가요.
           if (next === account && working) return
