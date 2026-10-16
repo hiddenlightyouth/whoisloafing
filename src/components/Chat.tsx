@@ -9,9 +9,48 @@ import { TypingDots } from './TypingDots'
 import { messages, useMessages } from '../lib/i18n'
 
 const TEXT = messages({
-  ko: { next: '다음 단계', resume: '계속하기', readOnly: '읽기 전용 채팅으로 전환됨', other: '다른 레포 분석해 보기', bottom: '맨 아래로 이동' },
-  en: { next: 'Next step', resume: 'Continue', readOnly: 'This chat is read-only', other: 'Analyze another repo', bottom: 'Scroll to bottom' },
+  ko: {
+    next: '다음 단계',
+    resume: '계속하기',
+    readOnly: '읽기 전용 채팅으로 전환됨',
+    other: '다른 레포 분석해 보기',
+    bottom: '맨 아래로 이동',
+    missingTitle: '이 채팅을 열 수 없어요.',
+    missingBody: '아직 공유되지 않았거나 없는 채팅이에요.',
+    home: '홈으로',
+  },
+  en: {
+    next: 'Next step',
+    resume: 'Continue',
+    readOnly: 'This chat is read-only',
+    other: 'Analyze another repo',
+    bottom: 'Scroll to bottom',
+    missingTitle: "This chat can't be opened.",
+    missingBody: "It hasn't been shared yet, or it doesn't exist.",
+    home: 'Go home',
+  },
 })
+
+/** 열 수 없는 채팅 주소로 들어왔을 때 보여줘요. */
+export function ChatMissing({ onHome }: { onHome: () => void }) {
+  const text = useMessages(TEXT)
+  return (
+    <main className="flex flex-1 flex-col items-center justify-center gap-4 px-5 text-center">
+      <p className="text-[15px] leading-relaxed text-gray-600">
+        {text.missingTitle}
+        <br />
+        {text.missingBody}
+      </p>
+      <button
+        type="button"
+        onClick={onHome}
+        className="h-10 rounded-full bg-brand px-5 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover"
+      >
+        {text.home}
+      </button>
+    </main>
+  )
+}
 
 interface Props {
   messages: ChatMessage[]

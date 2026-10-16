@@ -1,81 +1,37 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import type { AccountPage } from './components/Account'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import type { AdminTab } from './components/Admin'
 import type { ExploreCategory } from './components/Explore'
-import { Chat } from './components/Chat'
+import { AppFrame, AppSignedOut, useSidebarOpen } from './components/AppFrame'
+import { Chat, ChatMissing } from './components/Chat'
+import { ChatOverlays } from './components/ChatOverlays'
 import { ChatSkeleton, ExploreSkeleton } from './components/Skeleton'
 import { Header } from './components/Header'
-import { AppNudge } from './components/AppNudge'
 import { Hero } from './components/Hero'
-import { DeepNudge, shouldNudgeDeep } from './components/DeepNudge'
-import { BugReport, FeedbackPrompt } from './components/Feedback'
 import { LeaveDialog } from './components/LeaveDialog'
-import { LoginNudge } from './components/LoginNudge'
+import { PageView } from './components/PageView'
 import { ShortcutTip } from './components/Shortcuts'
 import { Toast } from './components/Toast'
 import { useAnalysis } from './hooks/useAnalysis'
+import { useLoginNudge } from './hooks/useLoginNudge'
+import { useScreen } from './hooks/useScreen'
+import { useServerConfig } from './hooks/useServerConfig'
 import { initAnalytics, repoLabel, track, trackPageView } from './lib/analytics'
-import { fetchChat, fetchConfig, shareChat } from './lib/api'
+import { shareChat } from './lib/api'
 import { isApp, isMac, MAC_DOWNLOAD_OPEN } from './lib/app'
 import './lib/theme'
 import { claimChats, isAdmin, loadMe, useAuth } from './lib/auth'
 import { socialFromPath } from './lib/social'
-import { setFeedbackReady, shouldAskFeedback, useFeedback } from './lib/feedback'
+import { useFeedback } from './lib/feedback'
 import { useShortcuts } from './lib/shortcuts'
 import { showToast } from './lib/toast'
-import { localizePath, messages, pick, useLang, useMessages } from './lib/i18n'
+import { messages, pick, useLang } from './lib/i18n'
 import { applyMeta, HOME_META } from './lib/meta'
-import { readFlag, readItem, writeFlag, writeItem } from './lib/storage'
-import { aboutFromPath, accountFromPath, adminFromPath, appLoginFromPath, articleFromPath, chatIdFromPath, deepFromPath, exploreFromPath, portfolioFromPath } from './lib/routes'
+import { chatIdFromPath } from './lib/routes'
+import type { AccountPage } from './components/Account'
 
-// 앱에서만 쓰는 화면과, 앱이 브라우저로 열어 주는 로그인 화면은 필요할 때만 받아요.
-const AppGate = lazy(() => import('./components/AppGate').then((module) => ({ default: module.AppGate })))
-const AppSidebar = lazy(() => import('./components/AppSidebar').then((module) => ({ default: module.AppSidebar })))
-const AppLogin = lazy(() => import('./components/AppLogin').then((module) => ({ default: module.AppLogin })))
-
-// 화면 공유 중에 화면을 가리는 막은 앱에서만 써요.
-const CaptureShield = lazy(() => import('./components/CaptureShield').then((module) => ({ default: module.CaptureShield })))
-
-// 탐색 목록은 앱의 새 분석 화면에서만 쓰여서, 그때만 받아요.
+// 소셜 로그인에서 돌아온 화면과 탐색 목록은 필요할 때만 받아요. 탐색 목록은 앱의 새 분석 화면에서만 쓰여요.
 const SocialCallback = lazy(() => import('./components/Social').then((module) => ({ default: module.SocialCallback })))
-const Explore = lazy(() => import('./components/Explore').then((module) => ({ default: module.Explore })))
 const ExplorePreview = lazy(() => import('./components/Explore').then((module) => ({ default: module.ExplorePreview })))
-
-// 심층 분석 대시보드는 앱에서만 쓰는 화면이라, 열 때만 받아요.
-const Deep = lazy(() => import('./components/Deep').then((module) => ({ default: module.Deep })))
-
-// 포트폴리오 만들기도 앱에서만 쓰는 화면이라, 열 때만 받아요.
-const Portfolio = lazy(() => import('./components/Portfolio').then((module) => ({ default: module.Portfolio })))
-
-// 설정 창은 앱에서만 쓰여서, 열 때만 받아요.
-const Settings = lazy(() => import('./components/Settings').then((module) => ({ default: module.Settings })))
-
-// 관리자 화면은 앱에서 관리자 계정만 쓰는 화면이라, 열 때만 받아요.
-const Admin = lazy(() => import('./components/Admin').then((module) => ({ default: module.Admin })))
-
-const Account = lazy(() => import('./components/Account').then((module) => ({ default: module.Account })))
-
-// 소개 화면은 헤더의 소개 링크로 들어올 때만 받아요.
-const About = lazy(() => import('./components/About').then((module) => ({ default: module.About })))
-
-// 아티클 글과 마크다운 변환 코드는 아티클 화면을 열 때만 받아요.
-const Articles = lazy(() => import('./components/Articles').then((module) => ({ default: module.Articles })))
-
-const SIDEBAR_CLOSED_KEY = 'whoisloafing:app-sidebar-closed'
-
-const sidebarClosed = () => readFlag(SIDEBAR_CLOSED_KEY)
-
-const NUDGE_DISMISSED_KEY = 'whoisloafing:login-nudge-dismissed'
-/** 좁은 화면에서 로그인 안내를 닫은 뒤, 채팅을 이만큼 새로 시작하면 다시 띄워요. */
-const NUDGE_REOPEN_CHATS = 3
-
-/** 로그인 안내를 닫은 뒤에 새로 시작한 채팅 수. 닫은 적이 없으면 null이에요. */
-function nudgeChatsSinceClose(): number | null {
-  const value = readItem(NUDGE_DISMISSED_KEY)
-  return value === null ? null : Number(value) || 0
-}
-
-const storeNudge = (chats: number | null) => writeItem(NUDGE_DISMISSED_KEY, chats === null ? null : String(chats))
 
 async function copyLink(): Promise<boolean> {
   try {
@@ -92,22 +48,12 @@ const TEXT = messages({
     loginToContinue: '로그인하면 분석하던 채팅으로 바로 돌아가요.',
     sharedCopied: '공유했어요. 링크를 복사했어요.',
     sharedCopyManually: '공유했어요. 링크 복사를 눌러 링크를 가져가세요.',
-    missingTitle: '이 채팅을 열 수 없어요.',
-    missingBody: '아직 공유되지 않았거나 없는 채팅이에요.',
-    home: '홈으로',
-    closeSidebar: '사이드바 닫기',
-    openSidebar: '사이드바 열기',
   },
   en: {
     loginToShare: "Sign in and we'll bring you right back to the chat you wanted to share.",
     loginToContinue: "Sign in and we'll bring you right back to your analysis.",
     sharedCopied: 'Shared. The link is copied.',
     sharedCopyManually: 'Shared. Tap Copy link to grab the link.',
-    missingTitle: "This chat can't be opened.",
-    missingBody: "It hasn't been shared yet, or it doesn't exist.",
-    home: 'Go home',
-    closeSidebar: 'Close sidebar',
-    openSidebar: 'Open sidebar',
   },
 })
 
@@ -115,210 +61,48 @@ const TEXT = messages({
 type LeaveTarget = 'home' | 'about' | 'articles' | AccountPage
 
 export default function App() {
-  const { messages, busy, paused, send, resume, stop, abandon, reset, load, settle, chatId } = useAnalysis()
+  const analysis = useAnalysis()
+  const { messages, busy, paused, send, resume, stop, abandon, reset, settle, chatId } = analysis
+
+  // 화면을 처음 맞추기 전에 분석 도구를 켜 둬요.
+  useEffect(() => {
+    initAnalytics()
+    void loadMe()
+  }, [])
+
+  const config = useServerConfig()
   /** 서버에 채팅 저장 기능이 켜져 있는지 */
-  const [storage, setStorage] = useState(false)
+  const storage = config?.storage === true
   /** 서버에 심층 분석 API가 있는지. 있을 때만 앱의 사이드바에 심층 분석을 보여줘요. */
-  const [deep, setDeep] = useState(false)
+  const deep = config?.deep === true
   /** 서버에 탐색 API가 있는지. 있을 때만 앱의 새 분석 화면 아래에 인기 레포를 보여줘요. 아직 물어보는 중이면 null이에요. */
-  const [exploreReady, setExploreReady] = useState<boolean | null>(null)
-  const [clubsReady, setClubsReady] = useState(false)
-  /** 앱의 심층 분석 화면을 보고 있는지. repo가 null이면 레포를 고르는 화면이에요. */
-  const [deepPage, setDeepPage] = useState(() => (isApp ? deepFromPath() : null))
-  /** 서버에 포트폴리오 만들기 API가 있는지 */
-  const [portfolio, setPortfolio] = useState(false)
-  /** 앱의 포트폴리오 만들기 화면을 보고 있는지. repo가 null이면 레포를 고르는 화면이에요. */
-  const [portfolioPage, setPortfolioPage] = useState(() => (isApp ? portfolioFromPath() : null))
-  /** 앱의 탐색 화면에서 보고 있는 갈래. 탐색 화면이 아니면 null이에요. */
-  const [explorePage, setExplorePage] = useState(() => (isApp ? exploreFromPath() : null))
-  /** 앱의 설정 창이 떠 있는지 */
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  /** 서버에 관리자 API가 있는지. 없으면 관리자 화면에서 AI 사용량만 보여줘요. */
-  const [adminApi, setAdminApi] = useState(false)
-  /** 앱의 관리자 화면에서 보고 있는 탭. 관리자 화면이 아니면 null이에요. */
-  const [adminPage, setAdminPage] = useState(() => (isApp ? adminFromPath() : null))
-  /** 사이드바에서 채팅을 지우거나 공유를 바꾸면 올라가요. 심층 분석이 내 작업을 다시 받게 해요. */
-  const [chatsVersion, setChatsVersion] = useState(0)
-  /** 지금 보고 있는 채팅의 상태. mine은 이 브라우저에서 만든 채팅인지, shared는 공유됐는지예요. */
-  const [chat, setChat] = useState<{ mine: boolean; shared: boolean } | null>(null)
-  /** 보고 있는 채팅의 레포(소유자/레포). 앱에서 이 레포의 심층 분석으로 바로 넘어갈 때 써요. */
-  const [chatRepo, setChatRepo] = useState<string | null>(null)
-  const [opening, setOpening] = useState(() => chatIdFromPath() !== null)
-  const [missing, setMissing] = useState(false)
-  /** 아티클 화면을 보고 있는지. slug가 null이면 목록이에요. */
-  const [article, setArticle] = useState(articleFromPath)
-  const [account, setAccount] = useState(accountFromPath)
-  /** 소개 화면을 보고 있는지 */
-  const [about, setAbout] = useState(aboutFromPath)
-  /** 앱이 브라우저로 열어 준 앱 로그인 화면(/app-login)을 보고 있는지 */
-  const [appLogin, setAppLogin] = useState(appLoginFromPath)
+  const exploreReady = config ? config.explore : null
+
+  const { page, setPage, chat, setChat, chatRepo, setChatRepo, opening, missing, loginReturn, goHome, openArticle, openAbout, openAccount, openChat, openAppPage } =
+    useScreen(analysis)
+  const account = page?.kind === 'account' ? page.page : null
+  const article = page?.kind === 'article'
+
   /** 소셜 로그인에서 돌아온 주소면 어느 서비스인지. 이 화면은 끝나면 페이지를 새로 여니, 처음 한 번만 읽어요. */
   const [social] = useState(socialFromPath)
-  /** 앱의 사이드바를 펴 뒀는지. 다음에 켰을 때도 그대로 둬요. */
-  const [sidebarOpen, setSidebarOpen] = useState(() => !sidebarClosed())
+  const [sidebarOpen, toggleSidebar] = useSidebarOpen()
+  /** 사이드바에서 채팅을 지우거나 공유를 바꾸면 올라가요. 심층 분석이 내 작업을 다시 받게 해요. */
+  const [chatsVersion, setChatsVersion] = useState(0)
   const { tokens, me } = useAuth()
   const feedback = useFeedback()
-  /** 분석이 어땠는지 묻는 카드가 떠 있는지. 아주 가끔만 띄워요. */
-  const [askingFeedback, setAskingFeedback] = useState(false)
-  const wasBusy = useRef(false)
-  /** 앱에서 심층 분석을 권하고 있는 채팅의 ID. 채팅마다 기본 분석이 끝났을 때 한 번만 권해요. */
-  const [deepNudge, setDeepNudge] = useState<string | null>(null)
-  const deepNudged = useRef<string | null>(null)
   /** 채팅에서 심층 분석으로 넘어갔는지. 그러면 심층 분석의 채팅 버튼 아래에 안내를 잠깐 띄워요. */
   const [deepChatHint, setDeepChatHint] = useState(false)
   /** 진행 중인 채팅을 두고 다른 화면으로 가려고 할 때, 정말 떠날지 묻는 창과 가려던 곳 */
   const [leaveTo, setLeaveTo] = useState<LeaveTarget | null>(null)
   const confirmingLeave = leaveTo !== null
-  /** 채팅에서 로그인 화면으로 갔을 때, 로그인한 뒤에 돌아올 채팅과 로그인 화면에 보여줄 안내 */
-  const loginReturn = useRef<{ id: string; notice: string } | null>(null)
-  const [nudgeClosed, setNudgeClosed] = useState(() => nudgeChatsSinceClose() !== null)
-  /** 분석이 도는 중에 로그인해서, 그 요청이 끝나면 채팅을 계정에 한 번 더 연결해야 하는지 */
-  const claimWhenIdle = useRef(false)
+  const loginNudge = useLoginNudge()
   const lang = useLang()
-  const text = useMessages(TEXT)
 
   // 소개와 아티클, 계정 화면은 스스로 제목과 미리보기 태그를 정하고, 그 밖의 화면은 메인 화면의 값을 언어에 맞춰 써요.
+  const ownMeta = page?.kind === 'about' || article || account !== null
   useEffect(() => {
-    if (!about && !article && !account) applyMeta(HOME_META[lang], lang, '/')
-  }, [about, account, article, lang])
-
-  // 주소에 맞는 화면을 준비해요. 처음 들어왔을 때와 뒤로 가기, 앞으로 가기에서 불러요.
-  const openFromLocation = useCallback(async () => {
-    const id = chatIdFromPath()
-    const nextArticle = articleFromPath()
-    const nextAccount = accountFromPath()
-    setMissing(false)
-    setArticle(nextArticle)
-    setAccount(nextAccount)
-    const nextAbout = aboutFromPath()
-    setAbout(nextAbout)
-    if (nextAbout) {
-      reset()
-      setChat(null)
-      setOpening(false)
-      trackPageView('about')
-      return
-    }
-    const nextAppLogin = appLoginFromPath()
-    setAppLogin(nextAppLogin)
-    if (nextAppLogin) {
-      reset()
-      setChat(null)
-      setOpening(false)
-      trackPageView('app-login')
-      return
-    }
-    // 심층 분석은 앱에서만 써요. 브라우저에서 이 주소로 들어오면 메인 화면으로 보내요.
-    const nextDeep = deepFromPath()
-    if (nextDeep && !isApp) window.history.replaceState(null, '', '/')
-    setDeepPage(isApp ? nextDeep : null)
-    if (nextDeep && isApp) {
-      reset()
-      setChat(null)
-      setOpening(false)
-      trackPageView('deep', { repo: nextDeep.repo ?? undefined })
-      return
-    }
-    // 포트폴리오 만들기도 앱에서만 써요.
-    const nextPortfolio = portfolioFromPath()
-    if (nextPortfolio && !isApp) window.history.replaceState(null, '', '/')
-    setPortfolioPage(isApp ? nextPortfolio : null)
-    if (nextPortfolio && isApp) {
-      reset()
-      setChat(null)
-      setOpening(false)
-      trackPageView('portfolio', { repo: nextPortfolio.repo ?? undefined })
-      return
-    }
-    // 탐색 화면도 앱에서만 써요.
-    const nextExplore = exploreFromPath()
-    if (nextExplore && !isApp) window.history.replaceState(null, '', '/')
-    setExplorePage(isApp ? nextExplore : null)
-    if (nextExplore && isApp) {
-      reset()
-      setChat(null)
-      setOpening(false)
-      trackPageView('explore', { category: nextExplore })
-      return
-    }
-    // 관리자 화면도 앱에서만 써요. 권한은 서버가 확인하고, 관리자가 아니면 화면이 안내만 보여줘요.
-    const nextAdmin = adminFromPath()
-    if (nextAdmin && !isApp) window.history.replaceState(null, '', '/')
-    setAdminPage(isApp ? nextAdmin : null)
-    if (nextAdmin && isApp) {
-      reset()
-      setChat(null)
-      setOpening(false)
-      trackPageView('admin', { tab: nextAdmin })
-      return
-    }
-    if (nextAccount) {
-      // 채팅을 들고 로그인 화면에 와 있는 중이면 채팅을 그대로 둬요.
-      const holding = nextAccount !== 'me' && nextAccount !== 'history' && loginReturn.current?.id === chatId.current
-      if (!holding) {
-        reset()
-        setChat(null)
-      }
-      setOpening(false)
-      trackPageView(nextAccount)
-      return
-    }
-    if (nextArticle) {
-      reset()
-      setChat(null)
-      setOpening(false)
-      trackPageView(nextArticle.slug ? 'article' : 'articles', { slug: nextArticle.slug ?? undefined })
-      return
-    }
-    if (!id) {
-      reset()
-      setChat(null)
-      setOpening(false)
-      trackPageView('home')
-      return
-    }
-    // 화면에 이미 올라와 있는 채팅이면 다시 받지 않아요. 분석이 돌고 있어도 끊기지 않아요.
-    if (id === chatId.current) {
-      setOpening(false)
-      return
-    }
-    setOpening(true)
-    const snapshot = await fetchChat(id).catch(() => null)
-    setOpening(false)
-    if (!snapshot) {
-      reset()
-      setChat(null)
-      setMissing(true)
-      track('chat_open_failed')
-      return
-    }
-    load(snapshot)
-    setChat({ mine: snapshot.owner, shared: snapshot.shared })
-    setChatRepo(repoLabel(snapshot.repoUrl))
-    trackPageView(snapshot.shared ? 'shared_chat' : 'chat', {
-      repo: repoLabel(snapshot.repoUrl),
-      is_owner: snapshot.owner,
-      message_count: snapshot.messages.length,
-    })
-  }, [chatId, load, reset])
-
-  useEffect(() => {
-    initAnalytics()
-    void fetchConfig().then((config) => {
-      setStorage(config.storage)
-      setDeep(config.deep)
-      setPortfolio(config.portfolio)
-      setExploreReady(config.explore)
-      setClubsReady(config.clubs)
-      setAdminApi(config.admin)
-      setFeedbackReady(config.feedback)
-    })
-    void loadMe()
-    void openFromLocation()
-    const onPopState = () => void openFromLocation()
-    window.addEventListener('popstate', onPopState)
-    return () => window.removeEventListener('popstate', onPopState)
-  }, [openFromLocation])
+    if (!ownMeta) applyMeta(HOME_META[lang], lang, '/')
+  }, [ownMeta, lang])
 
   const handleSubmit = useCallback(
     (url: string) => {
@@ -329,156 +113,38 @@ export default function App() {
         window.history.pushState(null, '', `/c/${id}`)
         setChat({ mine: true, shared: false })
       }
-      // 좁은 화면에서는 닫아 둔 로그인 안내를 채팅 몇 번마다 다시 띄워요. 넓은 화면에서는 떠 있는 아이콘이 대신해요.
-      const closedFor = nudgeChatsSinceClose()
-      if (closedFor !== null && !window.matchMedia('(min-width: 768px)').matches) {
-        const reopen = closedFor + 1 >= NUDGE_REOPEN_CHATS
-        storeNudge(reopen ? null : closedFor + 1)
-        if (reopen) setNudgeClosed(false)
-      }
+      loginNudge.countChat()
       setChatRepo(repoLabel(url))
       track('repo_submit', { repo: repoLabel(url), storage })
       trackPageView('chat', { repo: repoLabel(url), is_owner: true })
       void send({ url }, url.trim())
     },
-    [reset, send, storage],
-  )
-
-  const goHome = useCallback(() => {
-    if (!reset()) return
-    loginReturn.current = null
-    track('home_click', { from: account ?? (article ? 'articles' : chat?.shared ? 'shared_chat' : messages.length > 0 ? 'chat' : 'home') })
-    setChat(null)
-    setMissing(false)
-    setArticle(null)
-    setAccount(null)
-    setAbout(false)
-    setAppLogin(false)
-    setDeepPage(null)
-    setPortfolioPage(null)
-    setExplorePage(null)
-    setAdminPage(null)
-    if (window.location.pathname !== localizePath('/')) window.history.pushState(null, '', localizePath('/'))
-    trackPageView('home')
-  }, [account, article, chat, messages.length, reset])
-
-  /** 아티클 목록(slug가 null)이나 글 하나를 열어요. */
-  const openArticle = useCallback(
-    (slug: string | null) => {
-      if (!reset()) return
-      loginReturn.current = null
-      setChat(null)
-      setMissing(false)
-      setAccount(null)
-      setAppLogin(false)
-      setDeepPage(null)
-      setPortfolioPage(null)
-      setExplorePage(null)
-      setAdminPage(null)
-      setAbout(false)
-      setArticle({ slug })
-      window.history.pushState(null, '', localizePath(slug ? `/articles/${slug}` : '/articles'))
-      trackPageView(slug ? 'article' : 'articles', { slug: slug ?? undefined })
-    },
-    [reset],
-  )
-
-  const openAbout = useCallback(() => {
-    if (!reset()) return
-    loginReturn.current = null
-    window.history.pushState(null, '', localizePath('/about'))
-    void openFromLocation()
-  }, [openFromLocation, reset])
-
-  const openAccount = useCallback(
-    (page: AccountPage, replace = false) => {
-      if (page === 'me' || page === 'history') loginReturn.current = null
-      // 채팅을 들고 로그인 화면으로 갈 때는 채팅을 비우지 않아서, 돌던 분석이 뒤에서 그대로 이어져요.
-      const holding = loginReturn.current !== null && loginReturn.current.id === chatId.current
-      if (!holding) {
-        if (!reset()) return
-        setChat(null)
-      }
-      setMissing(false)
-      setArticle(null)
-      setAppLogin(false)
-      setDeepPage(null)
-      setPortfolioPage(null)
-      setExplorePage(null)
-      setAdminPage(null)
-      setAbout(false)
-      setAccount(page)
-      if (replace) window.history.replaceState(null, '', `/${page}`)
-      else window.history.pushState(null, '', `/${page}`)
-      trackPageView(page)
-    },
-    [chatId, reset],
+    [loginNudge, reset, send, setChat, setChatRepo, storage],
   )
 
   /** 앱의 심층 분석을 열어요. repo(소유자/레포)가 없으면 레포를 고르는 화면이에요. */
   const openDeep = useCallback(
     (repo: string | null, fromChat = false) => {
-      loginReturn.current = null
       setDeepChatHint(fromChat)
-      // 돌던 분석은 서버가 끝까지 마쳐서 저장하니, 기다리지 않고 바로 옮겨요.
-      abandon()
-      window.history.pushState(null, '', repo ? `/deep/${repo}` : '/deep')
-      void openFromLocation()
+      openAppPage(repo ? `/deep/${repo}` : '/deep')
     },
-    [abandon, openFromLocation],
+    [openAppPage],
   )
 
   /** 앱의 포트폴리오 만들기를 열어요. repo(소유자/레포)가 없으면 레포를 고르는 화면이에요. */
-  const openPortfolio = useCallback(
-    (repo: string | null) => {
-      loginReturn.current = null
-      abandon()
-      window.history.pushState(null, '', repo ? `/portfolio/${repo}` : '/portfolio')
-      void openFromLocation()
-    },
-    [abandon, openFromLocation],
-  )
+  const openPortfolio = useCallback((repo: string | null) => openAppPage(repo ? `/portfolio/${repo}` : '/portfolio'), [openAppPage])
 
   /** 앱의 탐색 화면을 열어요. 갈래마다 주소가 달라서 뒤로 가기로 앞의 갈래에 돌아가요. */
   const openExplore = useCallback(
-    (category: ExploreCategory = 'github') => {
-      loginReturn.current = null
-      abandon()
-      window.history.pushState(null, '', category === 'clubs' ? '/explore/clubs' : '/explore')
-      void openFromLocation()
-    },
-    [abandon, openFromLocation],
+    (category: ExploreCategory = 'github') => openAppPage(category === 'clubs' ? '/explore/clubs' : '/explore'),
+    [openAppPage],
   )
-
-  /** 앱의 설정 창을 띄워요. 보던 화면은 그대로 두고 그 위에 떠요. */
-  const openSettings = useCallback(() => {
-    track('settings_open')
-    setSettingsOpen(true)
-  }, [])
-  const closeSettings = useCallback(() => setSettingsOpen(false), [])
 
   /** 앱의 관리자 화면을 열어요. 탭마다 주소가 달라서 뒤로 가기로 앞의 탭에 돌아가요. */
-  const openAdmin = useCallback(
-    (tab: AdminTab = 'overview') => {
-      loginReturn.current = null
-      abandon()
-      window.history.pushState(null, '', tab === 'overview' ? '/admin' : `/admin/${tab}`)
-      void openFromLocation()
-    },
-    [abandon, openFromLocation],
-  )
-
-  const openChat = useCallback(
-    (id: string, replace = false) => {
-      loginReturn.current = null
-      if (replace) window.history.replaceState(null, '', `/c/${id}`)
-      else window.history.pushState(null, '', `/c/${id}`)
-      void openFromLocation()
-    },
-    [openFromLocation],
-  )
+  const openAdmin = useCallback((tab: AdminTab = 'overview') => openAppPage(tab === 'overview' ? '/admin' : `/admin/${tab}`), [openAppPage])
 
   // 로그인 화면에서 로그인하면, 보던 채팅이 있으면 그리로 돌아가고 아니면 내 작업으로 가요.
+  const [claimWhenIdle, setClaimWhenIdle] = useState(false)
   const handleSignedIn = useCallback(() => {
     const id = loginReturn.current?.id
     if (!id) {
@@ -487,11 +153,17 @@ export default function App() {
     }
     if (id === chatId.current) {
       // 로그인하는 사이에도 돌고 있던 요청은 로그인 전에 보낸 것이라, 끝난 뒤에 계정에 한 번 더 연결해요.
-      claimWhenIdle.current = true
+      setClaimWhenIdle(true)
       trackPageView('chat', { is_owner: true })
     }
     openChat(id, true)
-  }, [chatId, openAccount, openChat])
+  }, [chatId, loginReturn, openAccount, openChat])
+
+  useEffect(() => {
+    if (busy || !claimWhenIdle) return
+    setClaimWhenIdle(false)
+    void claimChats()
+  }, [busy, claimWhenIdle])
 
   const loginFromChat = useCallback(
     (notice: string) => {
@@ -501,22 +173,10 @@ export default function App() {
       settle()
       openAccount('login')
     },
-    [chatId, openAccount, settle],
+    [chatId, loginReturn, openAccount, settle],
   )
 
   const handleLoginToShare = useCallback(() => loginFromChat(pick(TEXT).loginToShare), [loginFromChat])
-
-  const closeNudge = useCallback(() => {
-    track('login_nudge_close')
-    setNudgeClosed(true)
-    storeNudge(0)
-  }, [])
-
-  const openNudge = useCallback(() => {
-    track('login_nudge_open')
-    setNudgeClosed(false)
-    storeNudge(null)
-  }, [])
 
   const handleNudgeLogin = useCallback(() => {
     track('login_nudge_click', { busy })
@@ -529,41 +189,16 @@ export default function App() {
     loginFromChat(pick(TEXT).loginToContinue)
   }, [busy, loginFromChat])
 
-  useEffect(() => {
-    if (busy || !claimWhenIdle.current) return
-    claimWhenIdle.current = false
-    void claimChats()
-  }, [busy, account])
-
   // 공유된 채팅과 다른 브라우저에서 만든 채팅은 읽기만 할 수 있어요.
   const readOnly = chat !== null && (chat.shared || !chat.mine)
-
-  // 내 채팅에서 답을 하나 다 받을 때마다 세다가, 때가 되면 분석이 어땠는지 물어봐요.
-  useEffect(() => {
-    const finished = wasBusy.current && !busy
-    wasBusy.current = busy
-    if (!finished || readOnly || !messages.some((message) => message.from === 'bot')) return
-    if (feedback.ready && shouldAskFeedback()) setAskingFeedback(true)
-    // 앱에서는 레포의 기본 분석(첫 답)이 끝났을 때, 같은 레포를 심층 분석으로 볼 수 있다고 한 번 알려줘요.
-    const last = messages[messages.length - 1]
-    const failed = last?.from === 'bot' && last.event.type === 'error'
-    const id = chatId.current
-    if (isApp && deep && id && deepNudged.current !== id && !failed && shouldNudgeDeep()) {
-      deepNudged.current = id
-      setDeepNudge(id)
-    }
-  }, [busy, chatId, deep, feedback.ready, messages, readOnly])
   // 내가 진행 중인 채팅이 화면에 있으면, 떠나기 전에 항상 물어봐요. 분석이 잠깐 멈춰 있을 때(질문을 기다리는 중)도 마찬가지예요.
   const working = busy || (messages.length > 0 && !readOnly)
+  const hasBotMessage = messages.some((message) => message.from === 'bot')
   // 로그인하지 않고 분석하는 동안, 첫 말풍선이 나온 뒤에 로그인을 권해요.
-  const nudging =
-    storage && tokens === null && !account && !article && !readOnly && messages.some((message) => message.from === 'bot')
-  useEffect(() => {
-    if (nudging && !nudgeClosed) track('login_nudge_view')
-  }, [nudging, nudgeClosed])
+  const nudging = storage && tokens === null && !account && !article && !readOnly && hasBotMessage
   // 웹에서 채팅을 보는 Mac 사용자에게는 앱을 권해요. 로그인 안내 카드가 떠 있는 동안에는 자리를 양보해요.
   const appNudging =
-    MAC_DOWNLOAD_OPEN && !isApp && isMac && !account && !article && !opening && !missing && messages.some((message) => message.from === 'bot') && !(nudging && !nudgeClosed)
+    MAC_DOWNLOAD_OPEN && !isApp && isMac && !account && !article && !opening && !missing && hasBotMessage && !(nudging && !loginNudge.closed)
 
   const go = useCallback(
     (target: LeaveTarget) => {
@@ -594,11 +229,6 @@ export default function App() {
     [abandon, busy, go, working],
   )
 
-  const toggleSidebar = useCallback((open: boolean) => {
-    setSidebarOpen(open)
-    writeFlag(SIDEBAR_CLOSED_KEY, !open)
-  }, [])
-
   const handleHome = useCallback(() => leaveFor('home'), [leaveFor])
 
   // 새로 고치거나 탭을 닫을 때도 잃어버리는 작업이 있으면 브라우저의 경고 창을 띄워요.
@@ -622,7 +252,7 @@ export default function App() {
     // 채팅을 버리고 가는 것이라, 로그인 화면으로 가더라도 채팅을 들고 가지 않아요.
     loginReturn.current = null
     go(target)
-  }, [abandon, go, leaveTo, messages.length])
+  }, [abandon, go, leaveTo, loginReturn, messages.length])
 
   const handleStay = useCallback(() => {
     track('leave_cancel')
@@ -639,13 +269,15 @@ export default function App() {
     // 휴대폰 브라우저는 공유 요청을 기다리는 사이에 복사 권한이 사라지기도 해서, 그때는 링크 복사 버튼을 안내해요.
     showToast((await copyLink()) ? pick(TEXT).sharedCopied : pick(TEXT).sharedCopyManually)
     return true
-  }, [chatId, messages.length])
+  }, [chatId, messages.length, setChat])
 
   const handleCopyLink = useCallback(async () => {
     const ok = await copyLink()
     track('share_link_copy', { success: ok, is_owner: chat?.mine === true })
     return ok
   }, [chat])
+
+  const openDeepFromChat = useCallback((repo: string) => openDeep(repo, true), [openDeep])
 
   // 앱에서는 로그인부터 해요. 로그인하지 않았으면 다른 화면 대신 로그인 화면만 보여줘요.
   // 앱의 로그인 화면에서는 단축키를 받지 않아요.
@@ -658,7 +290,7 @@ export default function App() {
       KeyT: isApp && exploreReady ? () => openExplore() : undefined,
       KeyB: isApp ? () => toggleSidebar(!sidebarOpen) : undefined,
     },
-    !(isApp && tokens === null) && !appLogin,
+    !(isApp && tokens === null) && page?.kind !== 'app-login',
   )
 
   // GitHub나 카카오에서 돌아온 주소면 다른 화면 대신 로그인을 마무리하는 화면만 보여줘요.
@@ -670,21 +302,16 @@ export default function App() {
     )
   }
 
-  if (isApp && tokens === null) {
-    return (
-      <Suspense fallback={<div data-app-drag className="h-dvh bg-white" />}>
-        <AppGate />
-        <CaptureShield />
-      </Suspense>
-    )
-  }
+  if (isApp && tokens === null) return <AppSignedOut />
+
+  const navFrom = account ?? (article ? 'articles' : messages.length > 0 ? 'chat' : 'home')
 
   const screen = (
     <div className={isApp ? 'relative flex min-w-0 flex-1 flex-col bg-white' : 'relative flex h-dvh flex-col bg-white'}>
       <Header
         app={isApp}
         onHome={handleHome}
-        home={messages.length === 0 && !article && !account && !about && !appLogin && !deepPage && !portfolioPage && !explorePage && !adminPage && !opening && !missing}
+        home={messages.length === 0 && !page && !opening && !missing}
         inChat={messages.length > 0 && !readOnly && !account}
         storage={storage}
         busy={busy}
@@ -702,90 +329,50 @@ export default function App() {
             : undefined
         }
         onAbout={() => {
-          if (about) return
-          track('about_nav_click', { from: account ?? (article ? 'articles' : messages.length > 0 ? 'chat' : 'home') })
+          if (page?.kind === 'about') return
+          track('about_nav_click', { from: navFrom })
           leaveFor('about')
         }}
         onArticles={() => {
-          track('article_nav_click', { from: account ?? (article ? 'articles' : messages.length > 0 ? 'chat' : 'home') })
+          track('article_nav_click', { from: navFrom })
           leaveFor('articles')
         }}
         signedIn={tokens !== null}
-        onAccount={(page) => {
+        onAccount={(next) => {
           // 분석하던 중에 로그인하러 가면 채팅을 들고 가서, 로그인한 뒤에 그대로 이어가요.
-          if (page === account && working) return
-          if (page === 'login' && working && storage && !account && chatId.current) loginFromChat(pick(TEXT).loginToContinue)
-          else leaveFor(page)
+          if (next === account && working) return
+          if (next === 'login' && working && storage && !account && chatId.current) loginFromChat(pick(TEXT).loginToContinue)
+          else leaveFor(next)
         }}
       />
-      {appLogin ? (
-        <Suspense fallback={<main className="flex-1" />}>
-          <AppLogin onCancel={goHome} />
-        </Suspense>
-      ) : deepPage ? (
-        <Suspense fallback={<main className="flex-1" />}>
-          <Deep repo={deepPage.repo} onOpen={(repo) => openDeep(repo)} onNew={goHome} refreshKey={chatsVersion} chatHint={deepChatHint} />
-        </Suspense>
-      ) : portfolioPage ? (
-        <Suspense fallback={<main className="flex-1" />}>
-          <Portfolio repo={portfolioPage.repo} onOpen={openPortfolio} onNew={goHome} refreshKey={chatsVersion} />
-        </Suspense>
-      ) : explorePage ? (
-        <Suspense fallback={<main className="flex-1" />}>
-          <Explore
-            category={explorePage}
-            onCategory={openExplore}
-            clubs={clubsReady}
-            onPick={(repo) => {
-              setExplorePage(null)
-              handleSubmit(`https://github.com/${repo}`)
-            }}
-          />
-        </Suspense>
-      ) : adminPage ? (
-        <Suspense fallback={<main className="flex-1" />}>
-          <Admin tab={adminPage} onTab={openAdmin} full={adminApi} feedback={feedback.ready} onOpenChat={openChat} />
-        </Suspense>
-      ) : about ? (
-        <Suspense fallback={<main className="flex-1" />}>
-          <About onHome={goHome} />
-        </Suspense>
-      ) : article ? (
-        <Suspense fallback={<main className="flex-1" />}>
-          <Articles slug={article.slug} onOpen={openArticle} onHome={goHome} />
-        </Suspense>
-      ) : account ? (
-        <Suspense fallback={<main className="flex-1" />}>
-          <Account
-            page={account}
-            onNavigate={openAccount}
-            onSignedIn={handleSignedIn}
-            notice={loginReturn.current?.notice}
-            returnTo={loginReturn.current ? `/c/${loginReturn.current.id}` : undefined}
-            onOpenChat={(id) => {
-              track('history_chat_open')
-              openChat(id)
-            }}
-            onHome={goHome}
-          />
-        </Suspense>
+      {page ? (
+        <PageView
+          page={page}
+          onHome={goHome}
+          onDeep={(repo) => openDeep(repo)}
+          onPortfolio={openPortfolio}
+          onExplore={openExplore}
+          onExplorePick={(repo) => {
+            setPage(null)
+            handleSubmit(`https://github.com/${repo}`)
+          }}
+          onAdmin={openAdmin}
+          onArticle={openArticle}
+          onAccount={openAccount}
+          onSignedIn={handleSignedIn}
+          onOpenChat={openChat}
+          loginNotice={loginReturn.current?.notice}
+          loginReturnTo={loginReturn.current ? `/c/${loginReturn.current.id}` : undefined}
+          chatsVersion={chatsVersion}
+          deepChatHint={deepChatHint}
+          clubs={config?.clubs === true}
+          adminApi={config?.admin === true}
+          feedback={feedback.ready}
+        />
       ) : opening ? (
         <ChatSkeleton />
       ) : missing ? (
-        <main className="flex flex-1 flex-col items-center justify-center gap-4 px-5 text-center">
-          <p className="text-[15px] leading-relaxed text-gray-600">
-            {text.missingTitle}
-            <br />
-            {text.missingBody}
-          </p>
-          <button
-            type="button"
-            onClick={handleHome}
-            className="h-10 rounded-full bg-brand px-5 text-[14px] font-semibold text-white transition-colors hover:bg-brand-hover"
-          >
-            {text.home}
-          </button>
-        </main>
+        <ChatMissing onHome={handleHome} />
       ) : messages.length === 0 ? (
         <Hero
           onSubmit={handleSubmit}
@@ -793,7 +380,7 @@ export default function App() {
             // 탐색이 있는지 아직 모를 때도 뼈대로 자리를 잡아 둬서, 입력창이 가운데에 있다가 위로 튀어 오르지 않게 해요.
             !isApp || exploreReady === false ? undefined : exploreReady ? (
               <Suspense fallback={<ExploreSkeleton />}>
-                <ExplorePreview clubs={clubsReady} onMore={openExplore} onPick={(repo) => handleSubmit(`https://github.com/${repo}`)} />
+                <ExplorePreview clubs={config?.clubs === true} onMore={openExplore} onPick={(repo) => handleSubmit(`https://github.com/${repo}`)} />
               </Suspense>
             ) : (
               <ExploreSkeleton />
@@ -801,111 +388,83 @@ export default function App() {
           }
         />
       ) : (
-        <Chat
-          messages={messages}
-          busy={busy}
-          paused={paused}
-          readOnly={readOnly}
-          onResume={resume}
-          onSend={send}
-          onHome={handleHome}
-          onNewRepo={goHome}
-        />
+        <Chat messages={messages} busy={busy} paused={paused} readOnly={readOnly} onResume={resume} onSend={send} onHome={handleHome} onNewRepo={goHome} />
       )}
-      {nudging && !confirmingLeave && <LoginNudge collapsed={nudgeClosed} onLogin={handleNudgeLogin} onClose={closeNudge} onOpen={openNudge} />}
-      {appNudging && !confirmingLeave && <AppNudge raised={nudging} />}
+      <ChatOverlays
+        messages={messages}
+        busy={busy}
+        chatId={chatId}
+        readOnly={readOnly}
+        inAccount={account !== null}
+        leaving={confirmingLeave}
+        deep={deep}
+        chatRepo={chatRepo}
+        onDeep={openDeepFromChat}
+        nudging={nudging}
+        nudgeClosed={loginNudge.closed}
+        onNudgeLogin={handleNudgeLogin}
+        onNudgeClose={loginNudge.close}
+        onNudgeOpen={loginNudge.open}
+        appNudging={appNudging}
+      />
       {confirmingLeave && (
         <LeaveDialog home={leaveTo === 'home'} onStay={handleStay} onLeave={handleLeave} onLogin={storage && tokens === null && !account ? handleLeaveLogin : undefined} />
       )}
       {isApp && <ShortcutTip />}
-      {askingFeedback && messages.length > 0 && !account && !confirmingLeave && !(nudging && !nudgeClosed) && (
-        <FeedbackPrompt chatId={chatId.current} onClose={() => setAskingFeedback(false)} />
-      )}
-      {deepNudge && deepNudge === chatId.current && messages.length > 0 && !account && !askingFeedback && chatRepo?.includes('/') && (
-        <DeepNudge
-          onClose={() => setDeepNudge(null)}
-          onDeep={() => {
-            setDeepNudge(null)
-            track('deep_open', { from: 'nudge', repo: chatRepo })
-            openDeep(chatRepo, true)
-          }}
-        />
-      )}
-      {feedback.bugOpen && <BugReport chatId={messages.length > 0 ? chatId.current : null} />}
       <Toast />
     </div>
   )
 
   if (!isApp) return screen
 
-  // 앱에서는 왼쪽에 사이드바를 두고, 오른쪽에 웹과 같은 화면을 보여줘요.
   return (
-    <div className="relative flex h-dvh bg-white">
-      {/* 창 버튼 바로 옆, 늘 같은 자리에 있는 사이드바 접기 버튼이에요. 접어도 펴도 움직이지 않아요. */}
-      <button
-        type="button"
-        aria-label={sidebarOpen ? text.closeSidebar : text.openSidebar}
-        aria-expanded={sidebarOpen}
-        onClick={() => toggleSidebar(!sidebarOpen)}
-        className="absolute top-0.5 left-[78px] z-[31] flex size-7 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-200/70 hover:text-gray-900"
-      >
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" className="size-4" aria-hidden="true">
-          <rect x="2" y="3" width="12" height="10" rx="2.5" />
-          <path d="M6.5 3v10" />
-        </svg>
-      </button>
-      {sidebarOpen && (
-        <Suspense fallback={<aside data-app-drag className="w-64 shrink-0 border-r border-gray-200 bg-gray-50" />}>
-          <AppSidebar
-            activeChatId={account || article || deepPage || portfolioPage || explorePage || adminPage ? null : chatIdFromPath()}
-            page={deepPage ? 'deep' : portfolioPage ? 'portfolio' : explorePage ? 'explore' : adminPage ? 'admin' : account === 'me' ? 'me' : article ? 'articles' : null}
-            onDeep={deep ? () => openDeep(null) : undefined}
-            onExplore={exploreReady ? () => openExplore() : undefined}
-            onPortfolio={portfolio ? () => openPortfolio(null) : undefined}
-            onDeepRepo={
-              deep
-                ? (repo) => {
-                    track('deep_open', { from: 'sidebar', repo })
-                    openDeep(repo)
-                  }
-                : undefined
+    <AppFrame
+      sidebarOpen={sidebarOpen}
+      onToggleSidebar={toggleSidebar}
+      sidebar={{
+        activeChatId: page ? null : chatIdFromPath(),
+        page:
+          page?.kind === 'deep' || page?.kind === 'portfolio' || page?.kind === 'explore' || page?.kind === 'admin'
+            ? page.kind
+            : account === 'me'
+              ? 'me'
+              : article
+                ? 'articles'
+                : null,
+        onDeep: deep ? () => openDeep(null) : undefined,
+        onExplore: exploreReady ? () => openExplore() : undefined,
+        onPortfolio: config?.portfolio ? () => openPortfolio(null) : undefined,
+        onDeepRepo: deep
+          ? (repo) => {
+              track('deep_open', { from: 'sidebar', repo })
+              openDeep(repo)
             }
-            onSettings={openSettings}
-            settingsOpen={settingsOpen}
-            onAdmin={isAdmin(me) ? () => openAdmin() : undefined}
-            refreshKey={`${busy}:${account ?? ''}:${deepPage ? 'deep' : ''}:${portfolioPage ? 'portfolio' : ''}:${explorePage ? 'explore' : ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`}
-            onNew={handleHome}
-            onOpenChat={(id) => {
-              if (id === chatId.current && !account && !article && !deepPage && !portfolioPage && !explorePage && !adminPage) return
-              track('history_chat_open', { from: 'sidebar' })
-              // 돌던 분석은 서버가 끝까지 마쳐서 저장하니, 기다리지 않고 바로 다른 채팅을 열어요.
-              abandon()
-              openChat(id)
-            }}
-            onChatChanged={(id, change) => {
-              setChatsVersion((value) => value + 1)
-              if (id !== chatId.current) return
-              if (change === 'unshared') setChat({ mine: true, shared: false })
-              else {
-                abandon()
-                goHome()
-              }
-            }}
-            onMe={() => {
-              if (account !== 'me') leaveFor('me')
-            }}
-          />
-        </Suspense>
-      )}
+          : undefined,
+        onAdmin: isAdmin(me) ? () => openAdmin() : undefined,
+        refreshKey: `${busy}:${account ?? ''}:${page?.kind === 'deep' ? 'deep' : ''}:${page?.kind === 'portfolio' ? 'portfolio' : ''}:${page?.kind === 'explore' ? 'explore' : ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`,
+        onNew: handleHome,
+        onOpenChat: (id) => {
+          if (id === chatId.current && !page) return
+          track('history_chat_open', { from: 'sidebar' })
+          // 돌던 분석은 서버가 끝까지 마쳐서 저장하니, 기다리지 않고 바로 다른 채팅을 열어요.
+          abandon()
+          openChat(id)
+        },
+        onChatChanged: (id, change) => {
+          setChatsVersion((value) => value + 1)
+          if (id !== chatId.current) return
+          if (change === 'unshared') setChat({ mine: true, shared: false })
+          else {
+            abandon()
+            goHome()
+          }
+        },
+        onMe: () => {
+          if (account !== 'me') leaveFor('me')
+        },
+      }}
+    >
       {screen}
-      {settingsOpen && (
-        <Suspense fallback={null}>
-          <Settings onClose={closeSettings} />
-        </Suspense>
-      )}
-      <Suspense fallback={null}>
-        <CaptureShield />
-      </Suspense>
-    </div>
+    </AppFrame>
   )
 }

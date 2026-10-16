@@ -69,7 +69,7 @@ articles/             아티클 원문 (마크다운 파일, 글 하나에 파�
 articles/en/          영어 아티클. 한국어 글과 같은 파일 이름이에요.
 wrangler.toml         Cloudflare Workers 설정 (정적 파일 폴더, 없는 주소는 index.html로)
 src/
-  App.tsx             화면 전환(메인 화면, 채팅, 소개, 아티클, 계정 화면), 채팅 주소(/c/아이디) 처리, 공유
+  App.tsx             화면을 묶는 곳. 떠나기 확인, 로그인하러 갔다 돌아오기, 공유, 단축키, 헤더와 본문 배치
   prerender.tsx       소개 화면과 아티클 화면을 빌드할 때 미리 HTML로 그리는 코드 (브라우저에서는 쓰지 않아요)
   index.css           Tailwind 테마 토큰, 자간, 애니메이션
   lib/i18n.ts         화면 언어(한국어, 영어) 정하기와 저장, 언어별 주소(/en), 문구 묶음(messages, useMessages, pick)
@@ -83,7 +83,7 @@ src/
   lib/admin.ts        관리자 API 호출(현황, 회원, 채팅, AI 사용량과 호출 기록)과 응답 타입, 한국 날짜 계산
   lib/geo.ts          IP 주소의 대략적인 위치 알아내기(공개 서비스 ipwho.is)와 이 기기에 적어 두기
   lib/storage.ts      localStorage 읽고 쓰기. 막혀 있거나 가득 차도 오류 없이 넘어가요(readItem, writeItem, readJson, writeJson, readFlag, writeFlag). 새로 저장하는 값도 이것을 써요.
-  lib/routes.ts       주소에서 지금 보여줄 화면 읽기(채팅, 아티클, 소개, 계정, 심층 분석, 포트폴리오, 탐색, 관리자)
+  lib/routes.ts       주소에서 지금 보여줄 화면 읽기(채팅, 아티클, 소개, 계정, 심층 분석, 포트폴리오, 탐색, 관리자). 주소로 여는 화면은 `Page` 하나로 나타내요(`pageFromPath`).
   lib/format.ts       서버 시각을 "오늘 오후 3:12", "어제", "10월 3일" 같은 말로 바꾸기
   lib/analytics.ts    Google Analytics 이벤트 전송
   lib/toast.ts        화면 아래에 잠깐 뜨는 안내(토스트) 저장소
@@ -92,6 +92,9 @@ src/
   components/Shortcuts.tsx   단축키의 자판 모양 표시(Kbd)
   lib/app.ts          macOS 앱 안에서 열렸는지 판별, 앱 설치 파일 주소, 앱에 메시지 보내기, 창을 옮기는 곳(data-app-drag) 처리
   components/AppGate.tsx     앱에서 로그인하지 않았을 때 보여주는 로그인 화면
+  components/AppFrame.tsx    앱의 배치. 왼쪽 사이드바와 접기 버튼, 설정 창, 화면 공유 중 가리는 막을 두르고, 로그인하지 않았을 때의 화면(`AppSignedOut`)도 여기 있어요
+  components/PageView.tsx    주소로 여는 화면(소개, 아티클, 계정, 앱 로그인, 심층 분석, 포트폴리오, 탐색, 관리자)을 고르고, 화면 코드는 열 때만 받아요
+  components/ChatOverlays.tsx  채팅 화면에 떠 있는 안내 카드(로그인 안내, 앱 안내, 평가, 심층 분석 안내)와 버그 신고 창
   components/AppSidebar.tsx  앱 화면 왼쪽의 사이드바 (새 분석, 내 작업 목록, 내 정보)
   components/CaptureShield.tsx  앱에서 화면 공유나 녹화가 감지되면 화면 전체를 가리는 막
   components/Settings.tsx    앱의 설정 창. 화면 모드, 역동적인 시작 화면, 단축키 항상 표시, 화면 녹화 감지 시 가리기, 버전
@@ -117,6 +120,9 @@ src/
   components/DeepParts.tsx   심층 분석에서 같이 쓰는 탭, 원문 칸, 복사 버튼
   lib/articles.ts     아티클 마크다운 읽기와 변환
   hooks/useAnalysis.ts  채팅 메시지 큐, 입력 중 표시 타이밍
+  hooks/useServerConfig.ts  서버의 `/config`를 처음 한 번 받아 두기 (저장, 심층 분석, 탐색 같은 기능이 켜져 있는지)
+  hooks/useScreen.ts    지금 보여줄 화면(`Page`)과 보고 있는 채팅, 주소에서 화면 맞추기와 뒤로 가기, 화면을 옮기는 함수
+  hooks/useLoginNudge.ts  로그인 안내를 닫아 뒀는지와, 닫은 뒤 새로 시작한 채팅 세기
   hooks/useDismiss.ts   열려 있는 메뉴를 바깥을 누르거나 Esc를 누르면 닫기. 새 메뉴와 펼쳐지는 칸도 이것을 써요.
   components/Dialog.tsx 화면을 덮고 가운데에 뜨는 창(Modal)과 한 번 더 묻는 확인 창(ConfirmDialog). 새 창은 직접 막과 Esc 처리를 만들지 않고 이것을 써요.
   components/About.tsx       소개 화면 (/about)
@@ -275,7 +281,7 @@ macOS 앱(hiddenlightyouth/whoisloafing-app)은 이 서비스를 창 안의 웹�
   - 채팅마다 한 번만 띄워요. 답이 오류로 끝났거나 공유받은 채팅이면 띄우지 않고, 평가 카드가 떠 있는 동안에는 자리를 양보해요. 좁은 화면에서는 아래에 떠요.
   - X로 닫은 횟수를 localStorage의 `whoisloafing:deep-nudge-closed`에 세고, 세 번 닫으면 더 띄우지 않아요.
 - 채팅에서 심층 분석으로 넘어가면(안내 카드, 헤더의 심층 분석 버튼) 대시보드의 채팅 버튼 아래에 "여기서 채팅을 계속 이용할 수 있어요"라는 메인 컬러 툴팁이 6초쯤 떴다가 사라져요. 채팅 버튼을 누르면 바로 사라져요. 사이드바나 갤러리에서 들어왔을 때는 띄우지 않아요.
-- 사이드바를 접고 펴는 버튼은 창 버튼 바로 옆, 늘 같은 자리에 떠 있어요. 사이드바나 헤더 안에 두지 않아서 접어도 펴도 움직이지 않아요. (`App.tsx`) 사이드바가 버튼을 덮지 않게 사이드바(`z-30`)보다 한 칸 앞(`z-[31]`)에 둬요. 사이드바의 겹치는 순서를 바꾸면 이 버튼도 같이 봐요. 접었는지는 localStorage의 `whoisloafing:app-sidebar-closed`에 둬요.
+- 사이드바를 접고 펴는 버튼은 창 버튼 바로 옆, 늘 같은 자리에 떠 있어요. 사이드바나 헤더 안에 두지 않아서 접어도 펴도 움직이지 않아요. (`AppFrame`) 사이드바가 버튼을 덮지 않게 사이드바(`z-30`)보다 한 칸 앞(`z-[31]`)에 둬요. 사이드바의 겹치는 순서를 바꾸면 이 버튼도 같이 봐요. 접었는지는 localStorage의 `whoisloafing:app-sidebar-closed`에 둬요.
 - 앱에서는 채팅을 가운데가 아니라 왼쪽에 붙여요. 창 너비가 1280px 이상이면 오른쪽 아래 질문 메뉴가 펼쳐지는 자리(348px)를 비워서, 말풍선과 메뉴가 겹치지 않아요. (`Chat`, `ChatSkeleton`)
 - 앱에서는 떠나기 확인 창을 띄우지 않아요. 늘 로그인한 상태라 채팅이 내 작업에 남기 때문이에요. 분석이 도는 중에 새 분석이나 다른 채팅을 눌러도 바로 옮기고, 돌던 분석은 서버가 끝까지 마쳐서 저장해요.
 - 사이드바의 목록은 분석이 시작되거나 끝날 때, 채팅이나 계정 화면을 옮겨 다닐 때, 채팅을 공유했을 때 다시 받아요.

@@ -60,3 +60,36 @@ export function adminFromPath(): AdminTab | null {
   const match = ADMIN_PATH.exec(currentPath())
   return match ? ((match[1] as AdminTab | undefined) ?? 'overview') : null
 }
+
+/** 채팅과 메인 화면을 뺀, 주소로 여는 화면. null이면 메인 화면이나 채팅이에요. */
+export type Page =
+  | { kind: 'about' }
+  | { kind: 'app-login' }
+  | { kind: 'deep'; repo: string | null }
+  | { kind: 'portfolio'; repo: string | null }
+  | { kind: 'explore'; category: ExploreCategory }
+  | { kind: 'admin'; tab: AdminTab }
+  | { kind: 'account'; page: AccountPage }
+  | { kind: 'article'; slug: string | null }
+
+/** 심층 분석, 포트폴리오 만들기, 탐색, 관리자 화면은 앱에서만 써요. */
+export const isAppOnly = (page: Page) => page.kind === 'deep' || page.kind === 'portfolio' || page.kind === 'explore' || page.kind === 'admin'
+
+/** 주소에서 지금 보여줄 화면을 읽어요. 앱 전용 화면인지는 따지지 않아요. */
+export function pageFromPath(): Page | null {
+  if (aboutFromPath()) return { kind: 'about' }
+  if (appLoginFromPath()) return { kind: 'app-login' }
+  const deep = deepFromPath()
+  if (deep) return { kind: 'deep', repo: deep.repo }
+  const portfolio = portfolioFromPath()
+  if (portfolio) return { kind: 'portfolio', repo: portfolio.repo }
+  const category = exploreFromPath()
+  if (category) return { kind: 'explore', category }
+  const tab = adminFromPath()
+  if (tab) return { kind: 'admin', tab }
+  const account = accountFromPath()
+  if (account) return { kind: 'account', page: account }
+  const article = articleFromPath()
+  if (article) return { kind: 'article', slug: article.slug }
+  return null
+}
