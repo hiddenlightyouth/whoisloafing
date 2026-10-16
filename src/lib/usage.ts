@@ -31,30 +31,35 @@ export interface ModelInfo {
   provider: ProviderId
   name: string
   available: boolean
+  /** 주간 사용량 배수. 같은 토큰을 써도 비싼 모델일수록 이만큼 더 깎여요. */
+  multiplier: number
 }
 
 /** 고를 수 있는 모델. 지금은 Claude Haiku만 쓸 수 있고 나머지는 준비 중이에요. 서버가 알려 주는 값이 있으면 그것을 따라요. */
 export const MODELS: ModelInfo[] = [
-  { id: 'claude-haiku', provider: 'claude', name: 'Haiku 5.5', available: true },
-  { id: 'claude-sonnet', provider: 'claude', name: 'Sonnet 5.5', available: false },
-  { id: 'claude-opus', provider: 'claude', name: 'Opus 5.5', available: false },
-  { id: 'gpt', provider: 'gpt', name: 'GPT-5', available: false },
-  { id: 'gpt-mini', provider: 'gpt', name: 'GPT-5 mini', available: false },
-  { id: 'gemini-pro', provider: 'gemini', name: 'Gemini Pro', available: false },
-  { id: 'gemini-flash', provider: 'gemini', name: 'Gemini Flash', available: false },
+  { id: 'claude-haiku', provider: 'claude', name: 'Haiku 5.5', available: true, multiplier: 1 },
+  { id: 'claude-sonnet', provider: 'claude', name: 'Sonnet 5.5', available: false, multiplier: 3 },
+  { id: 'claude-opus', provider: 'claude', name: 'Opus 5.5', available: false, multiplier: 5 },
+  { id: 'gpt', provider: 'gpt', name: 'GPT-5', available: false, multiplier: 4 },
+  { id: 'gpt-mini', provider: 'gpt', name: 'GPT-5 mini', available: false, multiplier: 1 },
+  { id: 'gemini-pro', provider: 'gemini', name: 'Gemini Pro', available: false, multiplier: 3 },
+  { id: 'gemini-flash', provider: 'gemini', name: 'Gemini Flash', available: false, multiplier: 1 },
 ]
 
 export const providerOf = (model: ModelInfo) => PROVIDERS.find((provider) => provider.id === model.provider) ?? PROVIDERS[0]
 
-/** 서버가 예전 버전이라 값을 주지 않을 때 쓰는 작업별 사용량. 서버의 UsageAction과 같아요. */
+/**
+ * 서버가 값을 주지 않을 때 쓰는 작업별 예상량(Claude Haiku 기준). 서버의 UsageAction과 같아요.
+ * 실제로는 작업이 쓴 토큰만큼 깎이고, 이 값은 시작하기 전에 얼마쯤 쓸지 보여주는 데 써요.
+ */
 const FALLBACK_COSTS: Record<UsageAction, number> = {
   intro: 2,
   contribution: 10,
-  followup: 2,
-  deep: 4,
-  portfolio: 12,
+  followup: 1,
+  deep: 2,
+  portfolio: 4,
   portfolio_revise: 2,
-  resume: 8,
+  resume: 4,
   resume_revise: 2,
 }
 
@@ -74,7 +79,7 @@ export interface Usage {
   /** 다시 채워지는 때. 한국 시간 월요일 0시예요. */
   resetAt: string
   costs: Record<string, number>
-  models: { id: string; provider: string; name: string; available: boolean }[]
+  models: { id: string; provider: string; name: string; available: boolean; multiplier?: number }[]
   plans: PlanInfo[]
 }
 
@@ -110,8 +115,10 @@ export function useUsage(): Usage | null {
   return useSyncExternalStore(subscribe, () => usage, () => null)
 }
 
-export function costOf(action: UsageAction, current: Usage | null = usage): number {
-  return current?.costs[action] ?? FALLBACK_COSTS[action]
+/** 작업 하나의 예상량. 고른 모델의 배수를 곱해요. */
+export function costOf(action: UsageAction, current: Usage | null = usage, model: ModelId = 'claude-haiku'): number {
+  const base = current?.costs[action] ?? FALLBACK_COSTS[action]
+  return base * (modelsOf(current).find((item) => item.id === model)?.multiplier ?? 1)
 }
 
 /** 한도에 대한 비율(%). 0보다 크면 적어도 1%로 보여줘요. */
@@ -121,12 +128,12 @@ export function percentOf(units: number, limit: number): number {
   return Math.min(100, units > 0 ? Math.max(1, percent) : 0)
 }
 
-/** 서버가 알려 준 모델 사용 여부를 반영한 목록 */
+/** 서버가 알려 준 모델 사용 여부와 배수를 반영한 목록 */
 export function modelsOf(current: Usage | null): ModelInfo[] {
   if (!current?.models.length) return MODELS
   return MODELS.map((model) => {
     const server = current.models.find((item) => item.id === model.id)
-    return server ? { ...model, available: server.available } : model
+    return server ? { ...model, available: server.available, multiplier: server.multiplier ?? model.multiplier } : model
   })
 }
 

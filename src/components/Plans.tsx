@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { messages, useLang, useMessages } from '../lib/i18n'
-import { costOf, modelsOf, percentOf, PROVIDERS, refreshUsage, useUsage, type PlanId, type PlanInfo, type UsageAction } from '../lib/usage'
+import { costOf, modelsOf, percentOf, PROVIDERS, refreshUsage, useModel, useUsage, type PlanId, type PlanInfo, type UsageAction } from '../lib/usage'
 import { Bone } from './Skeleton'
 import { formatReset, RESET_TEXT, UsageBar } from './ModelMenu'
 
@@ -11,7 +11,7 @@ const FALLBACK_PLANS: PlanInfo[] = [
   { id: 'PRO', weeklyLimit: 1500, monthlyPrice: 14900 },
 ]
 
-/** 레포 하나를 끝까지 분석할 때 쓰는 양. 레포 소개, 기여도 분석, 추가 질문 세 번이에요. */
+/** 레포 하나를 끝까지 분석할 때 보통 쓰는 양. 레포 소개, 기여도 분석, 추가 질문 세 번이에요. */
 const FULL_ANALYSIS: UsageAction[] = ['intro', 'contribution', 'followup', 'followup', 'followup']
 
 const ACTIONS: UsageAction[] = ['intro', 'contribution', 'followup', 'deep', 'portfolio', 'portfolio_revise', 'resume', 'resume_revise']
@@ -19,7 +19,7 @@ const ACTIONS: UsageAction[] = ['intro', 'contribution', 'followup', 'deep', 'po
 const TEXT = messages({
   ko: {
     title: '요금제',
-    intro: '분석할 때마다 이번 주 사용량을 조금씩 써요. 사용량은 매주 월요일 0시에 다시 채워져요.',
+    intro: '분석할 때마다 실제로 쓴 토큰만큼 이번 주 사용량이 깎여요. 사용량은 매주 월요일 0시에 다시 채워져요.',
     usage: '이번 주 사용량',
     guest: '비회원',
     used: (percent: number) => `${percent}% 사용`,
@@ -39,11 +39,12 @@ const TEXT = messages({
     current: '지금 쓰는 요금제',
     soon: '결제 준비 중',
     models: '모델',
-    modelsNote: '분석을 시작할 때 입력창의 모델 메뉴에서 골라요. 지금은 Claude Haiku만 쓸 수 있어요.',
+    modelsNote: '분석을 시작할 때 입력창의 모델 메뉴에서 골라요. 같은 작업이어도 비싼 모델일수록 사용량이 배수만큼 더 깎여요. 지금은 Claude Haiku만 쓸 수 있어요.',
+    multiplier: (times: number) => `${times}배`,
     soonModel: '준비 중',
     ready: '사용 가능',
     costs: '작업마다 쓰는 양',
-    costsNote: '지금 요금제의 주간 사용량에 대한 비율이에요.',
+    costsNote: (model: string) => `${model}로 했을 때 보통 쓰는 양이고, 레포가 크면 더 쓸 수 있어요. 지금 요금제의 주간 사용량에 대한 비율이에요.`,
     percent: (percent: number) => `약 ${percent}%`,
     actions: {
       intro: '레포 소개',
@@ -58,7 +59,7 @@ const TEXT = messages({
   },
   en: {
     title: 'Plans',
-    intro: 'Each analysis uses a little of your weekly usage. It refills every Monday at midnight (KST).',
+    intro: 'Each analysis uses your weekly usage based on the tokens it actually spends. It refills every Monday at midnight (KST).',
     usage: 'Usage this week',
     guest: 'Guest',
     used: (percent: number) => `${percent}% used`,
@@ -78,11 +79,12 @@ const TEXT = messages({
     current: 'Current plan',
     soon: 'Checkout coming soon',
     models: 'Models',
-    modelsNote: 'Pick a model from the model menu when you start an analysis. Only Claude Haiku is available for now.',
+    modelsNote: 'Pick a model from the model menu when you start an analysis. Pricier models use more of your usage for the same task, by their multiplier. Only Claude Haiku is available for now.',
+    multiplier: (times: number) => `${times}x`,
     soonModel: 'Coming soon',
     ready: 'Available',
     costs: 'Usage per task',
-    costsNote: "Shown as a share of your current plan's weekly usage.",
+    costsNote: (model: string) => `Typical usage with ${model}. Bigger repos can use more. Shown as a share of your current plan's weekly usage.`,
     percent: (percent: number) => `About ${percent}%`,
     actions: {
       intro: 'Repo introduction',
@@ -103,6 +105,8 @@ export function Plans() {
   const R = useMessages(RESET_TEXT)
   const lang = useLang()
   const usage = useUsage()
+  const model = useModel()
+  const modelName = modelsOf(usage).find((item) => item.id === model)?.name ?? ''
 
   useEffect(() => {
     void refreshUsage()
@@ -110,7 +114,7 @@ export function Plans() {
 
   const plans = usage?.plans.length ? usage.plans : FALLBACK_PLANS
   const base = plans.find((plan) => plan.id === 'FREE')?.weeklyLimit ?? FALLBACK_PLANS[0].weeklyLimit
-  const perAnalysis = FULL_ANALYSIS.reduce((sum, action) => sum + costOf(action, usage), 0)
+  const perAnalysis = FULL_ANALYSIS.reduce((sum, action) => sum + costOf(action, usage, model), 0)
   const price = (won: number) => new Intl.NumberFormat(lang === 'en' ? 'en-US' : 'ko-KR', { style: 'currency', currency: 'KRW' }).format(won)
 
   return (
@@ -194,8 +198,9 @@ export function Plans() {
                       {modelsOf(usage)
                         .filter((model) => model.provider === provider.id)
                         .map((model) => (
-                          <li key={model.id} className="flex items-center justify-between gap-3 text-[13px]">
-                            <span className={model.available ? 'text-gray-700' : 'text-gray-400'}>{model.name}</span>
+                          <li key={model.id} className="flex items-center gap-3 text-[13px]">
+                            <span className={`flex-1 ${model.available ? 'text-gray-700' : 'text-gray-400'}`}>{model.name}</span>
+                            <span className="text-gray-400 tabular-nums">{L.multiplier(model.multiplier)}</span>
                             <span className={model.available ? 'text-brand' : 'text-gray-400'}>{model.available ? L.ready : L.soonModel}</span>
                           </li>
                         ))}
@@ -208,13 +213,13 @@ export function Plans() {
 
           <section>
             <h2 className="text-[15px] font-semibold text-gray-900">{L.costs}</h2>
-            <p className="mt-1 text-[13px] break-keep text-gray-500">{L.costsNote}</p>
+            <p className="mt-1 text-[13px] break-keep text-gray-500">{L.costsNote(modelName)}</p>
             <dl className="mt-4 divide-y divide-gray-100 border-y border-gray-100 text-[14px]">
               {ACTIONS.map((action) => (
                 <div key={action} className="flex items-center justify-between gap-4 py-3">
                   <dt className="text-gray-600">{L.actions[action]}</dt>
                   <dd className="font-medium text-gray-900 tabular-nums">
-                    {usage ? L.percent(percentOf(costOf(action, usage), usage.limit)) : <Bone className="h-4 w-12" />}
+                    {usage ? L.percent(percentOf(costOf(action, usage, model), usage.limit)) : <Bone className="h-4 w-12" />}
                   </dd>
                 </div>
               ))}

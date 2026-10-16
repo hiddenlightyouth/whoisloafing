@@ -8,6 +8,7 @@ const TEXT = messages({
   ko: {
     model: '모델 고르기',
     soon: '준비 중',
+    multiplier: (times: number) => `사용량 ${times}배`,
     usage: '이번 주 사용량',
     used: (percent: number) => `${percent}% 사용`,
     plans: '요금제 보기',
@@ -15,6 +16,7 @@ const TEXT = messages({
   en: {
     model: 'Choose a model',
     soon: 'Coming soon',
+    multiplier: (times: number) => `${times}x usage`,
     usage: 'Usage this week',
     used: (percent: number) => `${percent}% used`,
     plans: 'See plans',
@@ -48,7 +50,7 @@ export function UsageBar({ usage, className = 'h-2' }: { usage: Usage; className
 
 /**
  * 분석에 쓸 모델을 고르는 작은 메뉴예요. 다른 AI 서비스처럼 입력창이나 만들기 버튼 옆에 두고, 누르면 모델 목록과 이번 주 사용량이 펼쳐져요.
- * 모델은 회사(Claude, GPT, Gemini)마다 묶어서 보여주고, 지금은 Claude Haiku만 고를 수 있고 나머지는 준비 중으로 흐리게 둬요. 고른 모델은 저장돼서 분석 요청에 같이 실려요.
+ * 모델은 회사(Claude, GPT, Gemini)마다 묶어서 보여주고, 이름 옆에 사용량 배수를 적어요. 지금은 Claude Haiku만 고를 수 있고 나머지는 준비 중으로 흐리게 둬요. 고른 모델은 저장돼서 분석 요청에 같이 실려요.
  */
 export function ModelMenu({ up = false, className = '' }: { /** 위로 펼쳐요. 화면 아래쪽 줄에 둘 때 켜요. */ up?: boolean; className?: string }) {
   const L = useMessages(TEXT)
@@ -118,6 +120,9 @@ export function ModelMenu({ up = false, className = '' }: { /** 위로 펼쳐요
                       className="flex h-9 w-full items-center gap-2 rounded-xl pr-2.5 pl-8 text-left text-[13px] transition-colors enabled:hover:bg-gray-50 disabled:cursor-not-allowed"
                     >
                       <span className={`min-w-0 flex-1 truncate font-medium ${item.available ? 'text-gray-900' : 'text-gray-400'}`}>{item.name}</span>
+                      <span className="shrink-0 text-[11.5px] text-gray-400 tabular-nums" aria-label={L.multiplier(item.multiplier)}>
+                        ×{item.multiplier}
+                      </span>
                       {item.id === model ? (
                         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-4 text-brand" aria-hidden>
                           <path d="M3.5 8.5l3 3 6-7" strokeLinecap="round" strokeLinejoin="round" />
