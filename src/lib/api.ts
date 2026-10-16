@@ -1,6 +1,7 @@
 import type { AnalyzeRequest, ChatEvent, ChatSnapshot, DeepReport, DeepSection } from '../../shared/types'
 import { authFetch, authHeaders } from './auth'
 import { apiUrl, ownerHeaders, readResult } from './http'
+import { getLang } from './i18n'
 
 export interface ServerConfig {
   /** 채팅 저장과 공유 기능이 켜져 있는지 */
@@ -177,7 +178,7 @@ export async function streamAnalysis(
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...ownerHeaders(), ...(await authHeaders()) },
     // 시간대별 통계를 사용자의 시간대로 보여주려고 함께 보내요.
-    body: JSON.stringify({ ...request, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+    body: JSON.stringify({ ...request, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, lang: getLang() }),
     signal,
   })
   if (!res.ok || !res.body) throw new Error(`분석 요청에 실패했어요. (${res.status})`)
