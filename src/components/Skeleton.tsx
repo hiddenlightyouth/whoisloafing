@@ -71,7 +71,7 @@ export function ExploreCardsSkeleton({ row = false }: { row?: boolean }) {
 export function ExploreSkeleton() {
   return (
     <div aria-hidden className="flex flex-col gap-9">
-      {[0, 1].map((row) => (
+      {[0, 1, 2].map((row) => (
         <section key={row}>
           <div className="flex h-8 items-center justify-between gap-4">
             <Bone className="h-4 w-24" />

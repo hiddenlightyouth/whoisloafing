@@ -5,13 +5,14 @@ import { Avatar } from './History'
 import { Modal, primaryButton, quietButton } from './Dialog'
 import { MapMenu } from './DeepParts'
 import { ExploreCardsSkeleton } from './Skeleton'
-import { getLang, messages, useLang, useMessages, type Lang } from '../lib/i18n'
+import { getLang, messages, useMessages, type Lang } from '../lib/i18n'
 
 /** 탐색의 큰 갈래. GitHub는 GitHub 전체에서 인기 있는 레포, 동아리는 IT 연합 동아리와 커뮤니티가 만든 레포예요. */
-export type ExploreCategory = 'github' | 'clubs'
+/** clubs는 한국의 연합 동아리와 커뮤니티, global은 해외 학생 개발 동아리와 커뮤니티예요. */
+export type ExploreCategory = 'github' | 'clubs' | 'global'
 type Category = ExploreCategory
 
-const CATEGORIES: Category[] = ['github', 'clubs']
+const CATEGORIES: Category[] = ['github', 'clubs', 'global']
 
 /** GitHub 갈래 안에서 고르는 목록 종류 */
 const KINDS: ('popular' | 'rising')[] = ['popular', 'rising']
@@ -23,7 +24,7 @@ const SORTS: Sort[] = ['stars', 'recent', 'name']
 
 const TEXT = messages({
   ko: {
-    categories: { github: 'GitHub', clubs: '연합 동아리 & 커뮤니티' } as Record<Category, string>,
+    categories: { github: 'GitHub', clubs: '연합 동아리 & 커뮤니티', global: '해외 동아리 & 커뮤니티' } as Record<Category, string>,
     kinds: { popular: '인기', rising: '요즘 뜨는' } as Record<'popular' | 'rising', string>,
     sorts: { stars: '스타순', recent: '최근 업데이트순', name: '이름순' } as Record<Sort, string>,
     stars: (count: string) => `별 ${count}개`,
@@ -37,8 +38,6 @@ const TEXT = messages({
     all: '전체',
     list: '목록',
     sort: '정렬',
-    region: '지역',
-    regions: { ko: '국내', en: '해외' } as Record<Lang, string>,
     items: (count: string) => `${count}개의 항목`,
     more: '더 보기',
     confirmTitle: '이 프로젝트를 분석할까요?',
@@ -46,7 +45,7 @@ const TEXT = messages({
     analyze: '분석하기',
   },
   en: {
-    categories: { github: 'GitHub', clubs: 'Student clubs & communities' },
+    categories: { github: 'GitHub', clubs: 'Korean clubs & communities', global: 'Student clubs & communities' },
     kinds: { popular: 'Popular', rising: 'Trending' },
     sorts: { stars: 'Most stars', recent: 'Recently updated', name: 'Name' },
     stars: (count: string) => `${count} stars`,
@@ -60,8 +59,6 @@ const TEXT = messages({
     all: 'All',
     list: 'List',
     sort: 'Sort',
-    region: 'Region',
-    regions: { ko: 'Korea', en: 'International' },
     items: (count: string) => `${count} ${count === '1' ? 'item' : 'items'}`,
     more: 'Show more',
     confirmTitle: 'Analyze this project?',
@@ -73,10 +70,13 @@ const TEXT = messages({
 /** 숫자를 지금 언어에 맞게 적어요. */
 const number = (value: number) => value.toLocaleString(getLang() === 'ko' ? 'ko-KR' : 'en-US')
 
-/** 동아리 목록은 지역마다 달라요. ko는 한국 동아리, en은 해외 학생 개발 동아리와 커뮤니티예요. 화면 언어와 상관없이 둘 다 고를 수 있어요. */
+/** 동아리 목록은 지역마다 달라요. ko는 한국 동아리, en은 해외 학생 개발 동아리와 커뮤니티예요. 화면 언어와 상관없이 갈래로 둘 다 볼 수 있어요. */
 const cacheKey = (kind: ExploreKind, region: Lang) => (kind === 'clubs' ? `clubs:${region}` : kind)
 
-const REGIONS: Lang[] = ['ko', 'en']
+/** 동아리 갈래가 받는 지역. GitHub 갈래는 지역이 없어서 아무 값이나 괜찮아요. */
+const regionOf = (category: Category): Lang => (category === 'global' ? 'en' : 'ko')
+
+const isClubs = (category: Category) => category !== 'github'
 
 
 const repoName = (item: ExploreRepo) => item.repo.slice(item.repo.indexOf('/') + 1)
@@ -119,7 +119,7 @@ function load(kind: ExploreKind, region: Lang) {
   const key = cacheKey(kind, region)
   if (cache[key] !== undefined || pending.has(key)) return
   pending.add(key)
-  void fetchExplore(kind, region).then((repos) => {
+  void fetchExplore(kind, kind === 'clubs' ? region : getLang()).then((repos) => {
     pending.delete(key)
     cache[key] = repos && repos.length > 0 ? repos : 'failed'
     listeners.forEach((listener) => listener())
@@ -132,14 +132,12 @@ function retry(kind: ExploreKind, region: Lang) {
   load(kind, region)
 }
 
-/** 목록 하나를 받아서 돌려줘요. 받는 중이면 undefined예요. enabled가 false면 받지 않아요. 동아리 지역을 주지 않으면 화면 언어의 지역이에요. */
-function useList(kind: ExploreKind, enabled = true, region?: Lang): Loaded | undefined {
-  const lang = useLang()
-  const where = region ?? lang
-  const list = useSyncExternalStore(subscribe, () => cache[cacheKey(kind, where)])
+/** 목록 하나를 받아서 돌려줘요. 받는 중이면 undefined예요. enabled가 false면 받지 않아요. */
+function useList(kind: ExploreKind, region: Lang, enabled = true): Loaded | undefined {
+  const list = useSyncExternalStore(subscribe, () => cache[cacheKey(kind, region)])
   useEffect(() => {
-    if (enabled) load(kind, where)
-  }, [kind, where, enabled, list])
+    if (enabled) load(kind, region)
+  }, [kind, region, enabled, list])
   return list
 }
 
@@ -244,23 +242,30 @@ interface PreviewProps {
   onMore: (category: Category) => void
 }
 
+/** 동아리 목록에서 스타가 많은 레포를 한 줄만큼 골라요. */
+const top = (list: Loaded | undefined) => (Array.isArray(list) ? [...list].sort(SORTERS.stars).slice(0, ROW_SIZE) : list)
+
 /**
- * 앱의 새 분석 화면에서 입력창 아래에 붙는 맛보기예요. GitHub와 연합 동아리 & 커뮤니티를 한 줄씩만 보여주고,
+ * 앱의 새 분석 화면에서 입력창 아래에 붙는 맛보기예요. GitHub, 연합 동아리 & 커뮤니티, 해외 동아리 & 커뮤니티를 한 줄씩만 보여주고,
  * 더 둘러보려면 "전체 보기"로 탐색 화면에 가요.
  */
 export function ExplorePreview({ onPick, clubs: hasClubs = false, onMore }: PreviewProps) {
   const L = useMessages(TEXT)
-  const github = useList('popular')
-  const clubRepos = useList('clubs', hasClubs)
-  const topClubs = useMemo(
-    () => (Array.isArray(clubRepos) ? [...clubRepos].sort(SORTERS.stars).slice(0, ROW_SIZE) : clubRepos),
-    [clubRepos],
-  )
+  const github = useList('popular', 'ko')
+  const korean = useList('clubs', 'ko', hasClubs)
+  const global = useList('clubs', 'en', hasClubs)
+  const topKorean = useMemo(() => top(korean), [korean])
+  const topGlobal = useMemo(() => top(global), [global])
   const { open, dialog } = useAsk(onPick, 'home')
 
   const rows: { category: Category; kind: ExploreKind; list: Loaded | undefined }[] = [
     { category: 'github', kind: 'popular', list: Array.isArray(github) ? github.slice(0, ROW_SIZE) : github },
-    ...(hasClubs ? [{ category: 'clubs' as const, kind: 'clubs' as const, list: topClubs }] : []),
+    ...(hasClubs
+      ? [
+          { category: 'clubs' as const, kind: 'clubs' as const, list: topKorean },
+          { category: 'global' as const, kind: 'clubs' as const, list: topGlobal },
+        ]
+      : []),
   ]
 
   return (
@@ -288,7 +293,7 @@ export function ExplorePreview({ onPick, clubs: hasClubs = false, onMore }: Prev
           {list === undefined ? (
             <ExploreCardsSkeleton row />
           ) : list === 'failed' ? (
-            <Failed compact onRetry={() => retry(kind, getLang())} />
+            <Failed compact onRetry={() => retry(kind, regionOf(category))} />
           ) : (
             <ul className={`mt-3 ${cardsRow}`}>
               {list.map((item, order) => (
@@ -321,18 +326,15 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
   const L = useMessages(TEXT)
   const category: Category = hasClubs ? wanted : 'github'
   const [githubKind, setGithubKind] = useState<'popular' | 'rising'>('popular')
-  const kind: ExploreKind = category === 'clubs' ? 'clubs' : githubKind
+  const kind: ExploreKind = isClubs(category) ? 'clubs' : githubKind
+  const region = regionOf(category)
   /** 고른 동아리. null이면 모든 동아리의 레포를 한데 모아서 보여줘요. */
   const [club, setClub] = useState<string | null>(null)
   const [sort, setSort] = useState<Sort>('stars')
-  /** 동아리를 보여줄 지역. 처음에는 화면 언어를 따르고, 메뉴로 바꾸면 언어와 상관없이 그 지역을 보여줘요. */
-  const lang = useLang()
-  const [picked, setRegion] = useState<Lang | null>(null)
-  const region = picked ?? lang
   /** 동아리 레포를 몇 개까지 그렸는지. 동아리나 순서를 바꾸면 처음으로 돌아가요. */
   const [shown, setShown] = useState(PAGE_SIZE)
-  const loaded = useList(kind, true, region)
-  const clubRepos = category === 'clubs' && Array.isArray(loaded) ? loaded : null
+  const loaded = useList(kind, region)
+  const clubRepos = isClubs(category) && Array.isArray(loaded) ? loaded : null
   // 동아리 레포는 서버가 전부 한꺼번에 보내요. 동아리 이름은 가나다순으로 늘어놓고, 고르기와 순서 바꾸기는 여기서 해요.
   const clubs = useMemo(
     () => (clubRepos ? [...new Set(clubRepos.map((item) => item.club ?? ''))].filter(Boolean).sort(byKorean) : []),
@@ -374,7 +376,10 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
               aria-selected={category === value}
               onClick={() => {
                 if (category === value) return
-                track('explore_kind_change', { kind: value === 'clubs' ? 'clubs' : githubKind })
+                track('explore_kind_change', { kind: value === 'github' ? githubKind : value })
+                setClub(null)
+                setGroup(null)
+                setShown(PAGE_SIZE)
                 onCategory(value)
               }}
               className={`relative -mb-px h-10 border-b-2 px-3 text-[13.5px] font-medium transition-colors ${
@@ -389,7 +394,7 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
 
       <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 px-6 pt-4 pb-16 md:px-10">
         {/* 동아리는 메뉴에 넣지 않고 한눈에 보이게 늘어놓아요. */}
-        {category === 'clubs' && clubRepos && (
+        {clubRepos && (
           <div role="radiogroup" aria-label={L.clubs} className="mb-3 flex flex-wrap gap-2">
             {[null, ...clubs].map((name) => (
               <button
@@ -415,7 +420,7 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
         )}
 
         {/* 학교마다 조직이 따로 있는 동아리를 고르면, 학교를 한 번 더 고를 수 있어요. */}
-        {category === 'clubs' && club && groups.length > 1 && (
+        {clubRepos && club && groups.length > 1 && (
           <div role="radiogroup" aria-label={L.schools} className="mb-3 flex animate-rise flex-wrap gap-2">
             {[null, ...groups.map(([name]) => name)].map((name) => (
               <button
@@ -460,26 +465,6 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
             />
           ) : (
             <>
-              <MapMenu
-                label={L.region}
-                value={L.regions[region]}
-                groups={[
-                  {
-                    items: REGIONS.map((value) => ({
-                      label: L.regions[value],
-                      checked: region === value,
-                      onSelect: () => {
-                        if (region === value) return
-                        track('explore_region_change', { region: value })
-                        setRegion(value)
-                        setClub(null)
-                        setGroup(null)
-                        setShown(PAGE_SIZE)
-                      },
-                    })),
-                  },
-                ]}
-              />
               <MapMenu
                 label={L.sort}
                 value={L.sorts[sort]}

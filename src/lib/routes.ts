@@ -47,12 +47,12 @@ export function portfolioFromPath(): { repo: string | null } | null {
   return match ? { repo: match[1] ? `${match[1]}/${match[2]}` : null } : null
 }
 
-const EXPLORE_PATH = /^\/explore(?:\/(clubs))?\/?$/
+const EXPLORE_PATH = /^\/explore(?:\/(clubs|global))?\/?$/
 
 /** 탐색 화면 주소면 보고 있는 갈래를 돌려줘요. */
 export function exploreFromPath(): ExploreCategory | null {
   const match = EXPLORE_PATH.exec(currentPath())
-  return match ? (match[1] ? 'clubs' : 'github') : null
+  return match ? ((match[1] as ExploreCategory | undefined) ?? 'github') : null
 }
 
 const ADMIN_PATH = /^\/admin(?:\/(users|chats|feedback|ai))?\/?$/

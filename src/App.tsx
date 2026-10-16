@@ -136,7 +136,7 @@ export default function App() {
 
   /** 앱의 탐색 화면을 열어요. 갈래마다 주소가 달라서 뒤로 가기로 앞의 갈래에 돌아가요. */
   const openExplore = useCallback(
-    (category: ExploreCategory = 'github') => openAppPage(category === 'clubs' ? '/explore/clubs' : '/explore'),
+    (category: ExploreCategory = 'github') => openAppPage(category === 'github' ? '/explore' : `/explore/${category}`),
     [openAppPage],
   )
 
