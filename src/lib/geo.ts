@@ -23,11 +23,14 @@ function isPrivateIp(ip: string): boolean {
   return PRIVATE_V4.test(value) || PRIVATE_V6.test(value)
 }
 
-const readStored = () => readJson<Record<string, string>>(STORAGE_KEY, {})
+// 회원 칸처럼 주소를 여러 개 한꺼번에 물을 때 매번 풀어 읽지 않게, 처음 한 번만 읽어서 들고 있어요.
+let stored: Record<string, string> | null = null
+const readStored = () => (stored ??= readJson<Record<string, string>>(STORAGE_KEY, {}))
 
 function store(ip: string, place: string) {
   const entries = Object.entries({ ...readStored(), [ip]: place }).slice(-STORED_LIMIT)
-  writeJson(STORAGE_KEY, Object.fromEntries(entries))
+  stored = Object.fromEntries(entries)
+  writeJson(STORAGE_KEY, stored)
 }
 
 const countryNames: Partial<Record<string, Intl.DisplayNames>> = {}

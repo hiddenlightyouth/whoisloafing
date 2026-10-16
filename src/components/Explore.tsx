@@ -75,10 +75,18 @@ const cacheKey = (kind: ExploreKind, lang: Lang) => (kind === 'clubs' ? `clubs:$
 
 const repoName = (item: ExploreRepo) => item.repo.slice(item.repo.indexOf('/') + 1)
 
+// 레포가 수천 개라 비교할 때마다 로캘을 새로 잡지 않게 정렬기를 하나만 만들어 둬요.
+const byKorean = new Intl.Collator('ko').compare
+
 const SORTERS: Record<Sort, (a: ExploreRepo, b: ExploreRepo) => number> = {
   stars: (a, b) => b.stars - a.stars,
-  recent: (a, b) => (b.pushedAt ?? '').localeCompare(a.pushedAt ?? ''),
-  name: (a, b) => repoName(a).localeCompare(repoName(b), 'ko'),
+  // 시각은 ISO 문자열이라 글자 순서가 곧 시간 순서예요.
+  recent: (a, b) => {
+    const x = a.pushedAt ?? ''
+    const y = b.pushedAt ?? ''
+    return x < y ? 1 : x > y ? -1 : 0
+  },
+  name: (a, b) => byKorean(repoName(a), repoName(b)),
 }
 
 /** 동아리 레포는 전부 받아 오니, 한 번에 이만큼만 그리고 더 보기로 이어서 보여줘요. */
@@ -317,7 +325,7 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
   const clubRepos = category === 'clubs' && Array.isArray(loaded) ? loaded : null
   // 동아리 레포는 서버가 전부 한꺼번에 보내요. 동아리 이름은 가나다순으로 늘어놓고, 고르기와 순서 바꾸기는 여기서 해요.
   const clubs = useMemo(
-    () => (clubRepos ? [...new Set(clubRepos.map((item) => item.club ?? ''))].filter(Boolean).sort((a, b) => a.localeCompare(b, 'ko')) : []),
+    () => (clubRepos ? [...new Set(clubRepos.map((item) => item.club ?? ''))].filter(Boolean).sort(byKorean) : []),
     [clubRepos],
   )
   /** 동아리마다 레포가 몇 개인지. 메뉴의 이름 옆에 적어요. */
@@ -332,7 +340,7 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
   const groups = useMemo(() => {
     const map = new Map<string, number>()
     for (const item of clubRepos ?? []) if (club && item.club === club && item.group) map.set(item.group, (map.get(item.group) ?? 0) + 1)
-    return [...map].sort(([a], [b]) => a.localeCompare(b, 'ko'))
+    return [...map].sort(([a], [b]) => byKorean(a, b))
   }, [clubRepos, club])
   const sorted = useMemo(
     () => (clubRepos ? clubRepos.filter((item) => (!club || item.club === club) && (!club || !group || item.group === group)).sort(SORTERS[sort]) : []),

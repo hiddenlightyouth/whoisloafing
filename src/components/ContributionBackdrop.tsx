@@ -311,10 +311,19 @@ export function ContributionBackdrop() {
       context!.clearRect(0, 0, width, height)
 
       const seconds = time / 1000
+      // 꺼진 칸은 모두 같은 색이라 한 번에 모아 칠하고, 켜진 칸만 하나씩 칠해요.
+      context!.beginPath()
+      const glowing: { x: number; y: number; glow: number }[] = []
       for (const cell of cells.values()) {
         const lit = cell.level > 0 && time >= cell.eatenUntil
         const glow = lit ? cell.level * (0.5 + 0.5 * Math.sin(seconds * cell.speed + cell.phase)) : 0
-        context!.fillStyle = glow > 0.02 ? `rgba(${BRAND}, ${0.05 + glow * 0.3})` : 'rgba(16, 24, 40, 0.035)'
+        if (glow > 0.02) glowing.push({ x: cell.x, y: cell.y, glow })
+        else context!.roundRect(cell.x, cell.y, CELL, CELL, 3)
+      }
+      context!.fillStyle = 'rgba(16, 24, 40, 0.035)'
+      context!.fill()
+      for (const cell of glowing) {
+        context!.fillStyle = `rgba(${BRAND}, ${0.05 + cell.glow * 0.3})`
         context!.beginPath()
         context!.roundRect(cell.x, cell.y, CELL, CELL, 3)
         context!.fill()

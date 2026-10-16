@@ -68,24 +68,37 @@ export function Chat({ messages, busy, paused, readOnly, onResume, onSend, onHom
   }
 
   // 화면 위쪽으로 밀려난 지난 말풍선은 흐리게 두고, 아래로 내려올수록 서서히 밝아지게 해요.
+  // 스크롤과 타자 효과로 한 프레임에 여러 번 불려도, 다음 프레임에 한 번만 계산해요.
+  const focusFrame = useRef(0)
   const updateFocus = useCallback(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const view = el.getBoundingClientRect()
-    const fadeStart = view.top + HEADER_HEIGHT_PX
-    const fadeRange = (view.height - HEADER_HEIGHT_PX) * FOCUS_FADE_RATIO
-    // 위로 넘어간 내용이 없으면 흐리게 하지 않고, 스크롤된 만큼만 서서히 효과를 줘요.
-    const strength = Math.min(1, el.scrollTop / FOCUS_RAMP_PX)
-    for (const item of el.querySelectorAll<HTMLElement>('[data-focus]')) {
-      const rect = item.getBoundingClientRect()
-      // 화면에 보이는 부분의 가운데를 기준으로 해요. 화면보다 긴 말풍선도 자연스럽게 밝아져요.
-      const visibleTop = Math.max(rect.top, fadeStart)
-      const visibleBottom = Math.min(rect.bottom, view.bottom)
-      const center = visibleBottom > visibleTop ? (visibleTop + visibleBottom) / 2 : rect.bottom
-      const progress = Math.min(1, Math.max(0, (center - fadeStart) / fadeRange))
-      item.style.opacity = String(1 - (1 - FOCUS_MIN_OPACITY) * (1 - progress) * strength)
-    }
+    if (focusFrame.current) return
+    focusFrame.current = requestAnimationFrame(() => {
+      focusFrame.current = 0
+      const el = scrollRef.current
+      if (!el) return
+      const view = el.getBoundingClientRect()
+      const fadeStart = view.top + HEADER_HEIGHT_PX
+      const fadeRange = (view.height - HEADER_HEIGHT_PX) * FOCUS_FADE_RATIO
+      // 위로 넘어간 내용이 없으면 흐리게 하지 않고, 스크롤된 만큼만 서서히 효과를 줘요.
+      const strength = Math.min(1, el.scrollTop / FOCUS_RAMP_PX)
+      const items = [...el.querySelectorAll<HTMLElement>('[data-focus]')]
+      // 자리를 모두 먼저 읽고 나서 투명도를 써요. 읽고 쓰기를 번갈아 하면 말풍선마다 화면을 다시 계산해요.
+      const opacities = items.map((item) => {
+        const rect = item.getBoundingClientRect()
+        // 화면에 보이는 부분의 가운데를 기준으로 해요. 화면보다 긴 말풍선도 자연스럽게 밝아져요.
+        const visibleTop = Math.max(rect.top, fadeStart)
+        const visibleBottom = Math.min(rect.bottom, view.bottom)
+        const center = visibleBottom > visibleTop ? (visibleTop + visibleBottom) / 2 : rect.bottom
+        const progress = Math.min(1, Math.max(0, (center - fadeStart) / fadeRange))
+        return String(1 - (1 - FOCUS_MIN_OPACITY) * (1 - progress) * strength)
+      })
+      items.forEach((item, index) => {
+        item.style.opacity = opacities[index]
+      })
+    })
   }, [])
+
+  useEffect(() => () => cancelAnimationFrame(focusFrame.current), [])
 
   useEffect(() => {
     updateFocus()
