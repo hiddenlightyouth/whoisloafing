@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { track } from '../lib/analytics'
 import { fetchExplore, type ExploreKind, type ExploreRepo } from '../lib/api'
 import { Avatar } from './History'
-import { Modal, primaryButton, quietButton } from './Dialog'
 import { MapMenu } from './DeepParts'
 import { ExploreCardsSkeleton } from './Skeleton'
 import { clubInfo } from '../lib/clubs'
 import { readFlag, writeFlag } from '../lib/storage'
+import { primaryButton } from './Dialog'
 import { getLang, messages, useMessages, type Lang } from '../lib/i18n'
 
 /** 탐색의 큰 갈래. GitHub는 GitHub 전체에서 인기 있는 레포, 동아리는 IT 연합 동아리와 커뮤니티가 만든 레포예요. */
@@ -45,9 +45,6 @@ const TEXT = messages({
     guide: '동아리를 선택해서 더 자세히 탐색할 수 있어요',
     guideNever: '다시 보지 않기',
     guideClose: '안내 닫기',
-    confirmTitle: '이 프로젝트를 분석할까요?',
-    cancel: '취소',
-    analyze: '분석하기',
   },
   en: {
     categories: { github: 'GitHub', clubs: 'Korean clubs & communities', global: 'Student clubs & communities' },
@@ -69,9 +66,6 @@ const TEXT = messages({
     guide: 'Pick a club to explore its projects in more detail',
     guideNever: "Don't show again",
     guideClose: 'Close guide',
-    confirmTitle: 'Analyze this project?',
-    cancel: 'Cancel',
-    analyze: 'Analyze',
   },
 })
 
@@ -221,24 +215,12 @@ function Failed({ onRetry, compact = false }: { onRetry: () => void; compact?: b
   )
 }
 
-/** 카드를 누르면 띄우는 확인 창과, 그 창을 여는 함수를 같이 돌려줘요. */
+/** 카드를 누르면 바로 분석하지 않고, 새 분석 화면의 입력창에 그 레포 링크를 넣어 둬요. */
 function useAsk(onPick: (repo: string) => void, from: 'home' | 'page') {
-  const [asking, setAsking] = useState<{ item: ExploreRepo; kind: ExploreKind } | null>(null)
-  const open = (item: ExploreRepo, kind: ExploreKind) => {
-    track('explore_repo_open', { repo: item.repo, kind, from })
-    setAsking({ item, kind })
+  return (item: ExploreRepo, kind: ExploreKind) => {
+    track('explore_repo_select', { repo: item.repo, kind, from })
+    onPick(item.repo)
   }
-  const dialog = asking && (
-    <ConfirmDialog
-      repo={asking.item}
-      onCancel={() => setAsking(null)}
-      onConfirm={() => {
-        track('explore_repo_select', { repo: asking.item.repo, kind: asking.kind, from })
-        onPick(asking.item.repo)
-      }}
-    />
-  )
-  return { open, dialog }
 }
 
 interface PreviewProps {
@@ -264,7 +246,7 @@ export function ExplorePreview({ onPick, clubs: hasClubs = false, onMore }: Prev
   const global = useList('clubs', 'en', hasClubs)
   const topKorean = useMemo(() => top(korean), [korean])
   const topGlobal = useMemo(() => top(global), [global])
-  const { open, dialog } = useAsk(onPick, 'home')
+  const open = useAsk(onPick, 'home')
 
   const rows: { category: Category; kind: ExploreKind; list: Loaded | undefined }[] = [
     { category: 'github', kind: 'popular', list: Array.isArray(github) ? github.slice(0, ROW_SIZE) : github },
@@ -311,7 +293,6 @@ export function ExplorePreview({ onPick, clubs: hasClubs = false, onMore }: Prev
           )}
         </section>
       ))}
-      {dialog}
     </div>
   )
 }
@@ -425,7 +406,7 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
   )
   const list = clubRepos ? sorted.slice(0, shown) : loaded
   const more = clubRepos ? sorted.length - shown : 0
-  const { open, dialog } = useAsk(onPick, 'page')
+  const open = useAsk(onPick, 'page')
 
   return (
     <main className="flex min-h-0 flex-1 flex-col">
@@ -613,41 +594,6 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
           </div>
         )}
       </div>
-      {dialog}
     </main>
-  )
-}
-
-/** 카드를 누르면 바로 분석하지 않고, 어떤 레포인지 보여주면서 한 번 물어봐요. 바깥을 누르거나 Esc를 누르면 닫혀요. */
-function ConfirmDialog({ repo, onCancel, onConfirm }: { repo: ExploreRepo; onCancel: () => void; onConfirm: () => void }) {
-  const L = useMessages(TEXT)
-  const [owner, name] = repo.repo.split('/')
-
-  return (
-    <Modal onClose={onCancel} labelledBy="explore-confirm-title" alert>
-      <h2 id="explore-confirm-title" className="text-[15px] font-semibold text-gray-900">
-        {L.confirmTitle}
-      </h2>
-      <div className="mt-3.5 flex items-center gap-3">
-        <Avatar owner={owner} />
-        <div className="min-w-0">
-          <p className="truncate text-[14.5px] font-semibold text-gray-900">{name}</p>
-          <p className="truncate text-[12px] text-gray-400">{owner}</p>
-        </div>
-      </div>
-      {repo.description && <p className="mt-3 text-[13px] leading-relaxed text-gray-600">{repo.description}</p>}
-      <p className="mt-2 flex items-center gap-2.5 text-[12px] text-gray-400 tabular-nums">
-        {repo.language && <span>{repo.language}</span>}
-        <Stars count={repo.stars} />
-      </p>
-      <div className="mt-5 flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className={quietButton}>
-          {L.cancel}
-        </button>
-        <button type="button" autoFocus onClick={onConfirm} className={primaryButton}>
-          {L.analyze}
-        </button>
-      </div>
-    </Modal>
   )
 }

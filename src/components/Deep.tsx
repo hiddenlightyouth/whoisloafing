@@ -20,6 +20,7 @@ import { Stack } from './Stack'
 import { StructureMap } from './StructureMap'
 import { getLang, messages, pick, useLang, useMessages } from '../lib/i18n'
 import { readJson, writeItem, writeJson } from '../lib/storage'
+import { refreshUsage } from '../lib/usage'
 
 interface Props {
   /** 살펴볼 레포(소유자/레포). null이면 레포를 고르는 화면이에요. */
@@ -201,9 +202,10 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
       if (kept && target === 'structure') clearPeople(repo)
     }
     setLoaded((prev) => ({ ...prev, [target]: result }))
+    void refreshUsage()
   }
 
-  // 탭에 들어오면 저장해 둔 결과를 보여주고, 없으면 바로 받아 와요.
+  // 탭에 들어오면 저장해 둔 결과를 보여주고, 없으면 바로 받아 와요. 모델은 마지막으로 고른 것을 써요.
   useEffect(() => {
     if (!current) void analyze(section)
     // eslint-disable-next-line react-hooks/exhaustive-deps

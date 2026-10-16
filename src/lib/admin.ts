@@ -26,6 +26,8 @@ export interface AdminUser {
   email: string
   name: string
   role: 'USER' | 'ADMIN'
+  /** 요금제. 예전 서버에는 없어요. */
+  plan?: 'FREE' | 'LITE' | 'PRO'
   suspended: boolean
   suspendedAt: string | null
   registeredAt: string | null
@@ -190,6 +192,8 @@ export const fetchAdminUsers = (query: string, filter: AdminUserFilter, page: nu
 export const fetchAdminUser = (id: number) => request<AdminUserDetail>(`/admin/users/${id}`)
 
 export const changeUserRole = (id: number, role: 'USER' | 'ADMIN') => send(`/admin/users/${id}/role`, 'PATCH', { role })
+
+export const changeUserPlan = (id: number, plan: 'FREE' | 'LITE' | 'PRO') => send(`/admin/users/${id}/plan`, 'PATCH', { plan })
 
 export const suspendUser = (id: number) => send(`/admin/users/${id}/suspension`, 'POST')
 

@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { authFetch } from './auth'
 import { DEEP_ERRORS } from './api'
 import { getLang, messages, pick } from './i18n'
+import { getModel, refreshUsage } from './usage'
 import { readJson, writeJson } from './storage'
 
 /** 문제 해결 경험 하나. 서버의 ResumeProblemDto와 맞춰요. 원인과 판단은 비어 있을 수 있어요. */
@@ -85,7 +86,10 @@ async function call<T>(path: string, body: unknown): Promise<Outcome<T>> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
-    if (result.ok && result.data) return { data: result.data }
+    if (result.ok && result.data) {
+      void refreshUsage()
+      return { data: result.data }
+    }
     return { error: (result.code && pick(ERRORS)[result.code]) || pick(ERRORS).failed }
   } catch {
     return { error: pick(ERRORS).network }
@@ -95,7 +99,7 @@ async function call<T>(path: string, body: unknown): Promise<Outcome<T>> {
 type Written = Omit<ResumeProject, 'id' | 'person' | 'plan' | 'pending'>
 
 export function createResumeProject(repo: string, person: string | null, plan: string) {
-  return call<Written>('/portfolio/resume', { url: repo, person, plan: plan || null, lang: getLang() })
+  return call<Written>('/portfolio/resume', { url: repo, person, plan: plan || null, lang: getLang(), model: getModel() })
 }
 
 /** 문제 해결 경험 하나를 고쳐요. problem이 없으면 새 경험을 하나 더 써요. */
@@ -109,6 +113,7 @@ export function reviseResumeProblem(project: ResumeProject, revision: ResumeRevi
     plan: project.plan || null,
     person: project.person,
     lang: getLang(),
+    model: getModel(),
   })
 }
 

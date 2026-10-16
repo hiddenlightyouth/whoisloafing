@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { track } from '../lib/analytics'
 import {
+  changeUserPlan,
   changeUserRole,
   deleteUser,
   deviceLabels,
@@ -224,6 +225,9 @@ const TEXT = messages({
     usedApp: '앱으로 로그인한 적이 있어요',
     noApp: '앱으로 로그인한 적이 없어요',
     suspendedAt: '정지한 때',
+    planTitle: '요금제',
+    plans: [['FREE', 'Free'], ['LITE', 'Lite'], ['PRO', 'Pro']] as ['FREE' | 'LITE' | 'PRO', string][],
+    planChanged: (plan: string) => `요금제를 ${plan}로 바꿨어요.`,
     manageTitle: '관리',
     selfNote: '내 계정의 권한을 바꾸거나 정지, 삭제할 수는 없어요.',
     logoutAll: '모든 기기 로그아웃',
@@ -307,6 +311,9 @@ const TEXT = messages({
     usedApp: 'Has signed in with the app',
     noApp: 'Has never signed in with the app',
     suspendedAt: 'Suspended at',
+    planTitle: 'Plan',
+    plans: [['FREE', 'Free'], ['LITE', 'Lite'], ['PRO', 'Pro']] as ['FREE' | 'LITE' | 'PRO', string][],
+    planChanged: (plan: string) => `Changed the plan to ${plan}.`,
     manageTitle: 'Manage',
     selfNote: "You can't change the role of, suspend, or delete your own account.",
     logoutAll: 'Sign out all devices',
@@ -387,6 +394,16 @@ function UserPanel({ id, selfId, onClose, onChanged, onDeleted, onOpenChat }: Pa
     }
   }
 
+  /** 요금제는 바로 바꿔요. 이번 주 한도에 곧바로 반영되고, 되돌리기도 쉬워서 한 번 더 묻지 않아요. */
+  async function changePlan(plan: 'FREE' | 'LITE' | 'PRO') {
+    const result = await changeUserPlan(id, plan)
+    track('admin_user_action', { action: 'plan', plan, success: result.ok })
+    showToast(result.ok ? pick(TEXT).planChanged(plan.charAt(0) + plan.slice(1).toLowerCase()) : result.message)
+    if (!result.ok) return
+    setVersion((value) => value + 1)
+    onChanged()
+  }
+
   async function logoutDevice(sessionId: string) {
     const result = await revokeUserSession(id, sessionId)
     track('admin_user_action', { action: 'logout_device', success: result.ok })
@@ -446,6 +463,15 @@ function UserPanel({ id, selfId, onClose, onChanged, onDeleted, onOpenChat }: Pa
                 </div>
               ))}
             </dl>
+
+            {user.plan && (
+              <>
+                <h3 className={heading}>{L.planTitle}</h3>
+                <div className="mt-2">
+                  <Segmented label={L.planTitle} options={L.plans} value={user.plan} onChange={(plan) => void changePlan(plan)} />
+                </div>
+              </>
+            )}
 
             <h3 className={heading}>{L.manageTitle}</h3>
             {self ? (

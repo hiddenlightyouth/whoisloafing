@@ -24,6 +24,7 @@ import { ConfirmDialog } from './Dialog'
 import { MapMenu, toolButton } from './DeepParts'
 import { RepoGallery } from './RepoGallery'
 import { Bone } from './Skeleton'
+import { ModelMenu } from './ModelMenu'
 import { messages, useMessages } from '../lib/i18n'
 
 interface Props {
@@ -350,6 +351,7 @@ function Setup({ repo, onDone }: { repo: string; onDone: (saved: SavedPortfolio)
         <div className="mx-auto flex w-full max-w-[640px] items-center justify-between gap-3">
           {error ? <p className="min-w-0 text-[13px] text-red-500">{error}</p> : <span />}
           <div className="flex shrink-0 items-center gap-2">
+            {last && <ModelMenu up />}
             {index > 0 && (
               <button type="button" onClick={() => setStep(STEPS[index - 1].key)} className={toolButton}>
                 {L.prev}

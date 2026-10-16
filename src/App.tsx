@@ -7,6 +7,7 @@ import { ChatOverlays } from './components/ChatOverlays'
 import { ChatSkeleton, ExploreSkeleton } from './components/Skeleton'
 import { Header } from './components/Header'
 import { Hero } from './components/Hero'
+import type { RepoDraft } from './components/RepoInput'
 import { LeaveDialog } from './components/LeaveDialog'
 import { PageView } from './components/PageView'
 import { ShortcutTip } from './components/Shortcuts'
@@ -27,6 +28,7 @@ import { showToast } from './lib/toast'
 import { localizePath, messages, pick, useLang } from './lib/i18n'
 import { applyMeta, HOME_META } from './lib/meta'
 import { chatIdFromPath } from './lib/routes'
+import { refreshUsage, setPlansOpener } from './lib/usage'
 import type { AccountPage } from './components/Account'
 
 // 소셜 로그인에서 돌아온 화면과 탐색 목록은 필요할 때만 받아요. 탐색 목록은 앱의 새 분석 화면에서만 쓰여요.
@@ -78,7 +80,7 @@ export default function App() {
   /** 서버에 탐색 API가 있는지. 있을 때만 앱의 새 분석 화면 아래에 인기 레포를 보여줘요. 아직 물어보는 중이면 null이에요. */
   const exploreReady = config ? config.explore : null
 
-  const { page, setPage, chat, setChat, chatRepo, setChatRepo, opening, missing, loginReturn, goHome, openArticle, openAbout, openAccount, openChat, openAppPage } =
+  const { page, chat, setChat, chatRepo, setChatRepo, opening, missing, loginReturn, goHome, openArticle, openAbout, openAccount, openChat, openAppPage } =
     useScreen(analysis)
   const account = page?.kind === 'account' ? page.page : null
   const article = page?.kind === 'article'
@@ -121,6 +123,32 @@ export default function App() {
     },
     [loginNudge, reset, send, setChat, setChatRepo, storage],
   )
+
+  /** 탐색에서 고른 레포의 링크를 새 분석 화면의 입력창에 넣어 둬요. 바로 분석하지 않고, 분석 버튼을 눌러야 시작해요. */
+  const [draft, setDraft] = useState<RepoDraft | null>(null)
+  const fillRepo = useCallback(
+    (repo: string) => {
+      if (page) goHome()
+      setDraft({ url: `https://github.com/${repo}`, key: Date.now() })
+    },
+    [goHome, page],
+  )
+
+  /** 요금제와 사용량 화면을 열어요. 브라우저의 소개 화면에서는 웹의 /app으로 가요. */
+  const openPlansPage = useCallback(() => {
+    if (appShell) openAppPage('/plans')
+    else window.location.assign('/app/plans')
+  }, [openAppPage])
+
+  useEffect(() => {
+    setPlansOpener(openPlansPage)
+    return () => setPlansOpener(null)
+  }, [openPlansPage])
+
+  // 로그인하거나 로그아웃하면 한도가 바뀌어서, 이번 주 사용량을 새로 받아요.
+  useEffect(() => {
+    if (appShell) void refreshUsage()
+  }, [tokens])
 
   /** 앱의 심층 분석을 열어요. repo(소유자/레포)가 없으면 레포를 고르는 화면이에요. */
   const openDeep = useCallback(
@@ -366,8 +394,7 @@ export default function App() {
           onPortfolio={openPortfolio}
           onExplore={openExplore}
           onExplorePick={(repo) => {
-            setPage(null)
-            handleSubmit(`https://github.com/${repo}`)
+            fillRepo(repo)
           }}
           onAdmin={openAdmin}
           onArticle={openArticle}
@@ -390,11 +417,12 @@ export default function App() {
       ) : messages.length === 0 ? (
         <Hero
           onSubmit={handleSubmit}
+          draft={draft}
           below={
             // 탐색이 있는지 아직 모를 때도 뼈대로 자리를 잡아 둬서, 입력창이 가운데에 있다가 위로 튀어 오르지 않게 해요.
             !appShell || exploreReady === false ? undefined : exploreReady ? (
               <Suspense fallback={<ExploreSkeleton />}>
-                <ExplorePreview clubs={config?.clubs === true} onMore={openExplore} onPick={(repo) => handleSubmit(`https://github.com/${repo}`)} />
+                <ExplorePreview clubs={config?.clubs === true} onMore={openExplore} onPick={fillRepo} />
               </Suspense>
             ) : (
               <ExploreSkeleton />
@@ -438,7 +466,7 @@ export default function App() {
       sidebar={{
         activeChatId: page ? null : chatIdFromPath(),
         page:
-          page?.kind === 'deep' || page?.kind === 'portfolio' || page?.kind === 'resume' || page?.kind === 'explore' || page?.kind === 'admin'
+          page?.kind === 'deep' || page?.kind === 'portfolio' || page?.kind === 'resume' || page?.kind === 'plans' || page?.kind === 'explore' || page?.kind === 'admin'
             ? page.kind
             : account === 'me'
               ? 'me'
@@ -457,6 +485,7 @@ export default function App() {
             }
           : undefined,
         onAdmin: isAdmin(me) ? () => openAdmin() : undefined,
+        onPlans: openPlansPage,
         refreshKey: `${busy}:${account ?? ''}:${page?.kind === 'deep' ? 'deep' : ''}:${page?.kind === 'portfolio' || page?.kind === 'resume' ? page.kind : ''}:${page?.kind === 'explore' ? 'explore' : ''}:${chatIdFromPath() ?? ''}:${chat?.shared === true}`,
         onNew: handleHome,
         onOpenChat: (id) => {

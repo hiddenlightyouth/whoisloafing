@@ -4,7 +4,7 @@ import { messages, useMessages } from '../lib/i18n'
 import { useAppSettings } from '../lib/theme'
 import { ContributionBackdrop } from './ContributionBackdrop'
 import { Footer } from './Footer'
-import { RepoInput } from './RepoInput'
+import { RepoInput, type RepoDraft } from './RepoInput'
 
 /**
  * 메인 화면의 문구예요. 앱에서는 사이드바의 새 분석으로 들어오는 화면이라, 제목과 설명을 짧게 바꿔요.
@@ -54,11 +54,13 @@ function Title() {
 
 interface Props {
   onSubmit: (url: string) => void
+  /** 입력창에 미리 넣어 둘 링크. 탐색에서 레포를 고르면 넣어요. */
+  draft?: RepoDraft | null
   /** 앱에서 입력창 아래에 이어 붙이는 내용(탐색 목록). 있으면 한가운데가 아니라 위쪽에 입력창을 두고, 아래로 스크롤해서 봐요. */
   below?: ReactNode
 }
 
-export function Hero({ onSubmit, below }: Props) {
+export function Hero({ onSubmit, below, draft }: Props) {
   const { backdrop } = useAppSettings()
   const text = useMessages(TEXT)
 
@@ -75,8 +77,9 @@ export function Hero({ onSubmit, below }: Props) {
             >
               {text.exploreDescription}
             </p>
-            <div className="animate-rise" style={{ animationDelay: '350ms' }}>
-              <RepoInput onSubmit={onSubmit} />
+            {/* 모델 메뉴가 아래의 탐색 목록 위로 펼쳐지게, 입력창 덩어리를 한 칸 앞에 둬요. */}
+            <div className="relative z-10 animate-rise" style={{ animationDelay: '350ms' }}>
+              <RepoInput onSubmit={onSubmit} draft={draft} />
             </div>
           </div>
           <div className="animate-rise" style={{ animationDelay: '450ms' }}>
@@ -100,8 +103,8 @@ export function Hero({ onSubmit, below }: Props) {
         >
           {appShell ? text.appDescription : text.description}
         </p>
-        <div className="animate-rise" style={{ animationDelay: '350ms' }}>
-          <RepoInput onSubmit={onSubmit} />
+        <div className="relative z-10 animate-rise" style={{ animationDelay: '350ms' }}>
+          <RepoInput onSubmit={onSubmit} draft={draft} />
         </div>
       </div>
 

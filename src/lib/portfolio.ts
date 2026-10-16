@@ -1,6 +1,7 @@
 import { authFetch } from './auth'
 import { DEEP_ERRORS } from './api'
 import { getLang, messages, pick } from './i18n'
+import { getModel, refreshUsage } from './usage'
 import { readJson, writeItem, writeJson } from './storage'
 
 /** 포트폴리오에 넣을 수 있는 항목. 서버의 PortfolioSection과 맞춰요. */
@@ -102,7 +103,10 @@ type Outcome<T> = { data: T } | { error: string }
 async function call<T>(path: string, init?: RequestInit): Promise<Outcome<T>> {
   try {
     const result = await authFetch<T>(path, init)
-    if (result.ok && result.data) return { data: result.data }
+    if (result.ok && result.data) {
+      void refreshUsage()
+      return { data: result.data }
+    }
     return { error: (result.code && pick(ERRORS)[result.code]) || pick(ERRORS).failed }
   } catch {
     return { error: pick(ERRORS).network }
@@ -120,11 +124,11 @@ export function fetchPortfolioPeople(repo: string) {
 }
 
 export function createPortfolio(repo: string, sections: PortfolioKey[], plan: string, person: string | null) {
-  return call<{ repo: string; sections: PortfolioSection[] }>('/portfolio', json({ url: repo, sections, plan: plan || null, person, lang: getLang() }))
+  return call<{ repo: string; sections: PortfolioSection[] }>('/portfolio', json({ url: repo, sections, plan: plan || null, person, lang: getLang(), model: getModel() }))
 }
 
 export function revisePortfolio(repo: string, section: PortfolioKey, revision: RevisionKey, content: string, plan: string, person: string | null) {
-  return call<PortfolioSection>('/portfolio/revise', json({ url: repo, section, revision, content, plan: plan || null, person, lang: getLang() }))
+  return call<PortfolioSection>('/portfolio/revise', json({ url: repo, section, revision, content, plan: plan || null, person, lang: getLang(), model: getModel() }))
 }
 
 const SAVED_PREFIX = 'whoisloafing:portfolio:v1:'

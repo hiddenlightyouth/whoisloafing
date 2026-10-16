@@ -3,6 +3,7 @@ import type { AnalyzeRequest, ChatEvent, ChatSnapshot } from '../../shared/types
 import { repoLabel, track } from '../lib/analytics'
 import { streamAnalysis } from '../lib/api'
 import { messages, pick } from '../lib/i18n'
+import { refreshUsage } from '../lib/usage'
 
 const TEXT = messages({
   ko: { disconnected: '서버와 연결이 끊어졌어요. 잠시 뒤에 다시 시도해 주세요.', stopped: '분석을 중단했어요.' },
@@ -143,6 +144,7 @@ export function useAnalysis() {
       wakeRef.current = null
       busyRef.current = false
       setBusy(false)
+      void refreshUsage()
     },
     [append],
   )

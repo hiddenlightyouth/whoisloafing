@@ -24,6 +24,7 @@ import { toolButton } from './DeepParts'
 import { ConfirmDialog } from './Dialog'
 import { PeopleList } from './Portfolio'
 import { RepoGallery } from './RepoGallery'
+import { ModelMenu } from './ModelMenu'
 import { Bone } from './Skeleton'
 
 /** 기획안은 이만큼까지만 받아요. 서버도 같은 길이로 막아요. */
@@ -231,7 +232,8 @@ function Setup({ repo, onBack, onStarted }: { repo: string; onBack: () => void; 
           </div>
         </div>
         <div className="shrink-0 border-t border-gray-200 bg-white px-6 py-3 md:px-10">
-          <div className="mx-auto flex w-full max-w-[640px] justify-end">
+          <div className="mx-auto flex w-full max-w-[640px] items-center justify-end gap-2">
+            <ModelMenu up />
             <button
               type="button"
               disabled={person === null}

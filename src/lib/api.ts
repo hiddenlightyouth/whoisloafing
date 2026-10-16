@@ -2,6 +2,7 @@ import type { AnalyzeRequest, ChatEvent, ChatSnapshot, DeepReport, DeepSection }
 import { authFetch, authHeaders } from './auth'
 import { apiUrl, ownerHeaders, readResult } from './http'
 import { getLang, messages, pick, type Lang } from './i18n'
+import { getModel } from './usage'
 
 export interface ServerConfig {
   /** 채팅 저장과 공유 기능이 켜져 있는지 */
@@ -34,6 +35,8 @@ export interface ServerConfig {
   portfolio: boolean
   /** 서버에 이력서 만들기 API가 있는지. 없으면 앱의 사이드바에서 이력서 만들기를 숨겨요. */
   resume: boolean
+  /** 서버가 주간 사용량과 요금제를 다루는지. 없으면 시작 창에서 사용량을 보여주지 않아요. */
+  usage: boolean
 }
 
 /** 서버가 어떤 기능을 지원하는지 물어봐요. */
@@ -56,9 +59,10 @@ export async function fetchConfig(): Promise<ServerConfig> {
       deepStack: result.ok && result.data?.deepStack === true,
       portfolio: result.ok && result.data?.portfolio === true,
       resume: result.ok && result.data?.resume === true,
+      usage: result.ok && result.data?.usage === true,
     }
   } catch {
-    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false, clubs: false, githubClientId: null, kakaoClientId: null, socialAppLink: false, socialUnlink: false, withdraw: false, deepStack: false, portfolio: false, resume: false }
+    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false, clubs: false, githubClientId: null, kakaoClientId: null, socialAppLink: false, socialUnlink: false, withdraw: false, deepStack: false, portfolio: false, resume: false, usage: false }
   }
 }
 
@@ -106,6 +110,8 @@ export const DEEP_ERRORS = messages<Record<string, string>>({
     C4032: '비공개 레포는 분석할 수 없어요.',
     C4033: '서버가 이 레포에 접근할 수 없어요. 레포의 조직이 접근을 제한하고 있을 수 있어요.',
     C429: '요청이 너무 많아요. 잠시 뒤에 다시 시도해 주세요.',
+    C4291: '이번 주 사용량을 모두 썼어요. 월요일 0시에 다시 채워져요.',
+    C004: '이 모델은 아직 준비 중이에요. Claude로 다시 시작해 주세요.',
     failed: '분석하지 못했어요. 잠시 뒤에 다시 시도해 주세요.',
     network: '서버와 연결하지 못했어요. 잠시 뒤에 다시 시도해 주세요.',
   },
@@ -115,6 +121,8 @@ export const DEEP_ERRORS = messages<Record<string, string>>({
     C4032: "Private repositories can't be analyzed.",
     C4033: "The server can't access this repository. Its organization may be restricting access.",
     C429: 'Too many requests. Please try again in a moment.',
+    C4291: "You've used up this week's usage. It refills on Monday at midnight (KST).",
+    C004: "This model isn't ready yet. Please start again with Claude.",
     failed: "Couldn't analyze it. Please try again in a moment.",
     network: "Couldn't reach the server. Please try again in a moment.",
   },
@@ -128,7 +136,7 @@ export async function fetchDeepReport(
   since?: string,
 ): Promise<{ report: DeepReport } | { error: string }> {
   try {
-    const query = `url=${encodeURIComponent(repo)}&lang=${getLang()}${since ? `&since=${encodeURIComponent(since)}` : ''}`
+    const query = `url=${encodeURIComponent(repo)}&lang=${getLang()}&model=${getModel()}${since ? `&since=${encodeURIComponent(since)}` : ''}`
     const result = await authFetch<DeepReport>(`/deep/${section}?${query}`)
     if (result.ok && result.data) return { report: result.data }
     return { error: (result.code && pick(DEEP_ERRORS)[result.code]) || pick(DEEP_ERRORS).failed }
@@ -194,7 +202,8 @@ export async function streamAnalysis(
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...ownerHeaders(), ...(await authHeaders()) },
     // 시간대별 통계를 사용자의 시간대로 보여주려고 함께 보내요.
-    body: JSON.stringify({ ...request, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, lang: getLang() }),
+    // 고른 모델도 같이 보내요. 서버가 사용량을 기록할 때 써요.
+    body: JSON.stringify({ ...request, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, lang: getLang(), model: getModel() }),
     signal,
   })
   if (!res.ok || !res.body) throw new Error(`분석 요청에 실패했어요. (${res.status})`)

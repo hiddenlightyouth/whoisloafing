@@ -9,6 +9,7 @@ import { RankingCarousel } from './RankingCarousel'
 import { RichText } from './RichText'
 import { SummaryChart } from './SummaryChart'
 import { messages, pick as pickText, useMessages } from '../lib/i18n'
+import { openPlans } from '../lib/usage'
 import { MENU_TEXT } from './Followup'
 
 const BUBBLE_TEXT = messages({
@@ -21,6 +22,7 @@ const BUBBLE_TEXT = messages({
     include: '전부 포함하기',
     exclude: '빼고 계산하기',
     retry: '다시 시도하기',
+    plans: '요금제 보기',
     other: '다른 레포 분석하기',
   },
   en: {
@@ -32,6 +34,7 @@ const BUBBLE_TEXT = messages({
     include: 'Include everything',
     exclude: 'Leave them out',
     retry: 'Try again',
+    plans: 'See plans',
     other: 'Analyze another repo',
   },
 })
@@ -246,8 +249,13 @@ export function Bubble({ message, busy, isLast, onSend, docked = false, onNewRep
           </div>
         )}
 
-        {event.type === 'error' && ((event.action === 'retry' && request) || (event.home && onNewRepo)) && (
+        {event.type === 'error' && ((event.action === 'retry' && request) || event.action === 'plans' || (event.home && onNewRepo)) && (
           <div className="mb-1.5 flex flex-wrap gap-2">
+            {event.action === 'plans' && (
+              <button type="button" onClick={openPlans} className={actionButton}>
+                {text.plans}
+              </button>
+            )}
             {event.action === 'retry' && request && (
               <button type="button" disabled={locked} onClick={retry} className={actionButton}>
                 {text.retry}

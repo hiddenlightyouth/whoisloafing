@@ -11,6 +11,7 @@ import { CHAT_LIST_TEXT, copyChatLink, DeleteDialog } from './History'
 import { Kbd } from './Shortcuts'
 import { Bone } from './Skeleton'
 import { messages, pick, useMessages } from '../lib/i18n'
+import { percentOf, refreshUsage, useUsage } from '../lib/usage'
 
 const TEXT = messages({
   ko: {
@@ -24,6 +25,8 @@ const TEXT = messages({
     me: '내 정보',
     admin: '관리자',
     signOut: '로그아웃',
+    plans: '요금제와 사용량',
+    weekly: (percent: number) => `이번 주 ${percent}% 사용`,
     settings: '설정',
     bug: '버그 신고',
     login: '로그인',
@@ -40,6 +43,8 @@ const TEXT = messages({
     me: 'Account',
     admin: 'Admin',
     signOut: 'Sign out',
+    plans: 'Plans and usage',
+    weekly: (percent: number) => `${percent}% used this week`,
     settings: 'Settings',
     bug: 'Report a bug',
     login: 'Sign in',
@@ -51,7 +56,7 @@ interface Props {
   /** 지금 열려 있는 채팅. 목록에서 강조해요. */
   activeChatId: string | null
   /** 지금 보고 있는 화면. 아래쪽 링크를 강조해요. */
-  page: 'deep' | 'portfolio' | 'resume' | 'explore' | 'articles' | 'me' | 'admin' | null
+  page: 'deep' | 'portfolio' | 'resume' | 'plans' | 'explore' | 'articles' | 'me' | 'admin' | null
   /** 값이 바뀌면 목록을 다시 받아요. */
   refreshKey: string
   onNew: () => void
@@ -75,6 +80,8 @@ interface Props {
   settingsOpen: boolean
   /** 관리자 화면을 열어요. 관리자 계정일 때만 넘기고, 아니면 메뉴에 보여주지 않아요. */
   onAdmin?: () => void
+  /** 요금제와 사용량 화면을 열어요. */
+  onPlans: () => void
   /** 로그인했는지. 웹의 /app은 로그인하지 않고도 써서, 그때는 내 작업 대신 로그인 안내를 보여줘요. */
   signedIn: boolean
   /** 로그인 화면을 열어요. */
@@ -218,7 +225,7 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
 }
 
 /** 앱 화면 왼쪽의 사이드바예요. 새 분석, 내 작업 목록과 관리, 아티클과 내 정보로 가는 링크가 있어요. */
-export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPortfolio, onResume, onExplore, onOpenChat, onDeepRepo, onChatChanged, onMe, onSettings, settingsOpen, onAdmin, signedIn, onLogin }: Props) {
+export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPortfolio, onResume, onExplore, onOpenChat, onDeepRepo, onChatChanged, onMe, onSettings, settingsOpen, onAdmin, onPlans, signedIn, onLogin }: Props) {
   const { me } = useAuth()
   const list = useMessages(CHAT_LIST_TEXT)
   const text = useMessages(TEXT)
@@ -484,7 +491,7 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
         )}
       </nav>
 
-      <AccountMenu me={signedIn ? me : null} page={page} onMe={onMe} onSettings={onSettings} settingsOpen={settingsOpen} onAdmin={onAdmin} onLogin={signedIn ? undefined : onLogin} />
+      <AccountMenu me={signedIn ? me : null} page={page} onMe={onMe} onSettings={onSettings} settingsOpen={settingsOpen} onAdmin={onAdmin} onPlans={onPlans} onLogin={signedIn ? undefined : onLogin} />
 
       {deleting && <DeleteDialog chat={deleting} working={working} onCancel={cancelDelete} onConfirm={() => void remove(deleting)} />}
     </aside>
@@ -505,6 +512,7 @@ function AccountMenu({
   onSettings,
   settingsOpen,
   onAdmin,
+  onPlans,
   onLogin,
 }: {
   me: Me | null
@@ -513,6 +521,7 @@ function AccountMenu({
   onSettings: () => void
   settingsOpen: boolean
   onAdmin?: () => void
+  onPlans: () => void
   /** 로그인하지 않았으면 넘겨요. 계정 버튼 대신 로그인 버튼을 보여줘요. */
   onLogin?: () => void
 }) {
@@ -521,8 +530,14 @@ function AccountMenu({
   const { ready: canReport } = useFeedback()
   const text = useMessages(TEXT)
   const name = me?.name || text.me
+  const usage = useUsage()
 
   useDismiss(open, ref, () => setOpen(false))
+
+  // 메뉴를 열 때마다 이번 주 사용량을 새로 받아요.
+  useEffect(() => {
+    if (open) void refreshUsage()
+  }, [open])
 
   const go = (action: () => void) => () => {
     setOpen(false)
@@ -534,6 +549,14 @@ function AccountMenu({
       {open && (
         <div role="menu" className="absolute bottom-full left-2 mb-1 w-[272px] origin-bottom-left animate-pop rounded-2xl border border-gray-200 bg-white p-1.5">
           {me?.email && <p className="truncate px-2.5 pt-1.5 pb-2 text-[12.5px] text-gray-500">{me.email}</p>}
+          {usage && (
+            <div className="px-2.5 pb-2.5">
+              <p className="mb-1.5 text-[12px] text-gray-500 tabular-nums">{text.weekly(percentOf(usage.used, usage.limit))}</p>
+              <div className="h-1.5 overflow-hidden rounded-full bg-gray-100" aria-hidden>
+                <div className="h-full bg-brand" style={{ width: `${Math.min(100, (usage.used / usage.limit) * 100)}%` }} />
+              </div>
+            </div>
+          )}
 
           <button type="button" role="menuitem" onClick={go(onMe)} className={menuRow}>
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" className={menuIcon} aria-hidden="true">
@@ -541,6 +564,12 @@ function AccountMenu({
               <path d="M3 13.5c.6-2.2 2.6-3.5 5-3.5s4.4 1.3 5 3.5" strokeLinecap="round" />
             </svg>
             {text.me}
+          </button>
+          <button type="button" role="menuitem" onClick={go(onPlans)} className={menuRow}>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" className={menuIcon} aria-hidden="true">
+              <path d="M2.5 13.5h11M4.5 11V8M8 11V4.5M11.5 11V6.5" />
+            </svg>
+            {text.plans}
           </button>
           {onAdmin && (
             <button type="button" role="menuitem" onClick={go(onAdmin)} className={menuRow}>
@@ -590,7 +619,7 @@ function AccountMenu({
           if (!open) track('app_menu_open')
           setOpen((value) => !value)
         }}
-        className={`flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 text-left transition-colors ${tone(open || page === 'me' || page === 'articles' || page === 'admin')}`}
+        className={`flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 text-left transition-colors ${tone(open || page === 'me' || page === 'articles' || page === 'admin' || page === 'plans')}`}
       >
         {/* 프로필 사진 대신 이름의 첫 글자를 동그라미에 넣어요. */}
         <span aria-hidden className="flex size-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-[13px] font-semibold text-brand-hover">
