@@ -329,15 +329,17 @@ function ClubGuide({ onClose }: { onClose: () => void }) {
   return (
     <>
       <svg aria-hidden className="pointer-events-none absolute -top-1.5 -left-1.5 h-[calc(100%+12px)] w-[calc(100%+12px)] overflow-visible text-brand">
-        <rect x="0" y="0" width="100%" height="100%" rx="12" fill="none" stroke="currentColor" strokeWidth="2" pathLength="1" strokeDasharray="1" className="animate-draw" />
+        <rect x="0" y="0" width="100%" height="100%" rx="12" fill="currentColor" fillOpacity="0.07" stroke="currentColor" strokeWidth="2.5" pathLength="1" strokeDasharray="1" className="animate-draw" />
       </svg>
       <div
         role="dialog"
         aria-label={L.guide}
-        className="absolute top-full left-0 z-20 mt-4 w-[min(320px,calc(100vw-48px))] origin-top-left animate-pop rounded-xl border border-gray-200 bg-white p-4 [animation-delay:0.45s]"
+        className="absolute top-full left-0 z-20 mt-4 w-[min(340px,calc(100vw-48px))] origin-top-left animate-pop rounded-xl bg-brand p-4 text-white [animation-delay:0.45s]"
       >
+        {/* 동아리 버튼 줄을 가리키는 말풍선 꼬리 */}
+        <span className="absolute -top-1.5 left-6 size-3 rotate-45 rounded-[2px] bg-brand" aria-hidden="true" />
         <div className="flex items-start gap-3">
-          <p className="flex-1 text-[14px] leading-snug font-medium text-gray-900">{L.guide}</p>
+          <p className="flex-1 text-[15px] leading-snug font-semibold text-white">{L.guide}</p>
           <button
             type="button"
             aria-label={L.guideClose}
@@ -346,15 +348,15 @@ function ClubGuide({ onClose }: { onClose: () => void }) {
               if (never) writeFlag(GUIDE_KEY, true)
               onClose()
             }}
-            className="-mt-1 -mr-1 flex size-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            className="-mt-1 -mr-1 flex size-7 shrink-0 items-center justify-center rounded-md text-white/70 transition-colors hover:bg-white/15 hover:text-white"
           >
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
               <path d="M4 4l8 8M12 4l-8 8" />
             </svg>
           </button>
         </div>
-        <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-[12.5px] text-gray-500 select-none">
-          <input type="checkbox" checked={never} onChange={(event) => setNever(event.target.checked)} className="size-3.5 accent-brand" />
+        <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-[12.5px] text-white/70 select-none">
+          <input type="checkbox" checked={never} onChange={(event) => setNever(event.target.checked)} className="size-3.5 accent-white" />
           {L.guideNever}
         </label>
       </div>

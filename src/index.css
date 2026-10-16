@@ -556,6 +556,15 @@
   color: rgb(255 255 255 / 0.7);
 }
 
+/* 메인 컬러 바탕의 안내 카드(탐색의 동아리 안내)에서 닫기 버튼과 체크 칸도 흰색이에요. */
+.dark .hover\:bg-white\/15:hover {
+  background-color: rgb(255 255 255 / 0.15);
+}
+
+.dark .accent-white {
+  accent-color: #fff;
+}
+
 /* 확인 창 뒤를 가리는 막과 토스트는 다크 모드에서도 어두운 색이에요. */
 .dark .bg-gray-900\/25 {
   background-color: rgb(0 0 0 / 0.5);
