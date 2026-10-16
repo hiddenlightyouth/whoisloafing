@@ -33,7 +33,7 @@ interface Props {
   app?: boolean
   /** 메인 화면인지. 이때만 앱 다운로드 아래에 앱을 권하는 툴팁을 띄워요. */
   home?: boolean
-  /** 웹의 /app으로 가는 사용해보기 버튼을 보여줄지. 소개와 아티클 화면에서 계정 링크 대신 둬요. */
+  /** 웹의 /app으로 가는 시작하기 버튼을 보여줄지. 소개와 아티클 화면에서 계정 링크 대신 둬요. */
   tryApp?: boolean
 }
 
@@ -63,7 +63,7 @@ const TEXT = messages({
     closeMenu: '메뉴 닫기',
     openMenu: '메뉴 열기',
     language: '언어',
-    tryApp: '사용해보기',
+    tryApp: '시작하기',
   },
   en: {
     shareFailed: "Couldn't share. Please try again in a moment.",
@@ -90,7 +90,7 @@ const TEXT = messages({
     closeMenu: 'Close menu',
     openMenu: 'Open menu',
     language: 'Language',
-    tryApp: 'Try it',
+    tryApp: 'Get started',
   },
 })
 

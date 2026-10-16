@@ -38,7 +38,7 @@ export const ABOUT_TEXT = messages({
   ko: {
     title: '레포를 더 쉽게 분석하기',
     lead: 'GitHub Repository 링크를 입력하여 누가 프로젝트에 가장 많이 기여했는지, 어떤 기능을 개발했는지 그리고 이 프로젝트의 협업 방식을 알아보거나 훔칠 수도 있답니다.',
-    start: '사용해보기',
+    start: '시작하기',
     download: 'macOS 앱 다운로드',
     appOnly: '앱 전용',
     trust: '기여도 숫자는 판결이 아니라 참고할 신호예요. 누군가의 일을 이 숫자 하나로만 재지 말고, 더 나은 대화를 위한 맥락으로 써 주세요.',
@@ -56,7 +56,7 @@ export const ABOUT_TEXT = messages({
   en: {
     title: 'Who built what in your GitHub repo?',
     lead: 'Turn any GitHub repository into a clear story of contribution, ownership, and teamwork. Understand the project, contributors, feature ownership, activity patterns, and team workflow from a single repo link.',
-    start: 'Try it',
+    start: 'Get started',
     download: 'Download for macOS',
     appOnly: 'Mac app',
     trust: "Contribution numbers are signals, not verdicts. Use them as context for better conversations, not as the only measure of someone's work.",
