@@ -9,13 +9,13 @@ export type PortfolioKey = 'intro' | 'period' | 'team' | 'stack' | 'role' | 'fea
 const SECTIONS = messages<{ key: PortfolioKey; title: string; hint: string }[]>({
   ko: [
     { key: 'intro', title: '프로젝트 소개', hint: '어떤 고민에서 시작했고 무엇을 만들었는지' },
-    { key: 'period', title: '개발 기간', hint: '언제부터 언제까지, 얼마나 작업했는지' },
+    { key: 'period', title: '개발 기간', hint: '언제부터 언제까지 얼마나 작업했는지' },
     { key: 'team', title: '팀 구성', hint: '분야별로 누가 참여했는지' },
-    { key: 'stack', title: '기술 스택', hint: '분야별로 쓴 기술' },
+    { key: 'stack', title: '기술 스택', hint: '분야별로 사용한 기술' },
     { key: 'role', title: '맡은 역할', hint: '내가 맡아서 한 일' },
     { key: 'features', title: '주요 기능', hint: '서비스의 핵심 기능' },
     { key: 'trouble', title: '문제 해결 경험', hint: '부딪힌 문제와 해결한 방법' },
-    { key: 'result', title: '성과와 배운 점', hint: '확인되는 성과와 익힌 것' },
+    { key: 'result', title: '성과와 배운 점', hint: '확인할 수 있는 성과와 배운 것' },
   ],
   en: [
     { key: 'intro', title: 'Project overview', hint: 'What problem it started from and what was built' },
@@ -41,10 +41,10 @@ const REVISION_LABELS = messages<{ key: RevisionKey; label: string }[]>({
   ko: [
     { key: 'shorter', label: '더 짧게' },
     { key: 'longer', label: '더 자세하게' },
-    { key: 'numbers', label: '수치를 넣어서' },
-    { key: 'formal', label: '더 전문적인 말투로' },
+    { key: 'numbers', label: '수치 넣기' },
+    { key: 'formal', label: '더 전문적으로' },
     { key: 'list', label: '목록으로 정리' },
-    { key: 'story', label: '문장으로 풀어서' },
+    { key: 'story', label: '문장으로 풀기' },
     { key: 'rewrite', label: '다시 쓰기' },
   ],
   en: [
