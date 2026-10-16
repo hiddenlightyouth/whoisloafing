@@ -11,7 +11,7 @@ import { CHAT_LIST_TEXT, copyChatLink, DeleteDialog } from './History'
 import { Kbd } from './Shortcuts'
 import { Bone } from './Skeleton'
 import { messages, pick, useMessages } from '../lib/i18n'
-import { percentOf, refreshUsage, useUsage } from '../lib/usage'
+import { percentOf, refreshUsage, useUsage, type PlanId } from '../lib/usage'
 
 const TEXT = messages({
   ko: {
@@ -25,7 +25,7 @@ const TEXT = messages({
     me: '내 정보',
     admin: '관리자',
     signOut: '로그아웃',
-    plans: '요금제와 사용량',
+    plans: '사용량',
     weekly: (percent: number) => `이번 주 ${percent}% 사용`,
     settings: '설정',
     bug: '버그 신고',
@@ -43,7 +43,7 @@ const TEXT = messages({
     me: 'Account',
     admin: 'Admin',
     signOut: 'Sign out',
-    plans: 'Plans and usage',
+    plans: 'Usage',
     weekly: (percent: number) => `${percent}% used this week`,
     settings: 'Settings',
     bug: 'Report a bug',
@@ -505,6 +505,8 @@ const menuIcon = 'size-4 shrink-0 text-gray-500'
  * 사이드바 맨 아래의 계정 버튼이에요. 누르면 위로 메뉴가 펼쳐져서 내 정보, 아티클, 관리자 화면으로 가거나 로그아웃해요. 오른쪽에는 설정과 버그 신고 버튼이 있어요.
  * 바깥을 누르거나 Esc를 누르면 닫혀요.
  */
+const PLAN_NAMES: Record<PlanId, string> = { FREE: 'Free', LITE: 'Lite', PRO: 'Pro' }
+
 function AccountMenu({
   me,
   page,
@@ -627,6 +629,8 @@ function AccountMenu({
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[13.5px] font-semibold text-gray-900">{name}</span>
+          {/* Claude처럼 이름 아래에 지금 쓰는 요금제를 작게 적어요. */}
+          {usage?.plan && <span className="block truncate text-[12px] text-gray-500">{PLAN_NAMES[usage.plan]}</span>}
         </span>
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-4 shrink-0 text-gray-400" aria-hidden="true">
           <path d="M5 6.5L8 3.5l3 3M5 9.5l3 3 3-3" strokeLinecap="round" strokeLinejoin="round" />
