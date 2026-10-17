@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useDismiss } from '../hooks/useDismiss'
 import { track } from '../lib/analytics'
+import { useAuth } from '../lib/auth'
 import { fetchPortfolioPeople, type PortfolioPerson } from '../lib/portfolio'
 import {
   createResumeProject,
+  loadResume,
   newId,
   PROBLEM_FIELDS,
   RESUME_LABELS,
@@ -14,6 +16,7 @@ import {
   toMarkdown,
   toPlainText,
   useResume,
+  useResumeLoading,
   type ResumeProblem,
   type ResumeProject,
   type ResumeRevisionKey,
@@ -114,6 +117,11 @@ type Mode = { kind: 'doc' } | { kind: 'pick' } | { kind: 'setup'; repo: string }
 export function Resume({ onNew, refreshKey }: { onNew: () => void; refreshKey: number }) {
   const L = useMessages(TEXT)
   const [mode, setMode] = useState<Mode>({ kind: 'doc' })
+  const account = useAuth().me?.email ?? null
+
+  useEffect(() => {
+    void loadResume(account)
+  }, [account])
 
   if (mode.kind === 'pick') {
     return (
@@ -253,6 +261,7 @@ function Setup({ repo, onBack, onStarted }: { repo: string; onBack: () => void; 
 function Document({ onAdd }: { onAdd: () => void }) {
   const L = useMessages(TEXT)
   const projects = useResume()
+  const loading = useResumeLoading()
   const [editing, setEditing] = useState<string | null>(null)
   const [removing, setRemoving] = useState<ResumeProject | null>(null)
   const ready = projects.filter((item) => !item.pending)
@@ -275,7 +284,7 @@ function Document({ onAdd }: { onAdd: () => void }) {
         <h1 className="text-[20px] leading-tight font-semibold text-gray-900">{L.title}</h1>
         <div className="flex flex-wrap items-center gap-2">
           {ready.length > 0 && <CopyButtons projects={ready} />}
-          <button type="button" onClick={onAdd} className={`${toolButton} whitespace-nowrap`}>
+          <button type="button" onClick={onAdd} disabled={loading} className={`${toolButton} whitespace-nowrap disabled:opacity-50`}>
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
               <path d="M8 3v10M3 8h10" />
             </svg>
@@ -286,7 +295,9 @@ function Document({ onAdd }: { onAdd: () => void }) {
 
       <div className="-mx-6 min-h-0 flex-1 overflow-y-auto border-t border-gray-200 bg-gray-50 px-6 py-8 md:-mx-10 md:px-10">
         <article className="mx-auto w-full max-w-[880px] rounded-xl border border-gray-200 bg-white px-6 py-8 md:px-12 md:py-12">
-          {projects.length === 0 ? (
+          {loading && projects.length === 0 ? (
+            <Loading />
+          ) : projects.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <p className="text-[16px] font-semibold text-gray-900">{L.emptyTitle}</p>
               <p className="max-w-[440px] text-[13.5px] leading-relaxed break-keep text-gray-500">{L.emptyBody}</p>
@@ -337,6 +348,24 @@ function Document({ onAdd }: { onAdd: () => void }) {
         />
       )}
     </main>
+  )
+}
+
+/** 계정의 이력서를 받는 동안 보여줘요. 프로젝트 하나와 같은 배치예요. */
+function Loading() {
+  return (
+    <div aria-busy="true" aria-hidden className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-4">
+        <Bone className="h-5 w-2/3" />
+        <Bone className="h-4 w-40" />
+      </div>
+      <Bone className="h-4 w-3/4" />
+      <Bone className="mt-2 h-4 w-5/6" />
+      <Bone className="h-4 w-1/2" />
+      <Bone className="mt-2 h-4 w-48" />
+      <Bone className="ml-6 h-4 w-5/6" />
+      <Bone className="ml-6 h-4 w-4/6" />
+    </div>
   )
 }
 

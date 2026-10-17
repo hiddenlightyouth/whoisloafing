@@ -2,6 +2,7 @@ import { authFetch } from './auth'
 import { DEEP_ERRORS } from './api'
 import { getLang, messages, pick } from './i18n'
 import { getModel, refreshUsage } from './usage'
+import { cancelSave, canSync, deleteSaved, fetchSaved, putSaved, scheduleSave } from './saved'
 import { readJson, writeItem, writeJson } from './storage'
 
 /** 포트폴리오에 넣을 수 있는 항목. 서버의 PortfolioSection과 맞춰요. */
@@ -76,7 +77,7 @@ export interface PortfolioPerson {
   commits: number
 }
 
-/** 이 기기에 저장해 두는 포트폴리오 하나. 다음에 같은 레포를 열면 이어서 고쳐요. */
+/** 계정(또는 이 기기)에 저장해 두는 포트폴리오 하나. 다음에 같은 레포를 열면 이어서 고쳐요. */
 export interface SavedPortfolio {
   repo: string
   sections: PortfolioSection[]
@@ -133,12 +134,61 @@ export function revisePortfolio(repo: string, section: PortfolioKey, revision: R
 
 const SAVED_PREFIX = 'whoisloafing:portfolio:v1:'
 
-export const readPortfolio = (repo: string) => readJson<SavedPortfolio | null>(`${SAVED_PREFIX}${repo.toLowerCase()}`, null)
+const localKey = (repo: string) => `${SAVED_PREFIX}${repo.toLowerCase()}`
+
+const savedPath = (repo: string) => `/portfolio/saved?repo=${encodeURIComponent(repo)}`
+
+/** 이 기기에 남은 포트폴리오. unsynced는 계정에 올리지 못한 것이라 다음에 계정의 것보다 먼저 써요. */
+type LocalPortfolio = SavedPortfolio & { unsynced?: boolean }
+
+function strip({ unsynced: _unsynced, ...saved }: LocalPortfolio): SavedPortfolio {
+  return saved
+}
+
+/** 이 기기에 남은 것. 계정에 저장하기 전에 만든 것이거나, 계정에 올리지 못한 것이에요. */
+export function readPortfolio(repo: string): SavedPortfolio | null {
+  const local = readJson<LocalPortfolio | null>(localKey(repo), null)
+  return local && strip(local)
+}
 
 // 저장 공간이 모자라면 저장하지 않아요. 화면에는 그대로 보여요.
-export const writePortfolio = (saved: SavedPortfolio) => writeJson(`${SAVED_PREFIX}${saved.repo.toLowerCase()}`, saved)
+const writeLocal = (saved: SavedPortfolio, unsynced: boolean) => writeJson(localKey(saved.repo), unsynced ? { ...saved, unsynced } : saved)
 
-export const clearPortfolio = (repo: string) => writeItem(`${SAVED_PREFIX}${repo.toLowerCase()}`, null)
+async function upload(saved: SavedPortfolio, keepalive = false) {
+  if (await putSaved('/portfolio/saved', { repo: saved.repo, data: saved }, keepalive)) writeItem(localKey(saved.repo), null)
+  else writeLocal(saved, true)
+}
+
+/**
+ * 계정에 저장한 포트폴리오를 불러와요. 계정에 저장할 수 없으면 이 기기의 것을 돌려줘요.
+ * 계정에 없고 이 기기에만 있으면 계정에 올려서, 계정에 저장하기 전에 만든 포트폴리오를 잃지 않아요.
+ */
+export async function loadPortfolio(repo: string): Promise<SavedPortfolio | null> {
+  const local = readJson<LocalPortfolio | null>(localKey(repo), null)
+  if (!(await canSync())) return local && strip(local)
+  const result = await fetchSaved<SavedPortfolio>(savedPath(repo))
+  if (!result) return local && strip(local)
+  if (result.data && !local?.unsynced) {
+    writeItem(localKey(repo), null)
+    return result.data
+  }
+  if (!local) return null
+  await upload(strip(local))
+  return strip(local)
+}
+
+export function writePortfolio(saved: SavedPortfolio) {
+  void canSync().then((sync) => {
+    if (sync) scheduleSave(localKey(saved.repo), (keepalive) => upload(saved, keepalive))
+    else writeLocal(saved, false)
+  })
+}
+
+export function clearPortfolio(repo: string) {
+  cancelSave(localKey(repo))
+  writeItem(localKey(repo), null)
+  void canSync().then((sync) => sync && deleteSaved(savedPath(repo)))
+}
 
 /** 화면 오른쪽의 미리보기와 복사 버튼이 쓰는 마크다운이에요. 항목은 왼쪽에서 정한 순서대로 이어 붙여요. */
 export function toMarkdown(name: string, sections: PortfolioSection[]): string {

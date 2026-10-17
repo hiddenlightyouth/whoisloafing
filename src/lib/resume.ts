@@ -3,7 +3,8 @@ import { authFetch } from './auth'
 import { DEEP_ERRORS } from './api'
 import { getLang, messages, pick } from './i18n'
 import { getModel, refreshUsage } from './usage'
-import { readJson, writeJson } from './storage'
+import { cancelSave, canSync, fetchSaved, putSaved, scheduleSave } from './saved'
+import { readFlag, readJson, writeFlag, writeItem, writeJson } from './storage'
 
 /** 문제 해결 경험 하나. 서버의 ResumeProblemDto와 맞춰요. 원인과 판단은 비어 있을 수 있어요. */
 export interface ResumeProblem {
@@ -29,7 +30,7 @@ export interface ResumeProject {
   role: string
   stack: string[]
   problems: ResumeProblem[]
-  /** 서버가 아직 쓰고 있는 프로젝트. 저장하지 않아요. */
+  /** 서버가 아직 쓰고 있는 프로젝트. 계정에도 이 기기에도 저장하지 않아요. */
   pending?: boolean
 }
 
@@ -117,20 +118,86 @@ export function reviseResumeProblem(project: ResumeProject, revision: ResumeRevi
   })
 }
 
-// 이력서는 서버에 저장하지 않고 이 기기에 하나만 둬요. 쓰는 중에 화면을 떠나도 끝나면 저장되게 화면 바깥에 들고 있어요.
+// 이력서는 계정에 하나만 둬요. 쓰는 중에 화면을 떠나도 끝나면 저장되게 화면 바깥에 들고 있어요.
+// 계정에 저장할 수 없으면(예전 서버) 전처럼 이 기기에 둬요.
 const SAVED_KEY = 'whoisloafing:resume:v1'
+/** 이 기기의 이력서를 계정에 올리지 못했다는 표시. 있으면 다음에 계정의 것보다 이 기기의 것을 먼저 써요. */
+const UNSYNCED_KEY = 'whoisloafing:resume:v1:unsynced'
+const SAVED_PATH = '/portfolio/resume/saved'
 
 // 새로 고치면 쓰던 요청은 사라지니, 쓰는 중이던 프로젝트는 다시 불러오지 않아요.
-let projects: ResumeProject[] = readJson<ResumeProject[]>(SAVED_KEY, []).filter((item) => !item.pending)
+const readLocal = () => readJson<ResumeProject[]>(SAVED_KEY, []).filter((item) => !item.pending)
+
+let projects: ResumeProject[] = readLocal()
+/** 계정의 이력서를 받아 둔 계정. 이 값이 있으면 고칠 때마다 계정에 저장해요. */
+let syncedFor: string | null = null
+let loading = false
 const listeners = new Set<() => void>()
 
+const notify = () => listeners.forEach((listener) => listener())
+
+const done = (list: ResumeProject[]) => list.filter((item) => !item.pending)
+
+function writeLocal(list: ResumeProject[], unsynced: boolean) {
+  writeJson(SAVED_KEY, done(list))
+  writeFlag(UNSYNCED_KEY, unsynced)
+}
+
+function clearLocal() {
+  writeItem(SAVED_KEY, null)
+  writeFlag(UNSYNCED_KEY, false)
+}
+
+async function upload(list: ResumeProject[], keepalive = false) {
+  if (await putSaved(SAVED_PATH, { data: done(list) }, keepalive)) clearLocal()
+  else writeLocal(list, true)
+}
+
+/**
+ * 계정에 저장한 이력서를 받아요. 이력서 화면을 열 때와 계정이 바뀔 때 불러요.
+ * 계정에 없고 이 기기에만 있으면 계정에 올려서, 계정에 저장하기 전에 만든 이력서를 잃지 않아요.
+ */
+export async function loadResume(account: string | null) {
+  if (syncedFor && syncedFor !== account) {
+    cancelSave(SAVED_KEY)
+    syncedFor = null
+    projects = readLocal()
+    notify()
+  }
+  if (!account || syncedFor === account || loading) return
+  if (!(await canSync())) return
+  cancelSave(SAVED_KEY)
+  loading = true
+  notify()
+  const result = await fetchSaved<ResumeProject[]>(SAVED_PATH)
+  loading = false
+  if (!result) {
+    notify()
+    return
+  }
+  const local = readLocal()
+  const pending = projects.filter((item) => item.pending)
+  syncedFor = account
+  if (result.data && !readFlag(UNSYNCED_KEY)) {
+    clearLocal()
+    projects = [...result.data, ...pending]
+  } else {
+    projects = [...local, ...pending]
+    if (local.length > 0) void upload(local)
+  }
+  notify()
+}
+
 export function setResume(update: (prev: ResumeProject[]) => ResumeProject[]) {
+  const before = done(projects)
   projects = update(projects)
-  writeJson(
-    SAVED_KEY,
-    projects.filter((item) => !item.pending),
-  )
-  listeners.forEach((listener) => listener())
+  notify()
+  const after = done(projects)
+  if (after.length === before.length && after.every((item, index) => item === before[index])) return
+  if (syncedFor) {
+    const list = projects
+    scheduleSave(SAVED_KEY, (keepalive) => upload(list, keepalive))
+  } else writeLocal(projects, false)
 }
 
 export function useResume() {
@@ -140,6 +207,17 @@ export function useResume() {
       return () => listeners.delete(listener)
     },
     () => projects,
+  )
+}
+
+/** 계정의 이력서를 받는 중인지 */
+export function useResumeLoading() {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    () => loading,
   )
 }
 

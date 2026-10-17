@@ -2,11 +2,13 @@ import { Marked } from 'marked'
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { useDismiss } from '../hooks/useDismiss'
 import { track } from '../lib/analytics'
+import { useAuth } from '../lib/auth'
 import {
   clearPortfolio,
   createPortfolio,
   DEFAULT_SECTIONS,
   fetchPortfolioPeople,
+  loadPortfolio,
   portfolioSections,
   readPortfolio,
   revisePortfolio,
@@ -62,12 +64,31 @@ export function Portfolio({ repo, onOpen, onNew, refreshKey }: Props) {
 
 function Builder({ repo, onBack }: { repo: string; onBack: () => void }) {
   const L = useMessages(TEXT)
+  const account = useAuth().me?.email ?? null
+  // 이 기기에 남은 것이 있으면 먼저 보여주고, 계정에 저장한 것을 받으면 바꿔요.
   const [saved, setSaved] = useState<SavedPortfolio | null>(() => readPortfolio(repo))
+  const [loading, setLoading] = useState(saved === null)
   const [owner, name] = repo.split('/')
   /** 다시 만들기를 누르기 전에 한 번 더 묻는 창이 떠 있는지 */
   const [restarting, setRestarting] = useState(false)
+  /** 받는 사이에 고쳤으면 받은 것으로 덮지 않아요. */
+  const touched = useRef(false)
+
+  useEffect(() => {
+    let alive = true
+    touched.current = false
+    void loadPortfolio(repo).then((next) => {
+      if (!alive) return
+      if (!touched.current) setSaved(next)
+      setLoading(false)
+    })
+    return () => {
+      alive = false
+    }
+  }, [repo, account])
 
   function save(next: SavedPortfolio) {
+    touched.current = true
     writePortfolio(next)
     setSaved(next)
   }
@@ -98,7 +119,7 @@ function Builder({ repo, onBack }: { repo: string; onBack: () => void }) {
         )}
       </div>
 
-      {saved ? <Editor saved={saved} name={name} onChange={save} /> : <Setup repo={repo} onDone={save} />}
+      {saved ? <Editor saved={saved} name={name} onChange={save} /> : loading ? <Writing quiet /> : <Setup repo={repo} onDone={save} />}
 
       {restarting && (
         <ConfirmDialog
@@ -110,6 +131,7 @@ function Builder({ repo, onBack }: { repo: string; onBack: () => void }) {
           onCancel={() => setRestarting(false)}
           onConfirm={() => {
             track('portfolio_restart', { repo })
+            touched.current = true
             clearPortfolio(repo)
             setSaved(null)
             setRestarting(false)
@@ -470,14 +492,14 @@ export function PeopleList({ people, person, onPick, onRetry }: {
   )
 }
 
-/** 포트폴리오를 쓰는 동안 보여줘요. 다 쓰면 나올 두 칸 화면과 같은 배치예요. */
-function Writing() {
+/** 포트폴리오를 쓰는 동안 보여줘요. 다 쓰면 나올 두 칸 화면과 같은 배치예요. quiet면 계정에서 불러오는 중이라 안내 글을 빼요. */
+function Writing({ quiet = false }: { quiet?: boolean }) {
   const L = useMessages(TEXT)
   return (
     <div className="-mx-6 flex min-h-0 flex-1 border-t border-gray-200 md:-mx-10" aria-busy="true">
-      <p role="status" className="sr-only">{L.writing}</p>
+      {!quiet && <p role="status" className="sr-only">{L.writing}</p>}
       <div className="flex w-[340px] shrink-0 flex-col gap-2 border-r border-gray-200 bg-gray-50 p-4">
-        <p className="mb-2 text-[13px] font-medium text-gray-500">{L.writingLong}</p>
+        {!quiet && <p className="mb-2 text-[13px] font-medium text-gray-500">{L.writingLong}</p>}
         {[0, 1, 2, 3].map((item) => (
           <div key={item} aria-hidden className="flex h-[58px] items-center gap-3 rounded-xl border border-gray-200 bg-white px-3">
             <Bone className="h-4 w-4" />

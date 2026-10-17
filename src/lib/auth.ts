@@ -167,6 +167,9 @@ export function useAuth(): AuthState {
   )
 }
 
+/** 지금 로그인해 있는지. 화면 바깥(저장소)에서 쓸 때 봐요. */
+export const isSignedIn = () => state.tokens !== null
+
 function clearAuth() {
   if (state.tokens || state.me) setState({ tokens: null, me: null })
 }
