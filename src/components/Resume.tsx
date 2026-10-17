@@ -272,15 +272,11 @@ function Document({ onAdd }: { onAdd: () => void }) {
   return (
     <main className="flex min-h-0 flex-1 flex-col px-6 pt-14 md:px-10">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 pt-4 pb-4">
-        <h1 className="text-[22px] leading-snug font-semibold text-gray-900">{L.title}</h1>
+        <h1 className="text-[20px] leading-tight font-semibold text-gray-900">{L.title}</h1>
         <div className="flex flex-wrap items-center gap-2">
           {ready.length > 0 && <CopyButtons projects={ready} />}
-          <button
-            type="button"
-            onClick={onAdd}
-            className="flex h-9 items-center gap-1.5 rounded-lg bg-brand px-3.5 text-[13px] font-semibold whitespace-nowrap text-white transition-colors hover:bg-brand-hover"
-          >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="size-3.5" aria-hidden="true">
+          <button type="button" onClick={onAdd} className={`${toolButton} whitespace-nowrap`}>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
               <path d="M8 3v10M3 8h10" />
             </svg>
             {L.add}
@@ -288,7 +284,7 @@ function Document({ onAdd }: { onAdd: () => void }) {
         </div>
       </div>
 
-      <div className="-mx-6 min-h-0 flex-1 overflow-y-auto border-t border-gray-200 bg-gray-50 px-4 py-8 md:-mx-10 md:px-10">
+      <div className="-mx-6 min-h-0 flex-1 overflow-y-auto border-t border-gray-200 bg-gray-50 px-6 py-8 md:-mx-10 md:px-10">
         <article className="mx-auto w-full max-w-[880px] rounded-xl border border-gray-200 bg-white px-6 py-8 md:px-12 md:py-12">
           {projects.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
