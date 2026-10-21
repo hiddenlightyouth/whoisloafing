@@ -40,8 +40,6 @@ const TEXT = messages({
     add: '프로젝트 추가',
     copy: '복사하기',
     copyMarkdown: '마크다운 복사',
-    emptyTitle: '분석한 레포로 이력서의 프로젝트 경험을 써 드려요',
-    emptyBody: '프로젝트를 추가하면 역할, 기술 스택, 문제와 개선과 효과로 나눈 문제 해결 경험을 채워요. 쓴 글은 눌러서 바로 고칠 수 있어요.',
     back: '레포 고르는 화면으로 돌아가기',
     steps: { plan: '추가 정보', person: '대상 선택' } as Record<SetupStep, string>,
     planTitle: '참고할 기획안이 있나요?',
@@ -79,8 +77,6 @@ const TEXT = messages({
     add: 'Add project',
     copy: 'Copy',
     copyMarkdown: 'Copy Markdown',
-    emptyTitle: 'Turn your analyzed repos into resume projects',
-    emptyBody: 'Add a project and we will fill in your role, tech stack, and problem solving split into problem, solution, and impact. Click anything to edit it.',
     back: 'Back to repositories',
     steps: { plan: 'Additional info', person: 'Select person' },
     planTitle: 'Do you have a plan to reference?',
@@ -126,18 +122,28 @@ export function Resume({ onNew, refreshKey }: { onNew: () => void; refreshKey: n
   const L = useMessages(TEXT)
   const [mode, setMode] = useState<Mode>({ kind: 'doc' })
   const account = useAuth().me?.email ?? null
+  const projects = useResume()
+  const loading = useResumeLoading()
+  /** 계정의 이력서를 받아 봤는지. 받기 전에 비어 보인다고 갤러리를 띄웠다가 문서로 바뀌지 않게 해요. */
+  const [checked, setChecked] = useState(false)
+  // 아직 넣은 프로젝트가 없으면 빈 문서 대신 프로젝트를 고르는 갤러리부터 보여줘요. 돌아갈 문서가 없어서 뒤로 가기는 두지 않아요.
+  const empty = checked && !loading && projects.length === 0
 
   useEffect(() => {
-    void loadResume(account)
+    let alive = true
+    void loadResume(account).then(() => alive && setChecked(true))
+    return () => {
+      alive = false
+    }
   }, [account])
 
-  if (mode.kind === 'pick') {
+  if (mode.kind === 'pick' || (mode.kind === 'doc' && empty)) {
     return (
       <RepoGallery
         key={refreshKey}
-        title={L.pickTitle}
+        title={empty ? L.title : L.pickTitle}
         onNew={onNew}
-        onBack={() => setMode({ kind: 'doc' })}
+        onBack={empty ? undefined : () => setMode({ kind: 'doc' })}
         onOpen={(repo) => {
           track('resume_repo_select', { repo })
           setMode({ kind: 'setup', repo })
@@ -270,16 +276,8 @@ function Document({ onAdd }: { onAdd: () => void }) {
 
       <div className={`${canvas} overflow-y-auto px-6 py-8 md:px-10`}>
         <article className={paper}>
-          {loading && projects.length === 0 ? (
+          {projects.length === 0 ? (
             <Loading />
-          ) : projects.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-16 text-center">
-              <p className="text-[16px] font-semibold text-gray-900">{L.emptyTitle}</p>
-              <p className="max-w-[440px] text-[13.5px] leading-relaxed break-keep text-gray-500">{L.emptyBody}</p>
-              <button type="button" onClick={onAdd} className={`mt-3 ${primaryButton}`}>
-                {L.add}
-              </button>
-            </div>
           ) : (
             <div className="flex flex-col gap-12">
               {projects.map((project, index) =>
