@@ -6,6 +6,7 @@ import { MapMenu } from './DeepParts'
 import { ExploreCardsSkeleton } from './Skeleton'
 import { clubInfo } from '../lib/clubs'
 import { readFlag, writeFlag } from '../lib/storage'
+import { moreButton, PageHeader } from './AppPage'
 import { primaryButton } from './Dialog'
 import { getLang, messages, useMessages, type Lang } from '../lib/i18n'
 
@@ -421,10 +422,10 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
 
   return (
     <main className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 px-6 pt-16 md:px-10">
-        <h1 className="text-[20px] leading-tight font-semibold text-gray-900">{L.title}</h1>
+      <div className="shrink-0 px-6 pt-14 md:px-10">
+        <PageHeader title={L.title} />
         {/* 심층 분석의 탭과 같은 모양이에요. 갈래가 하나뿐이면 탭을 두지 않아요. */}
-        <div role="tablist" aria-label={L.tabs} className={`mt-4 flex gap-1 border-b border-gray-200 ${hasClubs ? '' : 'h-0 overflow-hidden'}`}>
+        <div role="tablist" aria-label={L.tabs} className={`flex gap-1 border-b border-gray-200 ${hasClubs ? '' : 'h-0 overflow-hidden'}`}>
           {CATEGORIES.map((value) => (
             <button
               key={value}
@@ -598,7 +599,7 @@ export function Explore({ category: wanted, onCategory, onPick, clubs: hasClubs 
             <button
               type="button"
               onClick={() => setShown((prev) => prev + PAGE_SIZE)}
-              className="h-10 rounded-full border border-gray-200 bg-white px-5 text-[13px] font-medium text-gray-700 transition-colors hover:text-brand"
+              className={moreButton}
             >
               {L.more}
             </button>

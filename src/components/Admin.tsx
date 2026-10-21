@@ -6,6 +6,7 @@ import { AdminFeedback } from './AdminFeedback'
 import { AdminOverview } from './AdminOverview'
 import { AdminUsage } from './AdminUsage'
 import { AdminUsers } from './AdminUsers'
+import { pageFrame, PageHeader } from './AppPage'
 import { Kbd } from './Shortcuts'
 import { messages, useMessages } from '../lib/i18n'
 
@@ -62,11 +63,11 @@ export function Admin({ tab, onTab, full, feedback, onOpenChat }: Props) {
   }
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col px-6 pt-14 md:px-10">
-      <h1 className="shrink-0 pt-6 text-[22px] leading-snug font-semibold text-gray-900">{L.title}</h1>
+    <main className={pageFrame}>
+      <PageHeader title={L.title} />
 
       {tabs.length > 1 && (
-        <div role="tablist" aria-label={L.title} className="mt-4 flex shrink-0 gap-1 border-b border-gray-200">
+        <div role="tablist" aria-label={L.title} className="flex shrink-0 gap-1 border-b border-gray-200">
           {tabs.map((item, index) => (
             <button
               key={item}

@@ -8,7 +8,8 @@ import { useShortcuts } from '../lib/shortcuts'
 import { formatDateTime } from '../lib/format'
 import { showToast } from '../lib/toast'
 import { Chat } from './Chat'
-import { ConfirmDialog } from './Dialog'
+import { PageHeader } from './AppPage'
+import { ConfirmDialog, primaryButton } from './Dialog'
 import { MapMenu, toolButton } from './DeepParts'
 import { Forms } from './Forms'
 import { Kbd } from './Shortcuts'
@@ -239,24 +240,13 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
   return (
     <main className="flex min-h-0 flex-1">
     <div className="flex min-h-0 min-w-0 flex-1 flex-col px-6 pt-14 pb-6 md:px-10">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-6 gap-y-3 pt-4">
-        <div className="flex min-w-0 items-center gap-2">
-          <button
-            type="button"
-            aria-label={L.back}
-            onClick={() => onOpen(null)}
-            className="-ml-2 flex size-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-          >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" className="size-4" aria-hidden="true">
-              <path d="M10 3.5L5.5 8 10 12.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <div className="min-w-0">
-            <p className="text-[12px] text-gray-500">{owner}</p>
-            <h1 className="truncate text-[20px] leading-tight font-semibold text-gray-900">{name}</h1>
-          </div>
-        </div>
-        {chatId && (
+      <PageHeader
+        owner={owner}
+        title={name}
+        onBack={() => onOpen(null)}
+        backLabel={L.back}
+        actions={
+          chatId && (
           <div className="relative shrink-0">
             <button
               type="button"
@@ -281,10 +271,11 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
               </p>
             )}
           </div>
-        )}
-      </div>
+          )
+        }
+      />
 
-      <div role="tablist" aria-label={L.title} className="mt-4 flex shrink-0 gap-1 border-b border-gray-200">
+      <div role="tablist" aria-label={L.title} className="flex shrink-0 gap-1 border-b border-gray-200">
         {sections.map((item) => (
           <button
             key={item}
@@ -336,7 +327,7 @@ function Dashboard({ repo, onOpen, refreshKey, chatHint }: { repo: string; onOpe
             <button
               type="button"
               onClick={() => void analyze(section, true)}
-              className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover"
+              className={primaryButton}
             >
               {L.retry}
             </button>

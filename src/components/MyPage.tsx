@@ -16,6 +16,7 @@ import {
 import { formatDate, formatDateTime, parseServerTime } from '../lib/format'
 import { loadConfig } from '../lib/api'
 import { showToast } from '../lib/toast'
+import { pageFrame, PageHeader } from './AppPage'
 import { ConfirmDialog } from './Dialog'
 import { isApp } from '../lib/app'
 import { SOCIAL_LABELS, type SocialProvider } from '../lib/social'
@@ -96,7 +97,7 @@ const quiet = 'h-8 shrink-0 rounded-full px-3 text-[13px] font-medium transition
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-12">
+    <section className="mt-12 first:mt-4">
       <h2 className="text-[17px] font-semibold text-gray-900">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>
@@ -388,9 +389,10 @@ export function MyPage({ onSignedOut }: Props) {
   const registered = parseServerTime(me?.registeredAt)
 
   return (
-    <main className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-2xl px-5 pt-24 pb-20 sm:pt-28">
-        <h1 className="text-[24px] font-semibold leading-snug text-gray-900 sm:text-[30px]">{text.title}</h1>
+    <main className={pageFrame}>
+      <PageHeader title={text.title} />
+      <div className="-mx-6 min-h-0 flex-1 overflow-y-auto px-6 pb-20 md:-mx-10 md:px-10">
+      <div className="w-full max-w-2xl">
 
         <Section title={text.account}>
           <dl className="divide-y divide-gray-100 border-y border-gray-100 text-[14px]">
@@ -448,6 +450,7 @@ export function MyPage({ onSignedOut }: Props) {
             onConfirm={() => void handleWithdraw()}
           />
         )}
+      </div>
       </div>
     </main>
   )

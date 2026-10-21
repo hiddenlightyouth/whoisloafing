@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Result } from '../lib/admin'
 import type { Slice } from '../lib/auth'
-import { tag, toolButton } from './DeepParts'
+import { tag } from './DeepParts'
+import { primaryButton } from './Dialog'
 import { Bone } from './Skeleton'
 import { getLang, messages, pick, useMessages } from '../lib/i18n'
 
@@ -233,7 +234,7 @@ export function Failed({ message, onRetry }: { message: string; onRetry: () => v
   return (
     <div className="mt-16 flex flex-col items-center gap-4 text-center">
       <p className="text-[14px] leading-relaxed text-gray-600">{message}</p>
-      <button type="button" onClick={onRetry} className={toolButton}>
+      <button type="button" onClick={onRetry} className={primaryButton}>
         {L.retry}
       </button>
     </div>

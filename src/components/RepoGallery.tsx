@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { fetchMyChats } from '../lib/auth'
 import { formatWhen } from '../lib/format'
+import { canvas, moreButton, pageFrame, PageHeader, PlusIcon } from './AppPage'
 import { toolButton } from './DeepParts'
+import { primaryButton } from './Dialog'
 import { Avatar } from './History'
 import { messages, useMessages } from '../lib/i18n'
 
@@ -14,7 +16,6 @@ const TEXT = messages({
     start: '새 분석 시작하기',
     working: '처리 중',
     more: '더 보기',
-    back: '뒤로 가기',
   },
   en: {
     newAnalysis: 'New analysis',
@@ -24,7 +25,6 @@ const TEXT = messages({
     start: 'Start a new analysis',
     working: 'Working',
     more: 'Show more',
-    back: 'Back',
   },
 })
 
@@ -73,56 +73,44 @@ export function RepoGallery({ title, onOpen, onNew, onBack }: {
   }, [])
 
   return (
-    <main className="min-h-0 flex-1 overflow-y-auto px-6 pt-14 pb-10 md:px-10">
-      <div className="flex items-center justify-between gap-4 pt-6">
-        <div className="flex min-w-0 items-center gap-2">
-          {onBack && (
-            <button
-              type="button"
-              aria-label={L.back}
-              onClick={onBack}
-              className="-ml-2 flex size-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-            >
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" className="size-4" aria-hidden="true">
-                <path d="M10 3.5L5.5 8 10 12.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          )}
-          <h1 className="truncate text-[22px] leading-snug font-semibold text-gray-900">{title}</h1>
-        </div>
-        <button type="button" onClick={onNew} className={toolButton}>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
-            <path d="M8 3v10M3 8h10" />
-          </svg>
-          {L.newAnalysis}
-        </button>
-      </div>
+    <main className={pageFrame}>
+      <PageHeader
+        title={title}
+        onBack={onBack}
+        actions={
+          <button type="button" onClick={onNew} className={toolButton}>
+            <PlusIcon />
+            {L.newAnalysis}
+          </button>
+        }
+      />
 
+      <div className={`${canvas} overflow-y-auto px-6 pt-6 pb-10 md:px-10`}>
       {cards === null ? (
         error ? (
-          <p className="mt-8 text-[14px] text-gray-500">{error}</p>
+          <p className="mt-10 text-center text-[14px] text-gray-500">{error}</p>
         ) : (
-          <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3" aria-busy="true">
+          <ul className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3" aria-busy="true">
             <li className="sr-only">{L.loading}</li>
             {[0, 1, 2, 3, 4, 5].map((item) => (
-              <li key={item} aria-hidden className="h-[132px] rounded-2xl bg-gray-100 motion-safe:animate-pulse" />
+              <li key={item} aria-hidden className="h-[132px] rounded-2xl border border-gray-200 bg-white motion-safe:animate-pulse" />
             ))}
           </ul>
         )
       ) : cards.length === 0 ? (
-        <div className="mt-16 flex flex-col items-center gap-4 text-center">
+        <div className="mt-10 flex flex-col items-center gap-4 text-center">
           <p className="text-[14px] leading-relaxed text-gray-600">
             {L.none}
             <br />
             {L.hint}
           </p>
-          <button type="button" onClick={onNew} className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover">
+          <button type="button" onClick={onNew} className={primaryButton}>
             {L.start}
           </button>
         </div>
       ) : (
         <>
-          <ul className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
+          <ul className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
             {cards.map((card, order) => {
               const [owner, name] = card.repo.split('/')
               return (
@@ -147,17 +135,15 @@ export function RepoGallery({ title, onOpen, onNew, onBack }: {
             })}
           </ul>
           {nextPage !== null && (
-            <button
-              type="button"
-              disabled={loading}
-              onClick={() => void load(nextPage)}
-              className="mt-4 h-9 rounded-full bg-gray-100 px-4 text-[13px] font-medium text-gray-700 transition-colors hover:text-brand disabled:text-gray-400"
-            >
-              {loading ? L.working : L.more}
-            </button>
+            <div className="mt-8 text-center">
+              <button type="button" disabled={loading} onClick={() => void load(nextPage)} className={moreButton}>
+                {loading ? L.working : L.more}
+              </button>
+            </div>
           )}
         </>
       )}
+      </div>
     </main>
   )
 }

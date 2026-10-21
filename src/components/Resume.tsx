@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { useDismiss } from '../hooks/useDismiss'
+import { useEffect, useState, type ReactNode } from 'react'
 import { track } from '../lib/analytics'
 import { useAuth } from '../lib/auth'
 import { fetchPortfolioPeople, type PortfolioPerson } from '../lib/portfolio'
@@ -23,8 +22,9 @@ import {
 } from '../lib/resume'
 import { showToast } from '../lib/toast'
 import { messages, useMessages } from '../lib/i18n'
+import { canvas, CloseIcon, copyText, CopyButton, ghostButton, iconButton, pageFrame, PageHeader, paper, PlanField, PlusIcon, RevisionPicker, StepLayout, Steps, StepTitle } from './AppPage'
 import { toolButton } from './DeepParts'
-import { ConfirmDialog } from './Dialog'
+import { ConfirmDialog, primaryButton } from './Dialog'
 import { PeopleList } from './Portfolio'
 import { RepoGallery } from './RepoGallery'
 import { ModelMenu } from './ModelMenu'
@@ -40,15 +40,18 @@ const TEXT = messages({
     add: '프로젝트 추가',
     copy: '복사하기',
     copyMarkdown: '마크다운 복사',
-    copied: '복사했어요',
-    copyFailed: '복사하지 못했어요',
     emptyTitle: '분석한 레포로 이력서의 프로젝트 경험을 써 드려요',
     emptyBody: '프로젝트를 추가하면 역할, 기술 스택, 문제와 개선과 효과로 나눈 문제 해결 경험을 채워요. 쓴 글은 눌러서 바로 고칠 수 있어요.',
-    back: '이력서로 돌아가기',
+    back: '레포 고르는 화면으로 돌아가기',
+    steps: { plan: '추가 정보', person: '대상 선택' } as Record<SetupStep, string>,
+    planTitle: '참고할 기획안이 있나요?',
+    planHint: '한 줄 소개와 설명은 기획안을 참고해서 써요. 없으면 비워 두고 넘어가도 괜찮아요.',
+    planPlaceholder: '기획안이나 서비스 소개 글을 붙여 넣어 주세요',
     setupTitle: '참여자 중에서 나를 골라 주세요',
     setupHint: '고른 참여자의 커밋과 PR에서 맡은 역할과 문제 해결 경험을 찾아요.',
-    planToggle: '기획안 붙여 넣기 (선택)',
-    planPlaceholder: '기획안이나 서비스 소개 글을 붙여 넣으면 한 줄 소개를 더 정확하게 써요',
+    prev: '이전',
+    next: '다음',
+    skip: '건너뛰기',
     create: '이력서에 추가',
     writing: '이력서를 쓰고 있어요. 1분쯤 걸려요.',
     edit: '고치기',
@@ -76,15 +79,18 @@ const TEXT = messages({
     add: 'Add project',
     copy: 'Copy',
     copyMarkdown: 'Copy Markdown',
-    copied: 'Copied',
-    copyFailed: 'Could not copy',
     emptyTitle: 'Turn your analyzed repos into resume projects',
     emptyBody: 'Add a project and we will fill in your role, tech stack, and problem solving split into problem, solution, and impact. Click anything to edit it.',
-    back: 'Back to resume',
+    back: 'Back to repositories',
+    steps: { plan: 'Additional info', person: 'Select person' },
+    planTitle: 'Do you have a plan to reference?',
+    planHint: 'The summary and description are taken from your plan. You can leave it empty and move on.',
+    planPlaceholder: 'Paste a project plan or a description of the service',
     setupTitle: 'Who are you in this project?',
     setupHint: "We look for your role and problems you solved in this person's commits and PRs.",
-    planToggle: 'Paste a project plan (optional)',
-    planPlaceholder: 'A plan or description of the service helps write a sharper one line summary',
+    prev: 'Back',
+    next: 'Next',
+    skip: 'Skip',
     create: 'Add to resume',
     writing: 'Writing your resume. This takes about a minute.',
     edit: 'Edit',
@@ -107,6 +113,8 @@ const TEXT = messages({
     deleteProblem: 'Remove entry',
   },
 })
+
+type SetupStep = 'plan' | 'person'
 
 type Mode = { kind: 'doc' } | { kind: 'pick' } | { kind: 'setup'; repo: string }
 
@@ -143,23 +151,13 @@ export function Resume({ onNew, refreshKey }: { onNew: () => void; refreshKey: n
   return <Document onAdd={() => setMode({ kind: 'pick' })} />
 }
 
-const backButton = 'flex size-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900'
-
-function BackIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" className="size-4" aria-hidden="true">
-      <path d="M10 3.5L5.5 8 10 12.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-/** 나를 고르고 기획안을 붙여 넣은 뒤 이력서에 프로젝트를 더해요. 쓰는 동안은 문서로 돌아가서 기다려요. */
+/** 기획안과 나를 차례로 정하고 이력서에 프로젝트를 더해요. 포트폴리오 만들기와 같은 단계 화면이에요. 쓰는 동안은 문서로 돌아가서 기다려요. */
 function Setup({ repo, onBack, onStarted }: { repo: string; onBack: () => void; onStarted: () => void }) {
   const L = useMessages(TEXT)
   const [owner, name] = repo.split('/')
+  const [step, setStep] = useState<SetupStep>('plan')
   const [people, setPeople] = useState<PortfolioPerson[] | 'loading' | { error: string } | null>(null)
   const [person, setPerson] = useState<string | null>(null)
-  const [planOpen, setPlanOpen] = useState(false)
   const [plan, setPlan] = useState('')
 
   async function loadPeople() {
@@ -169,10 +167,11 @@ function Setup({ repo, onBack, onStarted }: { repo: string; onBack: () => void; 
     setPeople('data' in result ? result.data : { error: result.error })
   }
 
+  // 참여자는 그 단계에 처음 들어왔을 때 받아요. 커밋 기록을 읽느라 시간이 조금 걸려요.
   useEffect(() => {
-    void loadPeople()
+    if (step === 'person' && people === null) void loadPeople()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [repo])
+  }, [step])
 
   function create() {
     const id = newId()
@@ -194,65 +193,41 @@ function Setup({ repo, onBack, onStarted }: { repo: string; onBack: () => void; 
     })
   }
 
-  return (
-    <main className="flex min-h-0 flex-1 flex-col px-6 pt-14 md:px-10">
-      <div className="flex shrink-0 items-center gap-2 pt-4 pb-4">
-        <button type="button" aria-label={L.back} onClick={onBack} className={`-ml-2 ${backButton}`}>
-          <BackIcon />
-        </button>
-        <div className="min-w-0">
-          <p className="text-[12px] text-gray-500">{owner}</p>
-          <h1 className="truncate text-[20px] leading-tight font-semibold text-gray-900">{name}</h1>
-        </div>
-      </div>
-      <div className="-mx-6 flex min-h-0 flex-1 flex-col border-t border-gray-200 bg-gray-50 md:-mx-10">
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-8 md:px-10">
-          <div className="mx-auto w-full max-w-[640px] animate-rise">
-            <h2 className="text-[19px] font-semibold text-gray-900">{L.setupTitle}</h2>
-            <p className="mt-1.5 text-[13.5px] text-gray-500">{L.setupHint}</p>
-            <PeopleList people={people} person={person} onPick={setPerson} onRetry={() => void loadPeople()} />
+  const last = step === 'person'
 
-            <button
-              type="button"
-              aria-expanded={planOpen}
-              onClick={() => setPlanOpen((prev) => !prev)}
-              className="mt-6 flex items-center gap-1.5 text-[13.5px] font-medium text-gray-600 hover:text-gray-900"
-            >
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className={`size-3.5 transition-transform ${planOpen ? 'rotate-90' : ''}`} aria-hidden="true">
-                <path d="M6 3.5 10.5 8 6 12.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              {L.planToggle}
-            </button>
-            {planOpen && (
-              <div className="animate-rise">
-                <textarea
-                  value={plan}
-                  maxLength={PLAN_MAX}
-                  onChange={(event) => setPlan(event.target.value)}
-                  placeholder={L.planPlaceholder}
-                  className="mt-3 h-48 w-full resize-none rounded-xl border border-gray-200 bg-white p-4 text-[14px] leading-relaxed text-gray-900 outline-none placeholder:text-gray-400 focus:border-brand"
-                />
-                <p className="mt-1.5 text-right text-[12px] text-gray-400 tabular-nums">
-                  {plan.length.toLocaleString()} / {PLAN_MAX.toLocaleString()}
-                </p>
-              </div>
+  return (
+    <main className={pageFrame}>
+      <PageHeader owner={owner} title={name} onBack={onBack} backLabel={L.back} />
+      <StepLayout
+        top={<Steps steps={(['plan', 'person'] as const).map((key) => ({ key, label: L.steps[key] }))} current={step} onSelect={setStep} />}
+        buttons={
+          <>
+            {last && <ModelMenu up />}
+            {last && (
+              <button type="button" onClick={() => setStep('plan')} className={toolButton}>
+                {L.prev}
+              </button>
             )}
-          </div>
-        </div>
-        <div className="shrink-0 border-t border-gray-200 bg-white px-6 py-3 md:px-10">
-          <div className="mx-auto flex w-full max-w-[640px] items-center justify-end gap-2">
-            <ModelMenu up />
-            <button
-              type="button"
-              disabled={person === null}
-              onClick={create}
-              className="h-9 rounded-lg bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover disabled:bg-gray-300"
-            >
-              {L.create}
+            <button type="button" disabled={last && person === null} onClick={() => (last ? create() : setStep('person'))} className={primaryButton}>
+              {last ? L.create : plan.trim() ? L.next : L.skip}
             </button>
-          </div>
+          </>
+        }
+      >
+        <div key={step} className="animate-rise">
+          {step === 'plan' ? (
+            <>
+              <StepTitle title={L.planTitle} hint={L.planHint} />
+              <PlanField value={plan} max={PLAN_MAX} placeholder={L.planPlaceholder} onChange={setPlan} />
+            </>
+          ) : (
+            <>
+              <StepTitle title={L.setupTitle} hint={L.setupHint} />
+              <PeopleList people={people} person={person} onPick={setPerson} onRetry={() => void loadPeople()} />
+            </>
+          )}
         </div>
-      </div>
+      </StepLayout>
     </main>
   )
 }
@@ -279,33 +254,29 @@ function Document({ onAdd }: { onAdd: () => void }) {
   }
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col px-6 pt-14 md:px-10">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 pt-4 pb-4">
-        <h1 className="text-[20px] leading-tight font-semibold text-gray-900">{L.title}</h1>
-        <div className="flex flex-wrap items-center gap-2">
-          {ready.length > 0 && <CopyButtons projects={ready} />}
-          <button type="button" onClick={onAdd} disabled={loading} className={`${toolButton} whitespace-nowrap disabled:opacity-50`}>
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
-              <path d="M8 3v10M3 8h10" />
-            </svg>
-            {L.add}
-          </button>
-        </div>
-      </div>
+    <main className={pageFrame}>
+      <PageHeader
+        title={L.title}
+        actions={
+          <>
+            {ready.length > 0 && <CopyButtons projects={ready} />}
+            <button type="button" onClick={onAdd} disabled={loading} className={`${toolButton} whitespace-nowrap disabled:opacity-50`}>
+              <PlusIcon />
+              {L.add}
+            </button>
+          </>
+        }
+      />
 
-      <div className="-mx-6 min-h-0 flex-1 overflow-y-auto border-t border-gray-200 bg-gray-50 px-6 py-8 md:-mx-10 md:px-10">
-        <article className="mx-auto w-full max-w-[880px] rounded-xl border border-gray-200 bg-white px-6 py-8 md:px-12 md:py-12">
+      <div className={`${canvas} overflow-y-auto px-6 py-8 md:px-10`}>
+        <article className={paper}>
           {loading && projects.length === 0 ? (
             <Loading />
           ) : projects.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <p className="text-[16px] font-semibold text-gray-900">{L.emptyTitle}</p>
               <p className="max-w-[440px] text-[13.5px] leading-relaxed break-keep text-gray-500">{L.emptyBody}</p>
-              <button
-                type="button"
-                onClick={onAdd}
-                className="mt-3 h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover"
-              >
+              <button type="button" onClick={onAdd} className={`mt-3 ${primaryButton}`}>
                 {L.add}
               </button>
             </div>
@@ -393,9 +364,6 @@ function Writing({ name }: { name: string }) {
   )
 }
 
-const iconButton =
-  'flex size-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-800 disabled:text-gray-200 disabled:hover:bg-transparent'
-
 /** 한 줄 안에 이름표와 글을 나란히 두는 줄이에요. 사진의 이력서처럼 이름표 칸의 폭을 맞춰요. */
 function Row({ dot, label, children, labelClass = 'text-brand' }: { dot: string; label: ReactNode; children?: ReactNode; labelClass?: string }) {
   return (
@@ -463,13 +431,11 @@ function ProjectView({ project, first, last, onEdit, onMove, onRemove }: {
             <path d="M8 3.5v9M4 9l4 3.5L12 9" />
           </svg>
         </button>
-        <button type="button" onClick={onEdit} className="h-8 rounded-md px-2.5 text-[12.5px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900">
+        <button type="button" onClick={onEdit} className={ghostButton}>
           {L.edit}
         </button>
         <button type="button" aria-label={L.remove} onClick={onRemove} className={iconButton}>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="size-3.5" aria-hidden="true">
-            <path d="M4 4l8 8M12 4l-8 8" />
-          </svg>
+          <CloseIcon />
         </button>
       </div>
 
@@ -510,18 +476,24 @@ function ProjectView({ project, first, last, onEdit, onMove, onRemove }: {
                   disabled={revising !== null}
                   aria-expanded={asking === index}
                   onClick={() => setAsking((prev) => (prev === index ? null : index))}
-                  className="h-7 rounded-md px-2 text-[12.5px] font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:text-gray-300"
+                  className={ghostButton}
                 >
                   {L.revise}
                 </button>
-                <button type="button" aria-label={L.deleteProblem} disabled={revising === index} onClick={() => setRemovingProblem(index)} className={`${iconButton} size-7`}>
-                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="size-3.5" aria-hidden="true">
-                    <path d="M4 4l8 8M12 4l-8 8" />
-                  </svg>
+                <button type="button" aria-label={L.deleteProblem} disabled={revising === index} onClick={() => setRemovingProblem(index)} className={iconButton}>
+                  <CloseIcon />
                 </button>
               </div>
             </div>
-            {asking === index && <RevisionPicker onPick={(revision) => void revise(index, revision)} onClose={() => setAsking(null)} />}
+            {asking === index && (
+              <RevisionPicker
+                title={L.reviseTitle}
+                options={resumeRevisions()}
+                onPick={(revision) => void revise(index, revision)}
+                onClose={() => setAsking(null)}
+                className="mt-1.5 ml-6"
+              />
+            )}
             {revising === index ? (
               <ProblemSkeleton label={L.revising} />
             ) : (
@@ -546,11 +518,9 @@ function ProjectView({ project, first, last, onEdit, onMove, onRemove }: {
         type="button"
         disabled={revising !== null}
         onClick={() => void revise(null, 'another')}
-        className="mt-3 ml-[17px] flex h-7 items-center gap-1 rounded-md px-1.5 text-[12.5px] font-medium text-gray-400 opacity-0 transition hover:bg-gray-100 hover:text-gray-800 group-focus-within/project:opacity-100 group-hover/project:opacity-100 disabled:text-gray-300"
+        className={`${ghostButton} mt-3 ml-[11px] flex items-center gap-1 opacity-0 transition group-focus-within/project:opacity-100 group-hover/project:opacity-100`}
       >
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3" aria-hidden="true">
-          <path d="M8 3v10M3 8h10" />
-        </svg>
+        <PlusIcon />
         {L.addProblem}
       </button>
 
@@ -579,33 +549,6 @@ function ProblemSkeleton({ label }: { label: string }) {
       <Bone className="h-4 w-5/6" />
       <Bone className="h-4 w-4/6" />
       <Bone className="h-4 w-3/4" />
-    </div>
-  )
-}
-
-/** 경험 아래에 펼쳐지는 작은 창이에요. 고칠 방향을 글로 적지 않고 골라요. */
-function RevisionPicker({ onPick, onClose }: { onPick: (revision: ResumeRevisionKey) => void; onClose: () => void }) {
-  const L = useMessages(TEXT)
-  const ref = useRef<HTMLDivElement>(null)
-
-  // 다듬기 버튼을 다시 누른 것은 버튼이 알아서 닫아요.
-  useDismiss(true, ref, onClose, { capture: true, ignore: (target) => !!target.closest('[aria-expanded="true"]') })
-
-  return (
-    <div ref={ref} role="dialog" aria-label={L.reviseTitle} className="mt-1.5 ml-6 origin-top-left animate-pop rounded-lg border border-gray-200 bg-white px-3 pt-2.5 pb-3">
-      <p className="text-[12.5px] font-medium text-gray-500">{L.reviseTitle}</p>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {resumeRevisions().map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => onPick(item.key)}
-            className="h-7 rounded-md border border-gray-200 bg-white px-2.5 text-[12.5px] text-gray-700 transition-colors hover:border-brand hover:text-brand-hover"
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
     </div>
   )
 }
@@ -688,9 +631,7 @@ function ProjectEditor({ project, onClose }: { project: ResumeProject; onClose: 
               onClick={() => setDraft((prev) => ({ ...prev, problems: prev.problems.filter((_, at) => at !== index) }))}
               className={`${iconButton} mb-1`}
             >
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="size-3.5" aria-hidden="true">
-                <path d="M4 4l8 8M12 4l-8 8" />
-              </svg>
+              <CloseIcon />
             </button>
           </div>
           <div className="mt-3 flex flex-col gap-2.5">
@@ -712,18 +653,16 @@ function ProjectEditor({ project, onClose }: { project: ResumeProject; onClose: 
         <button
           type="button"
           onClick={() => setDraft((prev) => ({ ...prev, problems: [...prev.problems, emptyProblem()] }))}
-          className="flex h-8 items-center gap-1 rounded-md px-2 text-[13px] font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          className={`${ghostButton} flex items-center gap-1`}
         >
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3" aria-hidden="true">
-            <path d="M8 3v10M3 8h10" />
-          </svg>
+          <PlusIcon />
           {L.addProblemManual}
         </button>
         <div className="flex gap-2">
           <button type="button" onClick={onClose} className={toolButton}>
             {L.cancel}
           </button>
-          <button type="button" onClick={save} className="h-9 rounded-lg bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover">
+          <button type="button" onClick={save} className={primaryButton}>
             {L.done}
           </button>
         </div>
@@ -735,52 +674,41 @@ function ProjectEditor({ project, onClose }: { project: ResumeProject; onClose: 
 /** 서식을 지킨 복사(워드, 구글 문서, 노션)와 마크다운 복사예요. */
 function CopyButtons({ projects }: { projects: ResumeProject[] }) {
   const L = useMessages(TEXT)
-  const [state, setState] = useState<{ which: 'rich' | 'markdown'; ok: boolean } | null>(null)
 
-  async function copy(which: 'rich' | 'markdown') {
-    let ok: boolean
-    if (which === 'markdown') {
-      ok = await navigator.clipboard.writeText(toMarkdown(projects)).then(
-        () => true,
-        () => false,
-      )
-    } else {
-      const plain = toPlainText(projects)
-      try {
-        await navigator.clipboard.write([
-          new ClipboardItem({
-            'text/html': new Blob([toHtml(projects)], { type: 'text/html' }),
-            'text/plain': new Blob([plain], { type: 'text/plain' }),
-          }),
-        ])
-        ok = true
-      } catch {
-        // 서식 복사를 막는 브라우저에서는 글만 복사해요.
-        ok = await navigator.clipboard.writeText(plain).then(
-          () => true,
-          () => false,
-        )
-      }
+  async function copyRich() {
+    const plain = toPlainText(projects)
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': new Blob([toHtml(projects)], { type: 'text/html' }),
+          'text/plain': new Blob([plain], { type: 'text/plain' }),
+        }),
+      ])
+      return true
+    } catch {
+      // 서식 복사를 막는 브라우저에서는 글만 복사해요.
+      return copyText(plain)
     }
-    track('resume_copy', { format: which, success: ok })
-    setState({ which, ok })
-    setTimeout(() => setState(null), 2000)
   }
-
-  const label = (which: 'rich' | 'markdown', idle: string) => (state?.which === which ? (state.ok ? L.copied : L.copyFailed) : idle)
 
   return (
     <>
-      <button type="button" onClick={() => void copy('markdown')} className={`${toolButton} whitespace-nowrap`}>
-        {label('markdown', L.copyMarkdown)}
-      </button>
-      <button type="button" onClick={() => void copy('rich')} className={`${toolButton} whitespace-nowrap`}>
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
-          <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
-          <path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" />
-        </svg>
-        {label('rich', L.copy)}
-      </button>
+      <CopyButton
+        label={L.copyMarkdown}
+        onCopy={async () => {
+          const ok = await copyText(toMarkdown(projects))
+          track('resume_copy', { format: 'markdown', success: ok })
+          return ok
+        }}
+      />
+      <CopyButton
+        label={L.copy}
+        onCopy={async () => {
+          const ok = await copyRich()
+          track('resume_copy', { format: 'rich', success: ok })
+          return ok
+        }}
+      />
     </>
   )
 }

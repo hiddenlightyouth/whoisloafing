@@ -5,6 +5,7 @@ import { canPinChats, deleteChat, pinChat, reorderPinned, unshareChat } from '..
 import { fetchMyChats, type ChatSummary } from '../lib/auth'
 import { formatWhen } from '../lib/format'
 import { showToast } from '../lib/toast'
+import { pageFrame, PageHeader } from './AppPage'
 import { ConfirmDialog } from './Dialog'
 import { Bone } from './Skeleton'
 import { messages, pick, useMessages } from '../lib/i18n'
@@ -327,9 +328,10 @@ export function History({ onOpenChat, onHome }: Props) {
   }
 
   return (
-    <main className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-2xl px-5 pt-24 pb-20 sm:pt-28">
-        <h1 className="text-[24px] font-semibold leading-snug text-gray-900 sm:text-[30px]">{text.title}</h1>
+    <main className={pageFrame}>
+      <PageHeader title={text.title} />
+      <div className="-mx-6 min-h-0 flex-1 overflow-y-auto px-6 pb-20 md:-mx-10 md:px-10">
+      <div className="w-full max-w-2xl">
 
         {chats.length > 0 ? (
           <ul className="mt-8">
@@ -405,6 +407,7 @@ export function History({ onOpenChat, onHome }: Props) {
             </button>
           </div>
         )}
+      </div>
       </div>
       {deleting && <DeleteDialog chat={deleting} working={working} onCancel={cancelDelete} onConfirm={() => void remove(deleting)} />}
     </main>

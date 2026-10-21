@@ -1,6 +1,5 @@
 import { Marked } from 'marked'
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { useDismiss } from '../hooks/useDismiss'
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { track } from '../lib/analytics'
 import { useAuth } from '../lib/auth'
 import {
@@ -22,7 +21,8 @@ import {
   type SavedPortfolio,
 } from '../lib/portfolio'
 import { showToast } from '../lib/toast'
-import { ConfirmDialog } from './Dialog'
+import { canvas, CloseIcon, copyText, CopyButton, ghostButton, iconButton, pageFrame, PageHeader, paper, PlanField, RevisionPicker, StepLayout, Steps, StepTitle } from './AppPage'
+import { ConfirmDialog, primaryButton } from './Dialog'
 import { MapMenu, toolButton } from './DeepParts'
 import { RepoGallery } from './RepoGallery'
 import { Bone } from './Skeleton'
@@ -94,30 +94,30 @@ function Builder({ repo, onBack }: { repo: string; onBack: () => void }) {
   }
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col px-6 pt-14 md:px-10">
-      <div className="flex shrink-0 items-center justify-between gap-4 pt-4 pb-4">
-        <div className="flex min-w-0 items-center gap-2">
-          <button
-            type="button"
-            aria-label={L.back}
-            onClick={onBack}
-            className="-ml-2 flex size-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
-          >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" className="size-4" aria-hidden="true">
-              <path d="M10 3.5L5.5 8 10 12.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <div className="min-w-0">
-            <p className="text-[12px] text-gray-500">{owner}</p>
-            <h1 className="truncate text-[20px] leading-tight font-semibold text-gray-900">{name}</h1>
-          </div>
-        </div>
-        {saved && (
-          <button type="button" onClick={() => setRestarting(true)} className={toolButton}>
-            {L.restart}
-          </button>
-        )}
-      </div>
+    <main className={pageFrame}>
+      <PageHeader
+        owner={owner}
+        title={name}
+        onBack={onBack}
+        backLabel={L.back}
+        actions={
+          saved && (
+            <>
+              <button type="button" onClick={() => setRestarting(true)} className={toolButton}>
+                {L.restart}
+              </button>
+              <CopyButton
+                label={L.copy}
+                onCopy={async () => {
+                  const ok = await copyText(toMarkdown(name, saved.sections))
+                  track('portfolio_copy', { repo, success: ok })
+                  return ok
+                }}
+              />
+            </>
+          )
+        }
+      />
 
       {saved ? <Editor saved={saved} name={name} onChange={save} /> : loading ? <Writing quiet /> : <Setup repo={repo} onDone={save} />}
 
@@ -153,7 +153,6 @@ const TEXT = messages({
     restartBody: '항목과 기획안부터 다시 골라서 새로 써요. 지금 포트폴리오는 지워지고 되돌릴 수 없어요.',
     restartConfirm: '다시 만들기',
     steps: { sections: '항목 선택', plan: '추가 정보', person: '대상 선택' } as Record<Step, string>,
-    stepsLabel: '진행 단계',
     sectionsTitle: '어떤 항목으로 포트폴리오를 만들까요?',
     planTitle: '참고할 기획안이 있나요?',
     planHint: '기획 배경과 목적은 기획안을 참고해서 써요. 없으면 비워 두고 넘어가도 괜찮아요.',
@@ -176,8 +175,6 @@ const TEXT = messages({
     removeTitle: '이 항목을 뺄까요?',
     removeBody: (title: string) => `포트폴리오에서 ${title} 항목을 빼요. 나중에 항목 추가로 다시 넣으면 처음부터 새로 써요.`,
     removeConfirm: '빼기',
-    copied: '복사했어요',
-    copyFailed: '복사하지 못했어요',
     copy: '마크다운 복사',
     empty: '항목 추가를 눌러 포트폴리오에 넣을 항목을 골라 주세요.',
     reorder: (title: string) => `${title} 순서 바꾸기. 위아래 방향키로 옮길 수 있어요`,
@@ -195,7 +192,6 @@ const TEXT = messages({
     restartBody: 'You will pick sections and a plan again and write it from scratch. The current portfolio will be deleted and cannot be restored.',
     restartConfirm: 'Start over',
     steps: { sections: 'Sections', plan: 'Additional info', person: 'Select person' },
-    stepsLabel: 'Steps',
     sectionsTitle: 'Which sections should your portfolio have?',
     planTitle: 'Do you have a plan to reference?',
     planHint: 'Background and goals are taken from your plan. You can leave it empty and move on.',
@@ -218,8 +214,6 @@ const TEXT = messages({
     removeTitle: 'Remove this section?',
     removeBody: (title: string) => `${title} will be removed from the portfolio. If you add it back, it will be written again.`,
     removeConfirm: 'Remove',
-    copied: 'Copied',
-    copyFailed: 'Could not copy',
     copy: 'Copy Markdown',
     empty: 'Use Add section to choose what goes into your portfolio.',
     reorder: (title: string) => `Reorder ${title}. Use the up and down arrow keys`,
@@ -283,115 +277,77 @@ function Setup({ repo, onDone }: { repo: string; onDone: (saved: SavedPortfolio)
   const last = index === STEPS.length - 1
 
   return (
-    <div className="-mx-6 flex min-h-0 flex-1 flex-col border-t border-gray-200 bg-gray-50 md:-mx-10">
-      <div className="min-h-0 flex-1 overflow-y-auto px-6 py-8 md:px-10">
-        <div className="mx-auto w-full max-w-[640px]">
-          <ol className="flex flex-wrap items-center gap-2" aria-label={L.stepsLabel}>
-            {STEPS.map((item, order) => (
-              <li key={item.key} className="flex items-center gap-2">
-                <button
-                  type="button"
-                  aria-current={item.key === step ? 'step' : undefined}
-                  disabled={item.key !== 'sections' && picked.length === 0}
-                  onClick={() => setStep(item.key)}
-                  className={`flex h-8 items-center gap-2 rounded-full px-3 text-[13px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-                    item.key === step ? 'bg-white text-gray-900 ring-1 ring-gray-200' : 'text-gray-500 hover:text-gray-900'
-                  }`}
-                >
-                  <span
-                    className={`flex size-5 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums ${
-                      order <= index ? 'bg-brand text-white' : 'bg-gray-200 text-gray-500'
-                    }`}
-                  >
-                    {order + 1}
-                  </span>
-                  {L.steps[item.key]}
-                </button>
-                {order < STEPS.length - 1 && <span aria-hidden className="h-px w-4 bg-gray-300" />}
-              </li>
-            ))}
-          </ol>
-
-          <div key={step} className="mt-8 animate-rise">
-            {step === 'sections' ? (
-              <>
-                <h2 className="text-[19px] font-semibold text-gray-900">{L.sectionsTitle}</h2>
-                <ul className="mt-5 grid gap-2 sm:grid-cols-2">
-                  {portfolioSections().map((item) => {
-                    const on = picked.includes(item.key)
-                    return (
-                      <li key={item.key}>
-                        <button
-                          type="button"
-                          role="checkbox"
-                          aria-checked={on}
-                          onClick={() => setPicked((prev) => (on ? prev.filter((key) => key !== item.key) : [...prev, item.key]))}
-                          className={`flex w-full items-start gap-3 rounded-xl border bg-white p-3.5 text-left transition-colors ${
-                            on ? 'border-brand' : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <Check on={on} />
-                          <span className="min-w-0">
-                            <span className="block text-[14px] font-semibold text-gray-900">{item.title}</span>
-                            <span className="mt-0.5 block text-[12.5px] text-gray-500">{item.hint}</span>
-                          </span>
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </>
-            ) : step === 'plan' ? (
-              <>
-                <h2 className="text-[19px] font-semibold text-gray-900">{L.planTitle}</h2>
-                <p className="mt-1.5 text-[13.5px] text-gray-500">
-                  {L.planHint}
-                </p>
-                <textarea
-                  value={plan}
-                  maxLength={PLAN_MAX}
-                  onChange={(event) => setPlan(event.target.value)}
-                  placeholder={L.planPlaceholder}
-                  className="mt-5 h-72 w-full resize-none rounded-xl border border-gray-200 bg-white p-4 text-[14px] leading-relaxed text-gray-900 outline-none placeholder:text-gray-400 focus:border-brand"
-                />
-                <p className="mt-1.5 text-right text-[12px] text-gray-400 tabular-nums">
-                  {plan.length.toLocaleString()} / {PLAN_MAX.toLocaleString()}
-                </p>
-              </>
-            ) : (
-              <>
-                <h2 className="text-[19px] font-semibold text-gray-900">{L.personTitle}</h2>
-                <p className="mt-1.5 text-[13.5px] text-gray-500">{L.personHint}</p>
-                <PeopleList people={people} person={person} onPick={setPerson} onRetry={() => void loadPeople()} />
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="shrink-0 border-t border-gray-200 bg-white px-6 py-3 md:px-10">
-        <div className="mx-auto flex w-full max-w-[640px] items-center justify-between gap-3">
-          {error ? <p className="min-w-0 text-[13px] text-red-500">{error}</p> : <span />}
-          <div className="flex shrink-0 items-center gap-2">
-            {last && <ModelMenu up />}
-            {index > 0 && (
-              <button type="button" onClick={() => setStep(STEPS[index - 1].key)} className={toolButton}>
-                {L.prev}
-              </button>
-            )}
-            <button
-              type="button"
-              // 마지막 단계에서는 나를 골라야 만들 수 있어요.
-              disabled={picked.length === 0 || (last && person === null)}
-              onClick={() => (last ? void create() : setStep(STEPS[index + 1].key))}
-              className="h-9 rounded-lg bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover disabled:bg-gray-300"
-            >
-              {last ? L.create : step === 'plan' && !plan.trim() ? L.skip : L.next}
+    <StepLayout
+      top={
+        <Steps
+          steps={STEPS.map((item) => ({ key: item.key, label: L.steps[item.key], disabled: item.key !== 'sections' && picked.length === 0 }))}
+          current={step}
+          onSelect={setStep}
+        />
+      }
+      error={error}
+      buttons={
+        <>
+          {last && <ModelMenu up />}
+          {index > 0 && (
+            <button type="button" onClick={() => setStep(STEPS[index - 1].key)} className={toolButton}>
+              {L.prev}
             </button>
-          </div>
-        </div>
+          )}
+          <button
+            type="button"
+            // 마지막 단계에서는 나를 골라야 만들 수 있어요.
+            disabled={picked.length === 0 || (last && person === null)}
+            onClick={() => (last ? void create() : setStep(STEPS[index + 1].key))}
+            className={primaryButton}
+          >
+            {last ? L.create : step === 'plan' && !plan.trim() ? L.skip : L.next}
+          </button>
+        </>
+      }
+    >
+      <div key={step} className="animate-rise">
+        {step === 'sections' ? (
+          <>
+            <StepTitle title={L.sectionsTitle} />
+            <ul className="mt-5 grid gap-2 sm:grid-cols-2">
+              {portfolioSections().map((item) => {
+                const on = picked.includes(item.key)
+                return (
+                  <li key={item.key}>
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={on}
+                      onClick={() => setPicked((prev) => (on ? prev.filter((key) => key !== item.key) : [...prev, item.key]))}
+                      className={`flex w-full items-start gap-3 rounded-xl border bg-white p-3.5 text-left transition-colors ${
+                        on ? 'border-brand' : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <Check on={on} />
+                      <span className="min-w-0">
+                        <span className="block text-[14px] font-semibold text-gray-900">{item.title}</span>
+                        <span className="mt-0.5 block text-[12.5px] text-gray-500">{item.hint}</span>
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </>
+        ) : step === 'plan' ? (
+          <>
+            <StepTitle title={L.planTitle} hint={L.planHint} />
+            <PlanField value={plan} max={PLAN_MAX} placeholder={L.planPlaceholder} onChange={setPlan} />
+          </>
+        ) : (
+          <>
+            <StepTitle title={L.personTitle} hint={L.personHint} />
+            <PeopleList people={people} person={person} onPick={setPerson} onRetry={() => void loadPeople()} />
+          </>
+        )}
       </div>
-    </div>
+    </StepLayout>
   )
 }
 
@@ -434,7 +390,7 @@ export function PeopleList({ people, person, onPick, onRetry }: {
     return (
       <div className="mt-8 flex flex-col items-center gap-4 text-center">
         <p className="text-[14px] text-gray-600">{people.error}</p>
-        <button type="button" onClick={onRetry} className="h-9 rounded-full bg-brand px-4 text-[13px] font-semibold text-white transition-colors hover:bg-brand-hover">
+        <button type="button" onClick={onRetry} className={primaryButton}>
           {L.retry}
         </button>
       </div>
@@ -496,9 +452,9 @@ export function PeopleList({ people, person, onPick, onRetry }: {
 function Writing({ quiet = false }: { quiet?: boolean }) {
   const L = useMessages(TEXT)
   return (
-    <div className="-mx-6 flex min-h-0 flex-1 border-t border-gray-200 md:-mx-10" aria-busy="true">
+    <div className={`${canvas} flex-row!`} aria-busy="true">
       {!quiet && <p role="status" className="sr-only">{L.writing}</p>}
-      <div className="flex w-[340px] shrink-0 flex-col gap-2 border-r border-gray-200 bg-gray-50 p-4">
+      <div className="flex w-[340px] shrink-0 flex-col gap-2 border-r border-gray-200 p-4">
         {!quiet && <p className="mb-2 text-[13px] font-medium text-gray-500">{L.writingLong}</p>}
         {[0, 1, 2, 3].map((item) => (
           <div key={item} aria-hidden className="flex h-[58px] items-center gap-3 rounded-xl border border-gray-200 bg-white px-3">
@@ -507,15 +463,17 @@ function Writing({ quiet = false }: { quiet?: boolean }) {
           </div>
         ))}
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-3 p-10" aria-hidden>
-        <Bone className="h-8 w-56" />
-        <Bone className="mt-6 h-6 w-36" />
-        <Bone className="h-4 w-full" />
-        <Bone className="h-4 w-5/6" />
-        <Bone className="h-4 w-2/3" />
-        <Bone className="mt-6 h-6 w-28" />
-        <Bone className="h-4 w-1/2" />
-        <Bone className="h-4 w-1/3" />
+      <div className="min-w-0 flex-1 overflow-hidden px-6 py-8 md:px-10" aria-hidden>
+        <div className={`${paper} flex flex-col gap-3`}>
+          <Bone className="h-8 w-56" />
+          <Bone className="mt-6 h-6 w-36" />
+          <Bone className="h-4 w-full" />
+          <Bone className="h-4 w-5/6" />
+          <Bone className="h-4 w-2/3" />
+          <Bone className="mt-6 h-6 w-28" />
+          <Bone className="h-4 w-1/2" />
+          <Bone className="h-4 w-1/3" />
+        </div>
       </div>
     </div>
   )
@@ -543,11 +501,9 @@ function Editor({ saved, name, onChange }: { saved: SavedPortfolio; name: string
   /** 고칠 내용을 고르는 작은 창이 열린 항목 */
   const [asking, setAsking] = useState<PortfolioKey | null>(null)
   const [removing, setRemoving] = useState<PortfolioSection | null>(null)
-  const previewRef = useRef<HTMLDivElement>(null)
+  const previewRef = useRef<HTMLElement>(null)
   const latest = useRef(saved)
   latest.current = saved
-
-  const text = useMemo(() => toMarkdown(name, sections), [name, sections])
 
   function update(next: PortfolioSection[]) {
     onChange({ ...latest.current, sections: next })
@@ -581,8 +537,8 @@ function Editor({ saved, name, onChange }: { saved: SavedPortfolio; name: string
   const missing = portfolioSections().filter((item) => !sections.some((section) => section.key === item.key))
 
   return (
-    <div className="-mx-6 flex min-h-0 flex-1 border-t border-gray-200 md:-mx-10">
-      <aside className="flex w-[340px] shrink-0 flex-col border-r border-gray-200 bg-gray-50">
+    <div className={`${canvas} flex-row!`}>
+      <aside className="flex w-[340px] shrink-0 flex-col border-r border-gray-200">
         <div className="flex shrink-0 items-center justify-between gap-2 px-4 pt-4 pb-2">
           <h2 className="text-[13px] font-medium text-gray-500">{L.sections}</h2>
           {missing.length > 0 && (
@@ -618,35 +574,30 @@ function Editor({ saved, name, onChange }: { saved: SavedPortfolio; name: string
         />
       </aside>
 
-      <section className="relative flex min-w-0 flex-1 flex-col bg-white">
-        <div className="pointer-events-none absolute top-4 right-5 z-10">
-          <CopyMarkdown text={text} repo={saved.repo} />
-        </div>
-        <div ref={previewRef} className="min-h-0 flex-1 overflow-y-auto px-8 py-10 md:px-14">
-          <article className="mx-auto max-w-[720px]">
-            <h1 className="text-[28px] leading-tight font-bold text-gray-900">{name}</h1>
-            {sections.map((section) =>
-              revising === section.key || !section.content.trim() ? (
-                <div key={section.key} data-section={section.key} className="article mt-10 scroll-mt-6" aria-busy="true">
-                  <h2>{section.title}</h2>
-                  <div className="flex flex-col gap-2.5">
-                    <Bone className="h-4 w-full" />
-                    <Bone className="h-4 w-5/6" />
-                    <Bone className="h-4 w-2/3" />
-                  </div>
+      <section ref={previewRef} className="min-w-0 flex-1 overflow-y-auto px-6 py-8 md:px-10">
+        <article className={paper}>
+          <h1 className="text-[28px] leading-tight font-bold text-gray-900">{name}</h1>
+          {sections.map((section) =>
+            revising === section.key || !section.content.trim() ? (
+              <div key={section.key} data-section={section.key} className="article mt-10 scroll-mt-6" aria-busy="true">
+                <h2>{section.title}</h2>
+                <div className="flex flex-col gap-2.5">
+                  <Bone className="h-4 w-full" />
+                  <Bone className="h-4 w-5/6" />
+                  <Bone className="h-4 w-2/3" />
                 </div>
-              ) : (
-                <div
-                  key={section.key}
-                  data-section={section.key}
-                  className="article mt-10 scroll-mt-6"
-                  // 제목과 본문이 한 덩어리의 바로 아래 자식이어야 본문 모양(간격)이 그대로 입혀져요.
-                  dangerouslySetInnerHTML={{ __html: `<h2>${escapeHtml(section.title)}</h2>${markdown.parse(section.content, { async: false })}` }}
-                />
-              ),
-            )}
-          </article>
-        </div>
+              </div>
+            ) : (
+              <div
+                key={section.key}
+                data-section={section.key}
+                className="article mt-10 scroll-mt-6"
+                // 제목과 본문이 한 덩어리의 바로 아래 자식이어야 본문 모양(간격)이 그대로 입혀져요.
+                dangerouslySetInnerHTML={{ __html: `<h2>${escapeHtml(section.title)}</h2>${markdown.parse(section.content, { async: false })}` }}
+              />
+            ),
+          )}
+        </article>
       </section>
 
       {removing && (
@@ -664,31 +615,6 @@ function Editor({ saved, name, onChange }: { saved: SavedPortfolio; name: string
         />
       )}
     </div>
-  )
-}
-
-function CopyMarkdown({ text, repo }: { text: string; repo: string }) {
-  const L = useMessages(TEXT)
-  const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle')
-
-  async function copy() {
-    const ok = await navigator.clipboard.writeText(text).then(
-      () => true,
-      () => false,
-    )
-    track('portfolio_copy', { repo, success: ok })
-    setState(ok ? 'done' : 'failed')
-    setTimeout(() => setState('idle'), 2000)
-  }
-
-  return (
-    <button type="button" onClick={copy} className={`${toolButton} pointer-events-auto`}>
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
-        <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
-        <path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" />
-      </svg>
-      {state === 'done' ? L.copied : state === 'failed' ? L.copyFailed : L.copy}
-    </button>
   )
 }
 
@@ -831,7 +757,7 @@ function SectionList({ sections, revising, asking, onAsk, onRevise, onRemove, on
                   disabled={revising !== null}
                   aria-expanded={asking === section.key}
                   onClick={() => onAsk(section.key)}
-                  className="h-8 rounded-md px-2 text-[12.5px] font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 disabled:text-gray-300"
+                  className={ghostButton}
                 >
                   {L.revise}
                 </button>
@@ -840,47 +766,24 @@ function SectionList({ sections, revising, asking, onAsk, onRevise, onRemove, on
                   aria-label={L.remove(section.title)}
                   disabled={revising === section.key}
                   onClick={() => onRemove(section)}
-                  className="flex size-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:text-gray-200"
+                  className={iconButton}
                 >
-                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="size-3.5" aria-hidden="true">
-                    <path d="M4 4l8 8M12 4l-8 8" />
-                  </svg>
+                  <CloseIcon />
                 </button>
               </div>
             </div>
             {asking === section.key && (
-              <RevisionPicker onPick={(revision) => onRevise(section.key, revision)} onClose={() => onAsk(section.key)} />
+              <RevisionPicker
+                title={L.reviseTitle}
+                options={revisions()}
+                onPick={(revision) => onRevise(section.key, revision)}
+                onClose={() => onAsk(section.key)}
+                className="mx-2 mb-2"
+              />
             )}
           </li>
         )
       })}
     </ul>
-  )
-}
-
-/** 항목 아래에 펼쳐지는 작은 창이에요. 고칠 방향을 글로 적지 않고 골라요. */
-function RevisionPicker({ onPick, onClose }: { onPick: (revision: RevisionKey) => void; onClose: () => void }) {
-  const L = useMessages(TEXT)
-  const ref = useRef<HTMLDivElement>(null)
-
-  // 고치기 버튼을 다시 누른 것은 버튼이 알아서 닫아요.
-  useDismiss(true, ref, onClose, { capture: true, ignore: (target) => !!target.closest('[aria-expanded="true"]') })
-
-  return (
-    <div ref={ref} role="dialog" aria-label={L.reviseTitle} className="origin-top animate-pop border-t border-gray-100 px-3 pt-2.5 pb-3">
-      <p className="text-[12.5px] font-medium text-gray-500">{L.reviseTitle}</p>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        {revisions().map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            onClick={() => onPick(item.key)}
-            className="h-7 rounded-md border border-gray-200 bg-white px-2.5 text-[12.5px] text-gray-700 transition-colors hover:border-brand hover:text-brand-hover"
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-    </div>
   )
 }
