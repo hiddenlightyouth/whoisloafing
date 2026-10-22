@@ -42,7 +42,7 @@ This kind of history is the closest preview you'll get of what working with them
 
 ## A faster way to check
 
-Paste the repository link the applicant submitted into WhoIsLoafing, and you'll get those four things as a conversation. For public repositories, there's nothing to install and no sign-in needed.
+Paste the repository link the applicant submitted into Lofy, and you'll get those four things as a conversation. For public repositories, there's nothing to install and no sign-in needed.
 
 1. Paste the link, and you'll first see what the product is and its tech stack.
 2. Choose **"Analyze who contributed and how much"** to see each contributor's commits, lines changed, and ranking.

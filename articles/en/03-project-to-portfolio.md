@@ -59,9 +59,9 @@ Whether you followed commit conventions, how you opened PRs, and how small you k
 
 ## Gather the material in five minutes
 
-Collecting those five things by hand means opening commits one by one, which takes a while. Paste the repository link into WhoIsLoafing and you get the material in one go.
+Collecting those five things by hand means opening commits one by one, which takes a while. Paste the repository link into Lofy and you get the material in one go.
 
-| What your portfolio needs | What WhoIsLoafing gives you |
+| What your portfolio needs | What Lofy gives you |
 | --- | --- |
 | A one-line project intro | A one-sentence summary of the repo |
 | Tech stack | Tech stack grouped by type |

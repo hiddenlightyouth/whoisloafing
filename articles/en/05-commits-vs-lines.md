@@ -3,7 +3,7 @@ title: Commits vs. lines changed: how should we read contribution?
 description: In the same repository, the contribution ranking can flip depending on the measure. Here's what each number tells you and how to read them together.
 ---
 
-WhoIsLoafing doesn't show contribution as a single number. It shows two side by side: **share by commits** and **share by lines changed**. People sometimes ask, "So who did the most?" There's a reason we don't merge them into one number.
+Lofy doesn't show contribution as a single number. It shows two side by side: **share by commits** and **share by lines changed**. People sometimes ask, "So who did the most?" There's a reason we don't merge them into one number.
 
 ## What commit counts tell you
 
@@ -40,7 +40,7 @@ Put the two numbers side by side and you see things that one alone hides.
 | Low | High | Shipped big features in one go, or built the initial skeleton |
 | Low | Low | Joined late, or took on work outside the code |
 
-WhoIsLoafing introduces contributors in order of the average of the two shares. That way, neither working habit gets an unfair advantage.
+Lofy introduces contributors in order of the average of the two shares. That way, neither working habit gets an unfair advantage.
 
 ## Making the numbers more accurate
 
@@ -71,7 +71,7 @@ No matter how precisely we count, work that isn't recorded can't become a number
 - Managing the schedule and preparing the presentation
 - Configuring the deployment environment directly in a dashboard
 
-That's why WhoIsLoafing doesn't just hand you numbers. It also summarizes each contributor's **features** and **code style**. "Built the sign-in and payment screens, and tends to handle edge cases carefully" says far more about a person than "30% contribution."
+That's why Lofy doesn't just hand you numbers. It also summarizes each contributor's **features** and **code style**. "Built the sign-in and payment screens, and tends to handle edge cases carefully" says far more about a person than "30% contribution."
 
 ## In one line
 

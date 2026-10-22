@@ -5,7 +5,7 @@
 import { localizePath, messages, type Lang } from './i18n'
 
 export const SITE = 'https://whoisloafing.hidly.dev'
-export const SITE_TITLE = 'WhoIsLoafing'
+export const SITE_TITLE = 'Lofy'
 
 export interface PageMeta {
   /** 탭 제목 */
@@ -26,10 +26,10 @@ export const HOME_META = messages<PageMeta>({
   ko: {
     title: SITE_TITLE,
     description: 'GitHub 레포 주소만 넣으면 누가 얼마나 기여했고 어떤 기능을 맡았는지 대화로 알려드려요.',
-    ogTitle: 'WhoIsLoafing, 우리 프로젝트의 MVP는?',
+    ogTitle: 'Lofy, 우리 프로젝트의 MVP는?',
   },
   en: {
-    title: 'WhoIsLoafing - Who built what in your GitHub repo?',
+    title: 'Lofy - Who built what in your GitHub repo?',
     description: 'Analyze any GitHub repository to understand contributors, feature ownership, activity patterns, and team workflow.',
     ogTitle: 'Who built what in your GitHub repo?',
     ogDescription: 'Paste a repo link and get a clear breakdown of contribution, ownership, and teamwork.',

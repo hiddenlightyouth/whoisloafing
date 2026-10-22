@@ -46,8 +46,8 @@ export function AppGate() {
       <div className="relative w-full max-w-xs text-center">
         <img
           src="/logo.svg"
-          alt="WhoIsLoafing"
-          width={3403}
+          alt="Lofy"
+          width={1592}
           height={367}
           draggable={false}
           className="mx-auto h-[22px] w-auto animate-rise"

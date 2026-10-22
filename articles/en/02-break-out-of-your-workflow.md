@@ -44,7 +44,7 @@ A workflow is recorded more accurately in history than in documents. These five 
 4. **Issues**: What's the title format? Are labels and owners used?
 5. **Repository setup**: Are there automated checks? Is there a contributing guide?
 
-You can check each of these yourself, or paste the repository link into WhoIsLoafing and choose **"I want to borrow this team's workflow"** to get it all in one place. You'll see the branch names and commit messages the team actually used, the items in their PR template, how they managed issues, and the order to adopt it in your own team. If you like what you see, you can copy a ready-made team rules document in one click.
+You can check each of these yourself, or paste the repository link into Lofy and choose **"I want to borrow this team's workflow"** to get it all in one place. You'll see the branch names and commit messages the team actually used, the items in their PR template, how they managed issues, and the order to adopt it in your own team. If you like what you see, you can copy a ready-made team rules document in one click.
 
 ## Don't change everything at once
 

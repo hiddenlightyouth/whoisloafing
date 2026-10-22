@@ -18,7 +18,7 @@ const TEXT = messages({
     invalid: '앱 로그인 주소가 올바르지 않아요.',
     invalidHint: '앱에서 브라우저로 로그인을 다시 눌러 주세요.',
     sent: '연결되었습니다',
-    title: (name: string) => `${name ? `${name}으로 ` : ''}WhoIsLoafing 앱에서 계속합니다`,
+    title: (name: string) => `${name ? `${name}으로 ` : ''}Lofy 앱에서 계속합니다`,
     sentBody: '앱이 실행되면 이 브라우저는 닫아도 괜찮아요.',
     currentAccount: '지금 로그인한 계정',
     working: '처리 중',
@@ -33,7 +33,7 @@ const TEXT = messages({
     invalid: 'This app sign-in link is invalid.',
     invalidHint: 'Click Sign in with browser in the app again.',
     sent: 'Connected',
-    title: (name: string) => `Continue in the WhoIsLoafing app${name ? ` as ${name}` : ''}`,
+    title: (name: string) => `Continue in the Lofy app${name ? ` as ${name}` : ''}`,
     sentBody: 'Once the app opens, you can close this browser window.',
     currentAccount: 'Your current account',
     working: 'Working',
@@ -108,7 +108,7 @@ export function AppLogin({ onCancel }: { onCancel: () => void }) {
     <main className="flex flex-1 overflow-y-auto">
       <div className="m-auto w-full max-w-sm px-5 pt-24 pb-16">
         <div className="animate-rise rounded-3xl border border-gray-200 bg-white p-6 sm:p-7">
-          <img src="/logo.svg" alt="WhoIsLoafing" width={3403} height={367} draggable={false} className="h-[14px] w-auto" />
+          <img src="/logo.svg" alt="Lofy" width={1592} height={367} draggable={false} className="h-[14px] w-auto" />
 
           <h1 className="mt-6 break-keep text-[20px] font-semibold leading-snug text-gray-900">
             {sent ? text.sent : text.title(name)}

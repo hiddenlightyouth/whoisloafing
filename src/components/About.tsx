@@ -160,7 +160,7 @@ export function About({ onHome }: Props) {
   return (
     <main ref={scrollRef} className="flex-1 overflow-x-hidden overflow-y-auto">
       <section className="mx-auto flex w-full max-w-2xl flex-col items-center px-6 pt-32 pb-20 text-center sm:pt-44 sm:pb-28">
-        <img src="/logo.svg" alt="WhoIsLoafing" width={3403} height={367} draggable={false} className="h-6 w-auto sm:h-7" />
+        <img src="/logo.svg" alt="Lofy" width={1592} height={367} draggable={false} className="h-6 w-auto sm:h-7" />
         <h1 className="mt-8 text-balance break-keep font-semibold leading-[1.2] tracking-[-0.03em] text-gray-900 text-[clamp(30px,6vw,56px)]">{text.title}</h1>
         <p className="mt-5 text-balance break-keep text-[14px] leading-relaxed text-gray-500 sm:text-[16px]">
           {text.lead}

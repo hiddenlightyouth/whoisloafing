@@ -84,7 +84,7 @@ You don't need this from the very start. It's not too late to add once the first
 Writing rules from a blank page is daunting. The fastest way is to **take the rules of a team that already works well and adapt them**.
 
 1. Pick a public repository from a project you'd like to emulate.
-2. Paste the link into WhoIsLoafing and choose **"I want to borrow this team's workflow"**.
+2. Paste the link into Lofy and choose **"I want to borrow this team's workflow"**.
 3. Read the branch names, commit messages, PR templates, and issue practices that team actually used.
 4. Copy the team rules document in one click.
 5. Trim and adjust it to fit your team's size and timeline.

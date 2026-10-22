@@ -3,8 +3,8 @@ import { openBugReport, useFeedback } from '../lib/feedback'
 import { messages, useMessages } from '../lib/i18n'
 
 const TEXT = messages({
-  ko: { team: '숨은빚청년들 팀', bug: '버그 신고', rights: '© 2026 WhoIsLoafing. 모든 권리 보유.' },
-  en: { team: 'Made by Hidly', bug: 'Report a bug', rights: '© 2026 WhoIsLoafing' },
+  ko: { team: '숨은빚청년들 팀', bug: '버그 신고', rights: '© 2026 Lofy. 모든 권리 보유.' },
+  en: { team: 'Made by Hidly', bug: 'Report a bug', rights: '© 2026 Lofy' },
 })
 
 /** 메인 화면과 소개 화면 아래에 두는 줄이에요. 왼쪽에 팀 홈페이지 링크와 버그 신고, 오른쪽에 저작권 문구가 있어요. 자리는 쓰는 쪽에서 정해요. */

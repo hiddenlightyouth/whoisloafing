@@ -56,7 +56,7 @@ By the time you open the code, you already have the context, so it reads much mo
 
 The catch is that all of this takes effort. Opening hundreds of commits, counting who did how much, and spotting conventions in commit messages can easily eat an hour or two.
 
-WhoIsLoafing does the tedious part for you. Paste a public repository link and get a conversational breakdown of:
+Lofy does the tedious part for you. Paste a public repository link and get a conversational breakdown of:
 
 - A one-sentence summary of the project and its tech stack
 - Commits, lines added and removed, and contribution share for each contributor

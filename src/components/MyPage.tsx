@@ -74,7 +74,7 @@ const TEXT = messages({
     unknownAddress: 'Unknown address',
     working: 'Working',
     more: 'Show more',
-    withdrawn: 'Your account has been deleted. Thanks for using WhoIsLoafing.',
+    withdrawn: 'Your account has been deleted. Thanks for using Lofy.',
     title: 'Account',
     account: 'Profile',
     name: 'Name',

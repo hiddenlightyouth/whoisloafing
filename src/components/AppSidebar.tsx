@@ -347,7 +347,7 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
             }}
             className="inline-flex items-center"
           >
-            <img src="/logo.svg" alt="WhoIsLoafing" width={3403} height={367} draggable={false} className="h-[13px] w-auto translate-y-px" />
+            <img src="/logo.svg" alt="Lofy" width={1592} height={367} draggable={false} className="h-[13px] w-auto translate-y-px" />
           </a>
         </div>
       ) : (

@@ -38,22 +38,22 @@ export function track(event: string, params: Params = {}): void {
 }
 
 const PAGE_TITLES = {
-  home: 'WhoIsLoafing',
-  chat: 'WhoIsLoafing 분석',
-  shared_chat: 'WhoIsLoafing 공유된 분석',
-  articles: 'WhoIsLoafing 아티클',
-  article: 'WhoIsLoafing 아티클',
-  login: 'WhoIsLoafing 로그인',
-  signup: 'WhoIsLoafing 회원가입',
-  me: 'WhoIsLoafing 내 정보',
-  history: 'WhoIsLoafing 내 작업',
-  'app-login': 'WhoIsLoafing 앱 로그인',
-  deep: 'WhoIsLoafing 심층 분석',
-  portfolio: 'WhoIsLoafing 포트폴리오 만들기',
-  resume: 'WhoIsLoafing 이력서 만들기',
-  explore: 'WhoIsLoafing 탐색',
-  admin: 'WhoIsLoafing 관리자',
-  about: 'WhoIsLoafing 소개',
+  home: 'Lofy',
+  chat: 'Lofy 분석',
+  shared_chat: 'Lofy 공유된 분석',
+  articles: 'Lofy 아티클',
+  article: 'Lofy 아티클',
+  login: 'Lofy 로그인',
+  signup: 'Lofy 회원가입',
+  me: 'Lofy 내 정보',
+  history: 'Lofy 내 작업',
+  'app-login': 'Lofy 앱 로그인',
+  deep: 'Lofy 심층 분석',
+  portfolio: 'Lofy 포트폴리오 만들기',
+  resume: 'Lofy 이력서 만들기',
+  explore: 'Lofy 탐색',
+  admin: 'Lofy 관리자',
+  about: 'Lofy 소개',
 }
 
 type Screen = keyof typeof PAGE_TITLES

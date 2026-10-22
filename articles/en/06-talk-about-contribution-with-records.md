@@ -3,7 +3,7 @@ title: Talk about contribution with records, not feelings
 description: There's a lot you can do before someone says "they did nothing." Here's how to look at the record together and talk about contribution without a fight.
 ---
 
-Near the end of every team project, the same conversation comes up. "It feels like I did everything." "I have no idea what they worked on." The name WhoIsLoafing actually started from this exact moment, as a playful nod to the question everyone quietly asks.
+Near the end of every team project, the same conversation comes up. "It feels like I did everything." "I have no idea what they worked on." The name Lofy actually started from this exact moment, as a playful nod to "who is loafing?", to the question everyone quietly asks.
 
 But that question is riskier than it looks. Raise it without evidence and it turns into a fight. Don't raise it and it builds up inside.
 
@@ -17,7 +17,7 @@ Nobody is lying. Everyone just **sees different things**. That's why when memori
 
 The fix is to put **the record**, not a person, at the center of the conversation. "You didn't do it" and "Here's what the history shows" can say the same thing and land completely differently.
 
-The repository already has the record. Paste your team's repository link into WhoIsLoafing and you can see:
+The repository already has the record. Paste your team's repository link into Lofy and you can see:
 
 - Commits, lines changed, and contribution share by both measures for each contributor
 - The features each contributor likely worked on
@@ -67,7 +67,7 @@ We especially recommend the third one. Just looking at the record together once 
 
 ## How to use this tool
 
-WhoIsLoafing isn't built to single anyone out. That's why it explains numbers instead of just reading them out, and why it always shows features alongside contribution. Contribution numbers are signals, not verdicts.
+Lofy isn't built to single anyone out. That's why it explains numbers instead of just reading them out, and why it always shows features alongside contribution. Contribution numbers are signals, not verdicts.
 
 If you need to explain contribution to an instructor or TA for a group assignment, show **who built what** along with the numbers. Noting the work a lower-numbered teammate did that never made it into commits makes the material much fairer.
 
