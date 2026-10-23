@@ -4,7 +4,7 @@
  */
 import { localizePath, messages, type Lang } from './i18n'
 
-export const SITE = 'https://whoisloafing.hidly.dev'
+export const SITE = 'https://lofy.hidly.dev'
 export const SITE_TITLE = 'Lofy'
 
 export interface PageMeta {

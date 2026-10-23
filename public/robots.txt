@@ -13,4 +13,4 @@ Disallow: /explore
 Disallow: /admin
 Disallow: /app/
 
-Sitemap: https://whoisloafing.hidly.dev/sitemap.xml
+Sitemap: https://lofy.hidly.dev/sitemap.xml

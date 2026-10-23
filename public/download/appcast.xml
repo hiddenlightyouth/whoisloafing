@@ -8,7 +8,7 @@
       <sparkle:version>4</sparkle:version>
       <sparkle:shortVersionString>1.3</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>27.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://whoisloafing.hidly.dev/download/WhoIsLoafing-1.3.zip" type="application/octet-stream" sparkle:edSignature="srwQkN9Q805syME7PU4BV7zaAgxAaxPBXV2ovbrKaX9DDrVoxAIxl9UDetEDsP/QvZWzjdcWY3aPEMyylrXEBA==" length="1112902" />
+      <enclosure url="https://lofy.hidly.dev/download/WhoIsLoafing-1.3.zip" type="application/octet-stream" sparkle:edSignature="srwQkN9Q805syME7PU4BV7zaAgxAaxPBXV2ovbrKaX9DDrVoxAIxl9UDetEDsP/QvZWzjdcWY3aPEMyylrXEBA==" length="1112902" />
     </item>
   </channel>
 </rss>

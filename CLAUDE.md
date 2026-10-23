@@ -13,7 +13,7 @@ GitHub 레포 링크를 입력하면 참여자별 기여도를 분석해서 채�
 
 ## 브랜딩 규칙
 
-- 서비스명: 표기는 Lofy, 패키지명처럼 소문자가 필요한 곳은 lofy. 예전 이름은 WhoIsLoafing이었어요. 도메인(whoisloafing.hidly.dev), Workers 이름, localStorage 키(`whoisloafing:`), 앱과 약속한 값(User-Agent의 `WhoIsLoafingApp`, `whoisloafing://` 주소, 웹뷰 메시지 이름 `whoisloafing`, 설치 파일 이름 `WhoIsLoafing.dmg`)은 바꾸면 저장된 값이 사라지거나 앱과 어긋나서 예전 이름 그대로 둬요. 화면에 보이는 이름만 Lofy예요.
+- 서비스명: 표기는 Lofy, 패키지명처럼 소문자가 필요한 곳은 lofy. 예전 이름은 WhoIsLoafing이었어요. API 서버 주소(api.whoisloafing.hidly.dev), Workers 이름, localStorage 키(`whoisloafing:`), 앱과 약속한 값(User-Agent의 `WhoIsLoafingApp`, `whoisloafing://` 주소, 웹뷰 메시지 이름 `whoisloafing`, 설치 파일 이름 `WhoIsLoafing.dmg`)은 바꾸면 저장된 값이 사라지거나 앱과 어긋나서 예전 이름 그대로 둬요. 화면에 보이는 이름만 Lofy예요.
 - 로고: 중절모 그림과 Lofy 글자(Pretendard ExtraBold를 도형으로 바꾼 것)를 하나로 묶은 그림 파일(`public/logo.svg`)이에요. 손글씨 Lofy로 바꿔 봤다가 되돌렸어요. 손글씨(`LofyScript`)는 새 분석 화면, 소개 화면 맨 위, 앱 로그인 화면에만 써요. 색은 짙은 회색(#2C2C2C) 한 가지예요. 글자가 도형으로 들어 있어서 로고용 폰트는 따로 불러오지 않아요. 헤더는 이 파일을 그대로 보여주니, 파일을 바꾸면 헤더에 바로 반영돼요. 파비콘과 미리보기 이미지는 따로 만든 파일이라 같이 고쳐야 해요.
 - 본문 폰트: Pretendard. 전체 자간은 -0.02em
 - 메인 컬러: #2E90FA, hover는 #1570EF, 연한 배경은 #EFF8FF
@@ -21,7 +21,7 @@ GitHub 레포 링크를 입력하면 참여자별 기여도를 분석해서 채�
   - 나머지는 흰 배경과 회색 계열 텍스트로 절제해요.
 - 컬러와 폰트는 `src/index.css`의 `@theme`에 토큰으로 등록되어 있어요. (`brand`, `brand-hover`, `brand-soft`, `font-sans`)
 - 탭 제목은 Lofy, 파비콘은 흰 배경에 짙은 회색 중절모
-- 링크를 카카오톡이나 디스코드에 붙이면 뜨는 미리보기 카드는 `index.html`의 og 태그와 `public/og.png`로 정해요. 영어 주소(`/en`으로 시작)의 카드는 `public/og-en.png`와 영어 문구를 써요. 자세한 것은 아래 다국어 절에 있어요. 주소는 실제 서비스 주소(https://whoisloafing.hidly.dev)로 적혀 있어서, 도메인이 바뀌면 같이 바꿔야 해요. 채팅 주소(`/c/아이디`)도 같은 카드가 떠요.
+- 링크를 카카오톡이나 디스코드에 붙이면 뜨는 미리보기 카드는 `index.html`의 og 태그와 `public/og.png`로 정해요. 영어 주소(`/en`으로 시작)의 카드는 `public/og-en.png`와 영어 문구를 써요. 자세한 것은 아래 다국어 절에 있어요. 주소는 실제 서비스 주소(https://lofy.hidly.dev)로 적혀 있어서, 도메인이 바뀌면 같이 바꿔야 해요(`index.html`, `src/lib/meta.ts`의 `SITE`, `scripts/prerender.mjs`의 `SITE`, `public/robots.txt`, 업데이트 목록과 앱 레포). 서비스 주소는 예전에 https://whoisloafing.hidly.dev였어요. 이미 깔린 macOS 앱(1.3까지)은 예전 주소를 열고 예전 주소에서 업데이트를 확인해서, 예전 주소도 같은 Worker에 계속 연결해 둬요. 백엔드의 `CORS_ALLOWED_ORIGINS`와 GitHub, 카카오의 로그인 돌아오는 주소에도 두 주소를 다 넣어요. 채팅 주소(`/c/아이디`)도 같은 카드가 떠요.
 - 디자인 원칙: 여백 위주의 미니멀. 장식, 그라데이션, 이모지, 아이콘 남발 금지. 타이틀 위에 태그, 뱃지, 라벨을 붙이지 않아요.
 - 그라데이션 금지의 예외는 질문 메뉴를 들고 있는 유리 방울 하나예요. 그림 파일이나 라이브러리 없이 CSS로만 그리고(`src/index.css`의 orb 규칙), 색은 메인 컬러 계열의 파란색만 써요. 움직임 줄이기 설정에서는 멈춰 있어요.
 - 그림자 효과는 쓰지 않아요. 입력창, 버튼, 말풍선, 팝업, 툴팁 어디에도 `shadow`를 넣지 않고, 경계가 필요하면 옅은 회색 테두리나 배경색 차이로 구분해요.
@@ -582,7 +582,7 @@ AI 사용량 탭(`AdminUsage`)
 - 언어 정하기: 직접 고른 언어가 있으면 그것을, 없으면 브라우저 언어가 한국어(`ko`로 시작)일 때만 한국어, 그 밖에는 영어예요. 고른 언어는 localStorage의 `whoisloafing:lang`에 둬요. 주소가 `/en`으로 시작하면 이번 방문은 영어로 보여주고, 이건 저장하지 않아요.
 - 언어 바꾸기: 웹은 헤더 오른쪽 끝(모바일은 햄버거 메뉴 맨 아래)의 언어 이름을, 앱은 설정 창 화면 묶음의 "언어"를 눌러요. 바로 바뀌고 새로 고칠 필요가 없어요.
 - 언어별 주소: 메인 화면, 소개, 아티클만 영어 주소가 따로 있어요(`/en`, `/en/about`, `/en/articles`, `/en/articles/{이름}`). 영어로 보고 있으면 이 화면들의 주소에 `/en`이 붙고, 언어를 바꾸면 주소도 같이 바뀌어요. 채팅, 계정, 앱 화면은 언어와 상관없이 같은 주소예요. 화면을 고를 때는 `currentPath()`로 `/en`을 뗀 경로를 보고, 주소를 만들 때는 `localizePath()`를 거쳐요.
-- 공유: 미리보기 카드를 만드는 서비스(X, 슬랙, 디스코드, 카카오톡 등)는 자바스크립트를 돌리지 않아서, 빌드할 때 영어 화면을 `dist/en.html`, `dist/en/about.html`, `dist/en/articles/*.html`로 미리 만들어 둬요. 영어로 공유할 링크는 `https://whoisloafing.hidly.dev/en`처럼 `/en` 주소를 써요. 미리 만든 화면에는 `hreflang` 링크가, 사이트맵에는 언어별 주소가 들어가요.
+- 공유: 미리보기 카드를 만드는 서비스(X, 슬랙, 디스코드, 카카오톡 등)는 자바스크립트를 돌리지 않아서, 빌드할 때 영어 화면을 `dist/en.html`, `dist/en/about.html`, `dist/en/articles/*.html`로 미리 만들어 둬요. 영어로 공유할 링크는 `https://lofy.hidly.dev/en`처럼 `/en` 주소를 써요. 미리 만든 화면에는 `hreflang` 링크가, 사이트맵에는 언어별 주소가 들어가요.
 - 탭 제목과 미리보기 태그(description, canonical, og, twitter, `og:locale`, `og:image`)는 화면을 옮기거나 언어를 바꿀 때 `applyMeta`가 바꿔요. 소개, 아티클, 계정 화면은 스스로 정하고, 그 밖의 화면은 메인 화면 값(`HOME_META`)을 써요.
 - 문구 쓰는 법: 화면 파일마다 `const TEXT = messages({ ko: {...}, en: {...} })`로 문구를 모으고, 컴포넌트에서 `useMessages(TEXT)`로 꺼내요. 영어를 빠뜨리면 타입 검사에서 걸려요. 컴포넌트 밖(토스트, 오류 문구)에서는 `pick(TEXT)`를 써요. 숫자나 이름이 들어가는 문구는 함수로 적어요.
 - 영어 문구는 감시하거나 탓하는 도구처럼 읽히지 않게 써요. 누가 놀았는지 잡아낸다는 말 대신, 누가 무엇을 만들었는지, 기여와 맡은 일과 협업 방식을 이해한다는 말로 소개해요. 영어 메인 타이틀은 "Who built what in your GitHub repo?"예요. 서비스명 Lofy는 그대로 둬요.

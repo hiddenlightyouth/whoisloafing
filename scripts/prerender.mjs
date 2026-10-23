@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const dist = path.join(root, 'dist')
 const ssrDir = path.join(root, 'dist-ssr')
-const SITE = 'https://whoisloafing.hidly.dev'
+const SITE = 'https://lofy.hidly.dev'
 
 const escapeHtml = (text) =>
   text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
