@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react'
+import { createStore, useStore } from './store'
 import { isApp } from './shell'
 
 /** macOS 앱 안에서 열렸는지와, 웹의 /app까지 포함해서 앱 화면으로 보여줄지는 shell.ts에서 정해요. */
@@ -55,27 +55,16 @@ type AppMessage =
 const APP_CAPTURE_EVENT = 'whoisloafing:app-capture'
 
 /** 지금 화면이 공유되거나 녹화되고 있는지. 화면을 가리는 막이 뜨기 전에 온 알림도 놓치지 않게 여기서 받아 둬요. */
-let captured = false
-const captureListeners = new Set<() => void>()
+const captured = createStore(false)
 
 if (isApp) {
   window.addEventListener(APP_CAPTURE_EVENT, (event) => {
-    const next = (event as CustomEvent<{ active?: boolean }>).detail?.active === true
-    if (next === captured) return
-    captured = next
-    captureListeners.forEach((listener) => listener())
+    captured.set((event as CustomEvent<{ active?: boolean }>).detail?.active === true)
   })
 }
 
 export function useAppCaptured(): boolean {
-  return useSyncExternalStore(
-    (listener) => {
-      captureListeners.add(listener)
-      return () => captureListeners.delete(listener)
-    },
-    () => captured,
-    () => false,
-  )
+  return useStore(captured)
 }
 
 interface AppBridge {

@@ -4,8 +4,9 @@
  * 주소가 /en으로 시작하면 이번 방문은 영어로 보여줘요. 소개와 아티클, 메인 화면은 영어 주소(/en, /en/about, /en/articles/...)가 따로 있어요.
  * 문구는 화면 파일마다 `messages({ ko, en })`로 모아 두고 `useMessages`로 꺼내 써요.
  */
-import { useSyncExternalStore } from 'react'
 import { stripApp, withApp } from './shell'
+import { readItem, writeItem } from './storage'
+import { createStore, useStore } from './store'
 
 export type Lang = 'ko' | 'en'
 
@@ -30,7 +31,7 @@ export const currentPath = () => stripApp(stripLocale(window.location.pathname))
  * 이 경로를 주어진 언어의 주소로 바꿔요. 언어마다 주소가 따로 없는 화면은 그대로 둬요.
  * 웹의 /app에서는 소개와 아티클을 뺀 화면에 /app을 붙이고, 언어 표시는 붙이지 않아요.
  */
-export function localizePath(path: string, lang: Lang = current): string {
+export function localizePath(path: string, lang: Lang = current.get()): string {
   const bare = stripApp(stripLocale(path))
   const inApp = withApp(bare)
   if (inApp !== bare) return inApp
@@ -39,12 +40,8 @@ export function localizePath(path: string, lang: Lang = current): string {
 }
 
 function stored(): Lang | null {
-  try {
-    const value = localStorage.getItem(KEY)
-    return value === 'ko' || value === 'en' ? value : null
-  } catch {
-    return null
-  }
+  const value = readItem(KEY)
+  return value === 'ko' || value === 'en' ? value : null
 }
 
 /** 브라우저 언어가 한국어면 한국어, 그 밖에는 영어예요. */
@@ -60,40 +57,27 @@ function initial(): Lang {
   return EN_PREFIX.test(window.location.pathname) ? 'en' : (stored() ?? detectLang())
 }
 
-let current: Lang = initial()
-const listeners = new Set<() => void>()
+const current = createStore<Lang>(initial())
 
-export const getLang = () => current
+export const getLang = current.get
 
 /**
  * 언어를 바꿔요. 직접 고른 것이면 이 기기에 저장해서 다음에도 그 언어로 보여줘요.
  * 언어마다 주소가 따로 있는 화면에 있으면 주소도 그 언어의 주소로 바꿔요.
  */
 export function setLang(lang: Lang, { persist = true } = {}) {
-  if (persist) {
-    try {
-      localStorage.setItem(KEY, lang)
-    } catch {
-      // 저장하지 못해도 이번 화면에서는 그대로 동작해요.
-    }
-  }
-  if (lang === current) return
-  current = lang
+  if (persist) writeItem(KEY, lang)
+  if (lang === current.get()) return
+  current.set(lang)
   if (typeof window !== 'undefined') {
     document.documentElement.lang = lang
     const next = localizePath(window.location.pathname, lang)
     if (next !== window.location.pathname) window.history.replaceState(window.history.state, '', next + window.location.search + window.location.hash)
   }
-  listeners.forEach((listener) => listener())
-}
-
-const subscribe = (listener: () => void) => {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
 }
 
 export function useLang(): Lang {
-  return useSyncExternalStore(subscribe, getLang, getLang)
+  return useStore(current)
 }
 
 /** 화면 파일의 문구 묶음이에요. 영어 문구는 한국어와 같은 모양이어야 해서, 빠뜨리면 타입 검사에서 걸려요. */
@@ -107,11 +91,11 @@ export function useMessages<T>(table: Record<Lang, T>): T {
 
 /** 컴포넌트 밖(토스트, 오류 문구 등)에서 지금 언어의 문구를 꺼내요. */
 export function pick<T>(table: Record<Lang, T>): T {
-  return table[current]
+  return table[current.get()]
 }
 
 if (typeof window !== 'undefined') {
-  document.documentElement.lang = current
+  document.documentElement.lang = current.get()
   // 영어로 보여줄 화면인데 한국어 주소로 들어왔으면, 공유할 때 영어 카드가 뜨도록 영어 주소로 바꿔 둬요.
   const next = localizePath(window.location.pathname)
   if (next !== window.location.pathname) window.history.replaceState(null, '', next + window.location.search + window.location.hash)

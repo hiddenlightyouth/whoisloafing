@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { track } from '../lib/analytics'
 import { fetchExplore, type ExploreKind, type ExploreRepo } from '../lib/api'
 import { Avatar } from './History'
@@ -6,6 +6,7 @@ import { MapMenu } from './DeepParts'
 import { ExploreCardsSkeleton } from './Skeleton'
 import { clubInfo } from '../lib/clubs'
 import { readFlag, writeFlag } from '../lib/storage'
+import { createStore, useStore } from '../lib/store'
 import { moreButton, PageHeader } from './AppPage'
 import { primaryButton } from './Dialog'
 import { getLang, messages, useMessages, type Lang } from '../lib/i18n'
@@ -110,37 +111,29 @@ const ROW_SIZE = 8
 type Loaded = ExploreRepo[] | 'failed'
 
 // 받은 목록은 화면을 옮겨 다녀도 남게 화면 바깥에 둬요. 새 분석 화면의 한 줄과 탐색 화면이 같은 목록을 나눠 써서, 종류마다 한 번만 받아요.
-const cache: Partial<Record<string, Loaded>> = {}
+const cache = createStore<Partial<Record<string, Loaded>>>({})
 const pending = new Set<string>()
-const listeners = new Set<() => void>()
 
-const subscribe = (listener: () => void) => {
-  listeners.add(listener)
-  return () => {
-    listeners.delete(listener)
-  }
-}
+const setCached = (key: string, value: Loaded | undefined) => cache.set({ ...cache.get(), [key]: value })
 
 function load(kind: ExploreKind, region: Lang) {
   const key = cacheKey(kind, region)
-  if (cache[key] !== undefined || pending.has(key)) return
+  if (cache.get()[key] !== undefined || pending.has(key)) return
   pending.add(key)
   void fetchExplore(kind, kind === 'clubs' ? region : getLang()).then((repos) => {
     pending.delete(key)
-    cache[key] = repos && repos.length > 0 ? repos : 'failed'
-    listeners.forEach((listener) => listener())
+    setCached(key, repos && repos.length > 0 ? repos : 'failed')
   })
 }
 
 function retry(kind: ExploreKind, region: Lang) {
-  delete cache[cacheKey(kind, region)]
-  listeners.forEach((listener) => listener())
+  setCached(cacheKey(kind, region), undefined)
   load(kind, region)
 }
 
 /** 목록 하나를 받아서 돌려줘요. 받는 중이면 undefined예요. enabled가 false면 받지 않아요. */
 function useList(kind: ExploreKind, region: Lang, enabled = true): Loaded | undefined {
-  const list = useSyncExternalStore(subscribe, () => cache[cacheKey(kind, region)])
+  const list = useStore(cache, (value) => value[cacheKey(kind, region)])
   useEffect(() => {
     if (enabled) load(kind, region)
   }, [kind, region, enabled, list])

@@ -1,6 +1,7 @@
-import { useSyncExternalStore } from 'react'
 import { apiUrl, ownerHeaders, readResult, type ApiResult } from './http'
 import { getLang, messages, pick } from './i18n'
+import { readJson, writeItem, writeJson } from './storage'
+import { createStore, useStore } from './store'
 
 const TOKEN_STORAGE = 'whoisloafing:auth'
 const ME_STORAGE = 'whoisloafing:me'
@@ -112,66 +113,40 @@ const ERROR_MESSAGES = messages<Record<string, string>>({
 const NETWORK_MESSAGE = () => pick(ERROR_MESSAGES).network
 const UNKNOWN_MESSAGE = () => pick(ERROR_MESSAGES).unknown
 
-function readJson<T>(key: string): T | null {
-  try {
-    const raw = localStorage.getItem(key)
-    return raw ? (JSON.parse(raw) as T) : null
-  } catch {
-    return null
-  }
-}
+const readSaved = <T,>(key: string) => readJson<T | null>(key, null)
 
-function writeJson(key: string, value: unknown) {
-  try {
-    if (value === null) localStorage.removeItem(key)
-    else localStorage.setItem(key, JSON.stringify(value))
-  } catch {
-    return
-  }
-}
+const writeSaved = (key: string, value: unknown) => (value === null ? writeItem(key, null) : writeJson(key, value))
 
 function readTokens(): Tokens | null {
-  const tokens = readJson<Tokens>(TOKEN_STORAGE)
+  const tokens = readSaved<Tokens>(TOKEN_STORAGE)
   return tokens && typeof tokens.accessToken === 'string' && typeof tokens.refreshToken === 'string' ? tokens : null
 }
 
-let state: AuthState = { tokens: readTokens(), me: readTokens() ? readJson<Me>(ME_STORAGE) : null }
-const listeners = new Set<() => void>()
+const auth = createStore<AuthState>({ tokens: readTokens(), me: readTokens() ? readSaved<Me>(ME_STORAGE) : null })
 
 function setState(next: AuthState) {
-  state = next
-  writeJson(TOKEN_STORAGE, next.tokens)
-  writeJson(ME_STORAGE, next.me)
-  listeners.forEach((listener) => listener())
-}
-
-function subscribe(listener: () => void) {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
+  writeSaved(TOKEN_STORAGE, next.tokens)
+  writeSaved(ME_STORAGE, next.me)
+  auth.set(next)
 }
 
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (event) => {
     if (event.key !== TOKEN_STORAGE && event.key !== ME_STORAGE) return
     const tokens = readTokens()
-    state = { tokens, me: tokens ? readJson<Me>(ME_STORAGE) : null }
-    listeners.forEach((listener) => listener())
+    auth.set({ tokens, me: tokens ? readSaved<Me>(ME_STORAGE) : null })
   })
 }
 
 export function useAuth(): AuthState {
-  return useSyncExternalStore(
-    subscribe,
-    () => state,
-    () => state,
-  )
+  return useStore(auth)
 }
 
 /** 지금 로그인해 있는지. 화면 바깥(저장소)에서 쓸 때 봐요. */
-export const isSignedIn = () => state.tokens !== null
+export const isSignedIn = () => auth.get().tokens !== null
 
 function clearAuth() {
-  if (state.tokens || state.me) setState({ tokens: null, me: null })
+  if (auth.get().tokens || auth.get().me) setState({ tokens: null, me: null })
 }
 
 function expiresAt(token: string): number | null {
@@ -195,11 +170,11 @@ function reissue(): Promise<boolean> {
   refreshing ??= (async () => {
     try {
       const latest = readTokens()
-      if (latest && latest.accessToken !== state.tokens?.accessToken && isFresh(latest.accessToken)) {
-        setState({ ...state, tokens: latest })
+      if (latest && latest.accessToken !== auth.get().tokens?.accessToken && isFresh(latest.accessToken)) {
+        setState({ ...auth.get(), tokens: latest })
         return true
       }
-      const refreshToken = latest?.refreshToken ?? state.tokens?.refreshToken
+      const refreshToken = latest?.refreshToken ?? auth.get().tokens?.refreshToken
       if (!refreshToken) return false
       const res = await fetch(apiUrl('/auth/reissue'), {
         method: 'POST',
@@ -208,7 +183,7 @@ function reissue(): Promise<boolean> {
       })
       const result = await readResult<Tokens>(res)
       if (result.ok && result.data) {
-        setState({ ...state, tokens: result.data })
+        setState({ ...auth.get(), tokens: result.data })
         return true
       }
       if (res.status === 400 || res.status === 401) clearAuth()
@@ -223,10 +198,10 @@ function reissue(): Promise<boolean> {
 }
 
 async function freshAccessToken(): Promise<string | null> {
-  const tokens = state.tokens
+  const tokens = auth.get().tokens
   if (!tokens) return null
   if (!isFresh(tokens.accessToken)) await reissue()
-  return state.tokens?.accessToken ?? null
+  return auth.get().tokens?.accessToken ?? null
 }
 
 export async function authHeaders(): Promise<Record<string, string>> {
@@ -238,7 +213,7 @@ export async function authFetch<T>(path: string, init: RequestInit = {}): Promis
   const send = async () =>
     fetch(apiUrl(path), { ...init, headers: { ...(init.headers as Record<string, string>), ...(await authHeaders()) } })
   let res = await send()
-  if (res.status === 401 && state.tokens && (await reissue())) res = await send()
+  if (res.status === 401 && auth.get().tokens && (await reissue())) res = await send()
   return readResult<T>(res)
 }
 
@@ -411,7 +386,7 @@ export async function createAppLoginCode(challenge: string): Promise<string | nu
 export const signInWithAppCode = (code: string, verifier: string) => submitCredentials('/auth/app/token', { code, verifier })
 
 export async function signOut(): Promise<void> {
-  if (state.tokens) {
+  if (auth.get().tokens) {
     const headers = await authHeaders()
     await fetch(apiUrl('/auth/logout'), { method: 'POST', headers }).catch(() => null)
   }
@@ -420,18 +395,18 @@ export async function signOut(): Promise<void> {
 
 /** 이 브라우저에서 로그인하지 않고 만든 채팅을 내 계정에 연결해요. */
 export async function claimChats(): Promise<void> {
-  if (!state.tokens) return
+  if (!auth.get().tokens) return
   await authFetch('/users/me/chats/claim', { method: 'POST', headers: ownerHeaders() }).catch(() => null)
 }
 
 export async function loadMe(): Promise<Me | null> {
-  if (!state.tokens) return null
+  if (!auth.get().tokens) return null
   try {
     const result = await authFetch<Me>('/users/me')
-    if (result.ok && result.data && state.tokens) setState({ ...state, me: result.data })
+    if (result.ok && result.data && auth.get().tokens) setState({ ...auth.get(), me: result.data })
     return result.data
   } catch {
-    return state.me
+    return auth.get().me
   }
 }
 

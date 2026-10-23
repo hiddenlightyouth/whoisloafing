@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react'
+import { createStore, useStore } from './store'
 import { authFetch } from './auth'
 
 /** 서버에 보내는 피드백. 평가는 분석이 어땠는지, 버그는 문제가 생겼다는 신고예요. */
@@ -24,29 +24,16 @@ export async function sendFeedback(input: FeedbackInput): Promise<boolean> {
 }
 
 /** ready는 서버가 피드백을 받을 수 있는지, bugOpen은 버그 신고 창이 떠 있는지예요. */
-let state = { ready: false, bugOpen: false }
-const listeners = new Set<() => void>()
+const state = createStore({ ready: false, bugOpen: false })
 
-function setState(next: Partial<typeof state>) {
-  state = { ...state, ...next }
-  listeners.forEach((listener) => listener())
-}
-
-const subscribe = (listener: () => void) => {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
-}
+const setState = (next: Partial<ReturnType<typeof state.get>>) => state.set({ ...state.get(), ...next })
 
 export const setFeedbackReady = (ready: boolean) => setState({ ready })
 export const openBugReport = () => setState({ bugOpen: true })
 export const closeBugReport = () => setState({ bugOpen: false })
 
 export function useFeedback() {
-  return useSyncExternalStore(
-    subscribe,
-    () => state,
-    () => state,
-  )
+  return useStore(state)
 }
 
 const COUNT_KEY = 'whoisloafing:feedback-answers'

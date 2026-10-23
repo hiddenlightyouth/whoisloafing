@@ -90,6 +90,7 @@ src/
   lib/admin.ts        관리자 API 호출(현황, 회원, 채팅, AI 사용량과 호출 기록)과 응답 타입, 한국 날짜 계산
   lib/geo.ts          IP 주소의 대략적인 위치 알아내기(공개 서비스 ipwho.is)와 이 기기에 적어 두기
   lib/storage.ts      localStorage 읽고 쓰기. 막혀 있거나 가득 차도 오류 없이 넘어가요(readItem, writeItem, readJson, writeJson, readFlag, writeFlag). 새로 저장하는 값도 이것을 써요.
+  lib/store.ts        화면 밖에 두는 작은 값(createStore)과 그 값을 읽는 훅(useStore). 로그인 상태, 언어, 사용량, 토스트 같은 저장소가 모두 이것을 써요. 새 저장소도 리스너를 직접 만들지 않고 이것을 써요.
   lib/routes.ts       주소에서 지금 보여줄 화면 읽기(채팅, 아티클, 소개, 계정, 심층 분석, 포트폴리오, 탐색, 관리자). 주소로 여는 화면은 `Page` 하나로 나타내요(`pageFromPath`).
   lib/format.ts       서버 시각을 "오늘 오후 3:12", "어제", "10월 3일" 같은 말로 바꾸기
   lib/analytics.ts    Google Analytics 이벤트 전송

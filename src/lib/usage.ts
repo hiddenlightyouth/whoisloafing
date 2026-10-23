@@ -1,7 +1,7 @@
-import { useSyncExternalStore } from 'react'
 import { track } from './analytics'
 import { authFetch } from './auth'
 import { readItem, writeItem } from './storage'
+import { createStore, useStore } from './store'
 
 // 요금제와 주간 사용량, 분석에 쓸 모델을 다뤄요. 한도와 기록은 서버가 지키고, 화면은 고른 모델을 요청에 실어 보내고 사용량을 보여줘요.
 
@@ -65,18 +65,8 @@ export interface Usage {
   plans: PlanInfo[]
 }
 
-let usage: Usage | null = null
+const usage = createStore<Usage | null>(null)
 let loading: Promise<Usage | null> | null = null
-const listeners = new Set<() => void>()
-
-function emit() {
-  for (const listener of listeners) listener()
-}
-
-const subscribe = (listener: () => void) => {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
-}
 
 /** 이번 주 사용량을 새로 받아요. 서버에 사용량 API가 없거나 받지 못하면 null이에요. */
 export function refreshUsage(): Promise<Usage | null> {
@@ -84,9 +74,8 @@ export function refreshUsage(): Promise<Usage | null> {
     .then((result) => (result.ok && result.data ? result.data : null))
     .catch(() => null)
     .then((next) => {
-      usage = next
       loading = null
-      emit()
+      usage.set(next)
       return next
     })
   return loading
@@ -94,7 +83,7 @@ export function refreshUsage(): Promise<Usage | null> {
 
 /** 받아 둔 이번 주 사용량. 아직 받지 않았으면 null이에요. */
 export function useUsage(): Usage | null {
-  return useSyncExternalStore(subscribe, () => usage, () => null)
+  return useStore(usage, undefined, null)
 }
 
 /** 한도에 대한 비율(%). 0보다 크면 적어도 1%로 보여줘요. */
@@ -116,37 +105,27 @@ export function modelsOf(current: Usage | null): ModelInfo[] {
 const MODEL_KEY = 'whoisloafing:model'
 
 /** 마지막으로 고른 모델. 고른 모델을 쓸 수 없게 되었으면 Claude Haiku예요. */
-export function getModel(): ModelId {
+function readModel(): ModelId {
   const saved = readItem(MODEL_KEY)
   return MODELS.find((model) => model.id === saved && model.available)?.id ?? 'claude-haiku'
 }
 
-const modelListeners = new Set<() => void>()
+const model = createStore<ModelId>(typeof window === 'undefined' ? 'claude-haiku' : readModel())
 
-export function setModel(model: ModelId) {
-  writeItem(MODEL_KEY, model)
-  for (const listener of modelListeners) listener()
+export const getModel = model.get
+
+export function setModel(next: ModelId) {
+  writeItem(MODEL_KEY, next)
+  model.set(next)
 }
 
 /** 고른 모델. 여러 곳의 모델 메뉴가 같은 값을 보여줘요. */
 export function useModel(): ModelId {
-  return useSyncExternalStore(
-    (listener) => {
-      modelListeners.add(listener)
-      return () => modelListeners.delete(listener)
-    },
-    getModel,
-    () => 'claude-haiku' as ModelId,
-  )
+  return useStore(model, undefined, 'claude-haiku')
 }
 
-let plansOpen = false
-const plansListeners = new Set<() => void>()
-
-function setPlansOpen(open: boolean) {
-  plansOpen = open
-  for (const listener of plansListeners) listener()
-}
+const plansOpen = createStore(false)
+const setPlansOpen = plansOpen.set
 
 /** 요금제 창을 열어요. 계정 메뉴, 모델 메뉴, 말풍선 어디서든 같은 창이 떠요. */
 export function openPlans(from: 'menu' | 'model' | 'chat') {
@@ -160,12 +139,5 @@ export function closePlans() {
 
 /** 요금제 창이 열려 있는지. App이 한 번 읽어서 창을 그려요. */
 export function usePlansOpen(): boolean {
-  return useSyncExternalStore(
-    (listener) => {
-      plansListeners.add(listener)
-      return () => plansListeners.delete(listener)
-    },
-    () => plansOpen,
-    () => false,
-  )
+  return useStore(plansOpen)
 }

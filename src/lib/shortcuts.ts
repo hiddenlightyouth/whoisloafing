@@ -1,4 +1,5 @@
-import { useEffect, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useRef } from 'react'
+import { createStore, useStore } from './store'
 import { readFlag, writeFlag } from './storage'
 
 /**
@@ -40,14 +41,12 @@ const PINNED_KEY = 'whoisloafing:shortcut-hints'
 const readPinned = () => readFlag(PINNED_KEY)
 
 /** held는 Option을 누르고 있는지, pinned는 설정에서 늘 보이게 켜 뒀는지예요. */
-let hints = { held: false, pinned: typeof window !== 'undefined' && readPinned() }
-const hintListeners = new Set<() => void>()
+const hints = createStore({ held: false, pinned: typeof window !== 'undefined' && readPinned() })
 
-function setHints(next: Partial<typeof hints>) {
-  const merged = { ...hints, ...next }
-  if (merged.held === hints.held && merged.pinned === hints.pinned) return
-  hints = merged
-  hintListeners.forEach((listener) => listener())
+function setHints(next: Partial<ReturnType<typeof hints.get>>) {
+  const current = hints.get()
+  const merged = { ...current, ...next }
+  if (merged.held !== current.held || merged.pinned !== current.pinned) hints.set(merged)
 }
 
 if (typeof window !== 'undefined') {
@@ -61,27 +60,14 @@ if (typeof window !== 'undefined') {
   window.addEventListener('blur', () => setHints({ held: false }))
 }
 
-const subscribeHints = (listener: () => void) => {
-  hintListeners.add(listener)
-  return () => hintListeners.delete(listener)
-}
-
 /** 버튼 옆에 단축키를 보여줄지예요. Option(Alt)을 누르고 있는 동안이나, 설정에서 단축키 힌트 표시를 켜 뒀을 때 true예요. */
 export function useShortcutHints(): boolean {
-  return useSyncExternalStore(
-    subscribeHints,
-    () => hints.held || hints.pinned,
-    () => false,
-  )
+  return useStore(hints, (value) => value.held || value.pinned, false)
 }
 
 /** 설정의 단축키 힌트 표시가 켜져 있는지예요. */
 export function useShortcutHintsPinned(): boolean {
-  return useSyncExternalStore(
-    subscribeHints,
-    () => hints.pinned,
-    () => false,
-  )
+  return useStore(hints, (value) => value.pinned, false)
 }
 
 /** 단축키 힌트를 늘 보이게 할지 정하고, 다음에 열었을 때도 그대로 두게 저장해요. */
