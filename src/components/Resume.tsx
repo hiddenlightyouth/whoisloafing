@@ -23,7 +23,7 @@ import {
 } from '../lib/resume'
 import { showToast } from '../lib/toast'
 import { messages, useMessages } from '../lib/i18n'
-import { canvas, CloseIcon, copyText, TrashIcon, CopyButton, ghostButton, iconButton, pageFrame, PageHeader, paper, PlanField, PlusIcon, RevisionPicker, StepLayout, Steps, StepTitle } from './AppPage'
+import { canvas, CloseIcon, copyText, TrashIcon, copyRich, ExportMenu, ghostButton, iconButton, pageFrame, PageHeader, paper, PlanField, PlusIcon, RevisionPicker, StepLayout, Steps, StepTitle } from './AppPage'
 import { toolButton } from './DeepParts'
 import { ConfirmDialog, primaryButton } from './Dialog'
 import { PeopleList } from './Portfolio'
@@ -39,7 +39,7 @@ const TEXT = messages({
     title: '이력서 만들기',
     pickTitle: '이력서에 넣을 프로젝트',
     add: '프로젝트 추가',
-    copy: '복사하기',
+    copy: '서식 복사',
     copyMarkdown: '마크다운 복사',
     back: '레포 고르는 화면으로 돌아가기',
     steps: { plan: '추가 정보', person: '대상 선택' } as Record<SetupStep, string>,
@@ -78,7 +78,7 @@ const TEXT = messages({
     title: 'Build a resume',
     pickTitle: 'Pick a project for your resume',
     add: 'Add project',
-    copy: 'Copy',
+    copy: 'Copy with formatting',
     copyMarkdown: 'Copy Markdown',
     back: 'Back to repositories',
     steps: { plan: 'Additional info', person: 'Select person' },
@@ -279,7 +279,7 @@ function Document({ onAdd }: { onAdd: () => void }) {
                 {L.clear}
               </button>
             )}
-            {ready.length > 0 && <CopyButtons projects={ready} />}
+            {ready.length > 0 && <Export projects={ready} />}
             <button type="button" onClick={onAdd} disabled={loading} className={`${toolButton} whitespace-nowrap disabled:opacity-50`}>
               <PlusIcon />
               {L.add}
@@ -695,43 +695,28 @@ function ProjectEditor({ project, onClose }: { project: ResumeProject; onClose: 
 }
 
 /** 서식을 지킨 복사(워드, 구글 문서, 노션)와 마크다운 복사예요. */
-function CopyButtons({ projects }: { projects: ResumeProject[] }) {
+function Export({ projects }: { projects: ResumeProject[] }) {
   const L = useMessages(TEXT)
-
-  async function copyRich() {
-    const plain = toPlainText(projects)
-    try {
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          'text/html': new Blob([toHtml(projects)], { type: 'text/html' }),
-          'text/plain': new Blob([plain], { type: 'text/plain' }),
-        }),
-      ])
-      return true
-    } catch {
-      // 서식 복사를 막는 브라우저에서는 글만 복사해요.
-      return copyText(plain)
-    }
-  }
-
   return (
-    <>
-      <CopyButton
-        label={L.copyMarkdown}
-        onCopy={async () => {
-          const ok = await copyText(toMarkdown(projects))
-          track('resume_copy', { format: 'markdown', success: ok })
-          return ok
-        }}
-      />
-      <CopyButton
-        label={L.copy}
-        onCopy={async () => {
-          const ok = await copyRich()
-          track('resume_copy', { format: 'rich', success: ok })
-          return ok
-        }}
-      />
-    </>
+    <ExportMenu
+      items={[
+        {
+          label: L.copy,
+          run: async () => {
+            const ok = await copyRich(toHtml(projects), toPlainText(projects))
+            track('resume_copy', { format: 'rich', success: ok })
+            return ok
+          },
+        },
+        {
+          label: L.copyMarkdown,
+          run: async () => {
+            const ok = await copyText(toMarkdown(projects))
+            track('resume_copy', { format: 'markdown', success: ok })
+            return ok
+          },
+        },
+      ]}
+    />
   )
 }

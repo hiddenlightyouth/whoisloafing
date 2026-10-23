@@ -22,7 +22,7 @@ import {
   type SavedPortfolio,
 } from '../lib/portfolio'
 import { showToast } from '../lib/toast'
-import { canvas, CloseIcon, copyText, CopyButton, ghostButton, iconButton, pageFrame, PageHeader, paper, PlanField, RefreshIcon, RevisionPicker, StepLayout, Steps, StepTitle, TrashIcon } from './AppPage'
+import { canvas, CloseIcon, copyRich, copyText, ExportMenu, ghostButton, iconButton, pageFrame, PageHeader, paper, PlanField, RefreshIcon, RevisionPicker, StepLayout, Steps, StepTitle, TrashIcon } from './AppPage'
 import { ConfirmDialog, primaryButton } from './Dialog'
 import { MapMenu, toolButton } from './DeepParts'
 import { RepoGallery } from './RepoGallery'
@@ -127,13 +127,25 @@ function Builder({ repo, onBack }: { repo: string; onBack: () => void }) {
                 <RefreshIcon />
                 {L.restart}
               </button>
-              <CopyButton
-                label={L.copy}
-                onCopy={async () => {
-                  const ok = await copyText(toMarkdown(name, saved.sections))
-                  track('portfolio_copy', { repo, success: ok })
-                  return ok
-                }}
+              <ExportMenu
+                items={[
+                  {
+                    label: L.copyRich,
+                    run: async () => {
+                      const ok = await copyRich(toHtml(name, saved.sections), toMarkdown(name, saved.sections))
+                      track('portfolio_copy', { repo, format: 'rich', success: ok })
+                      return ok
+                    },
+                  },
+                  {
+                    label: L.copy,
+                    run: async () => {
+                      const ok = await copyText(toMarkdown(name, saved.sections))
+                      track('portfolio_copy', { repo, format: 'markdown', success: ok })
+                      return ok
+                    },
+                  },
+                ]}
               />
             </>
           )
@@ -217,6 +229,7 @@ const TEXT = messages({
     removeBody: (title: string) => `포트폴리오에서 ${title} 항목을 빼요. 나중에 항목 추가로 다시 넣으면 처음부터 새로 써요.`,
     removeConfirm: '빼기',
     copy: '마크다운 복사',
+    copyRich: '서식 복사',
     empty: '항목 추가를 눌러 포트폴리오에 넣을 항목을 골라 주세요.',
     reorder: (title: string) => `${title} 순서 바꾸기. 위아래 방향키로 옮길 수 있어요`,
     revising: '다듬고 있어요',
@@ -259,6 +272,7 @@ const TEXT = messages({
     removeBody: (title: string) => `${title} will be removed from the portfolio. If you add it back, it will be written again.`,
     removeConfirm: 'Remove',
     copy: 'Copy Markdown',
+    copyRich: 'Copy with formatting',
     empty: 'Use Add section to choose what goes into your portfolio.',
     reorder: (title: string) => `Reorder ${title}. Use the up and down arrow keys`,
     revising: 'Revising',
@@ -535,6 +549,11 @@ const markdown = new Marked({
     if ((token.type === 'link' || token.type === 'image') && !/^https?:\/\//i.test(token.href)) token.href = '#'
   },
 })
+
+/** 서식 복사에 쓰는 HTML이에요. 미리보기와 같은 규칙으로 그려요. */
+function toHtml(name: string, sections: PortfolioSection[]): string {
+  return `<h1>${escapeHtml(name)}</h1>${sections.map((section) => `<h2>${escapeHtml(section.title)}</h2>${markdown.parse(section.content, { async: false })}`).join('')}`
+}
 
 /** 만든 포트폴리오를 고치는 화면이에요. 왼쪽은 항목의 순서와 고치기, 오른쪽은 마크다운 미리보기예요. */
 function Editor({ saved, name, onChange }: { saved: SavedPortfolio; name: string; onChange: (next: SavedPortfolio) => void }) {

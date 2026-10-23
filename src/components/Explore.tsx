@@ -46,6 +46,7 @@ const TEXT = messages({
     guide: '동아리를 선택해서 더 자세히 탐색할 수 있어요',
     guideNever: '다시 보지 않기',
     guideClose: '안내 닫기',
+    openGithub: (repo: string) => `GitHub에서 ${repo} 열기`,
   },
   en: {
     categories: { github: 'GitHub', clubs: 'Korean clubs & communities', global: 'Student clubs & communities' },
@@ -67,6 +68,7 @@ const TEXT = messages({
     guide: 'Pick a club to explore its projects in more detail',
     guideNever: "Don't show again",
     guideClose: 'Close guide',
+    openGithub: (repo: string) => `Open ${repo} on GitHub`,
   },
 })
 
@@ -179,9 +181,10 @@ const STAGGER_MS = 28
 const STAGGER_MAX = 14
 
 function Card({ item, order, onOpen }: { item: ExploreRepo; order: number; onOpen: (item: ExploreRepo) => void }) {
+  const L = useMessages(TEXT)
   const [owner, name] = item.repo.split('/')
   return (
-    <li className="min-h-0 animate-rise" style={{ animationDelay: `${Math.min(order, STAGGER_MAX) * STAGGER_MS}ms` }}>
+    <li className="group relative min-h-0 animate-rise" style={{ animationDelay: `${Math.min(order, STAGGER_MAX) * STAGGER_MS}ms` }}>
       <button
         type="button"
         onClick={() => onOpen(item)}
@@ -200,6 +203,20 @@ function Card({ item, order, onOpen }: { item: ExploreRepo; order: number; onOpe
           <Stars count={item.stars} />
         </span>
       </button>
+      {/* 마우스를 올리면 오른쪽 위에 GitHub로 가는 버튼이 나와요. 터치 화면에서는 늘 보여요. 카드 버튼 안에 넣지 않고 위에 겹쳐 둬요. */}
+      <a
+        href={`https://github.com/${item.repo}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={L.openGithub(item.repo)}
+        title={L.openGithub(item.repo)}
+        onClick={() => track('explore_repo_github', { repo: item.repo })}
+        className="absolute top-4 right-4 flex size-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:border-gray-300 hover:text-gray-900 focus-visible:opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
+      >
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="size-3.5" aria-hidden="true">
+          <path d="M5 11l6-6M6 5h5v5" />
+        </svg>
+      </a>
     </li>
   )
 }

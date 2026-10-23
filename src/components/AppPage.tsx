@@ -1,6 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react'
 import { useDismiss } from '../hooks/useDismiss'
 import { messages, useMessages } from '../lib/i18n'
+import { showToast } from '../lib/toast'
 import { toolButton } from './DeepParts'
 
 /**
@@ -10,8 +11,8 @@ import { toolButton } from './DeepParts'
  */
 
 const TEXT = messages({
-  ko: { back: '뒤로 가기', copied: '복사했어요', copyFailed: '복사하지 못했어요', steps: '진행 단계' },
-  en: { back: 'Back', copied: 'Copied', copyFailed: 'Could not copy', steps: 'Steps' },
+  ko: { back: '뒤로 가기', copied: '복사했어요', copyFailed: '복사하지 못했어요', steps: '진행 단계', export: '내보내기' },
+  en: { back: 'Back', copied: 'Copied', copyFailed: 'Could not copy', steps: 'Steps', export: 'Export' },
 })
 
 /** 앱 화면의 바깥 틀이에요. 위의 헤더(56px)만큼 비우고 좌우 여백을 둬요. */
@@ -235,25 +236,54 @@ export function RevisionPicker<K extends string>({ title, options, onPick, onClo
   )
 }
 
-/** 제목 줄에 두는 복사 버튼이에요. 누르면 2초 동안 결과를 버튼 글자로 알려줘요. */
-export function CopyButton({ label, onCopy }: { label: string; onCopy: () => Promise<boolean> }) {
-  const L = useMessages(TEXT)
-  const [state, setState] = useState<'idle' | 'done' | 'failed'>('idle')
+/** 내보내기 메뉴의 항목 하나. 누르면 복사하고 됐는지 돌려줘요. */
+export interface ExportItem {
+  label: string
+  run: () => Promise<boolean>
+}
 
-  async function copy() {
-    const ok = await onCopy()
-    setState(ok ? 'done' : 'failed')
-    setTimeout(() => setState('idle'), 2000)
+/**
+ * 제목 줄에 두는 내보내기 버튼이에요. 복사 방법이 여러 가지여도 버튼은 하나만 두고, 누르면 아래로 고르는 메뉴가 펼쳐져요.
+ * 고르면 바로 복사하고 결과는 토스트로 알려줘요.
+ */
+export function ExportMenu({ items }: { items: ExportItem[] }) {
+  const L = useMessages(TEXT)
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useDismiss(open, ref, () => setOpen(false))
+
+  async function pick(item: ExportItem) {
+    setOpen(false)
+    showToast((await item.run()) ? L.copied : L.copyFailed)
   }
 
   return (
-    <button type="button" onClick={() => void copy()} className={`${toolButton} whitespace-nowrap`}>
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" className="size-4" aria-hidden="true">
-        <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
-        <path d="M10.5 5.5v-2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2" />
-      </svg>
-      {state === 'done' ? L.copied : state === 'failed' ? L.copyFailed : label}
-    </button>
+    <div ref={ref} className="relative">
+      <button type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)} className={`${toolButton} whitespace-nowrap`}>
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden="true">
+          <path d="M8 10V2.5M5 5.5l3-3 3 3M3 9.5v3a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-3" />
+        </svg>
+        {L.export}
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className={`size-3 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true">
+          <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <div role="menu" className="absolute top-full right-0 z-20 mt-2 w-48 origin-top-right animate-pop rounded-xl border border-gray-200 bg-white p-1.5">
+          {items.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              role="menuitem"
+              onClick={() => void pick(item)}
+              className="flex h-9 w-full items-center rounded-lg px-3 text-left text-[13px] text-gray-800 transition-colors hover:bg-gray-100"
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -263,3 +293,18 @@ export const copyText = (text: string) =>
     () => true,
     () => false,
   )
+
+/** 서식(HTML)과 글을 같이 복사해요. 워드나 구글 문서, 노션에 붙이면 서식이 그대로 나와요. 막는 브라우저에서는 글만 복사해요. */
+export async function copyRich(html: string, plain: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'text/html': new Blob([html], { type: 'text/html' }),
+        'text/plain': new Blob([plain], { type: 'text/plain' }),
+      }),
+    ])
+    return true
+  } catch {
+    return copyText(plain)
+  }
+}
