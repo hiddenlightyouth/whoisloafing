@@ -3,6 +3,7 @@ import { track } from '../lib/analytics'
 import { useAuth } from '../lib/auth'
 import { fetchPortfolioPeople, type PortfolioPerson } from '../lib/portfolio'
 import {
+  clearResume,
   createResumeProject,
   loadResume,
   newId,
@@ -51,7 +52,6 @@ const TEXT = messages({
     next: '다음',
     skip: '건너뛰기',
     create: '이력서에 추가',
-    writing: '이력서를 쓰고 있어요. 1분쯤 걸려요.',
     edit: '고치기',
     done: '완료',
     cancel: '취소',
@@ -70,6 +70,9 @@ const TEXT = messages({
     stackHint: '쉼표로 나눠 적어요',
     addProblemManual: '빈 경험 추가',
     deleteProblem: '경험 빼기',
+    clear: '지우기',
+    clearTitle: '이력서를 지울까요?',
+    clearBody: '이력서의 프로젝트를 모두 지워요. 계정에서도 지워지고 되돌릴 수 없어요.',
   },
   en: {
     title: 'Build a resume',
@@ -88,7 +91,6 @@ const TEXT = messages({
     next: 'Next',
     skip: 'Skip',
     create: 'Add to resume',
-    writing: 'Writing your resume. This takes about a minute.',
     edit: 'Edit',
     done: 'Done',
     cancel: 'Cancel',
@@ -107,6 +109,9 @@ const TEXT = messages({
     stackHint: 'Separate with commas',
     addProblemManual: 'Add empty entry',
     deleteProblem: 'Remove entry',
+    clear: 'Delete',
+    clearTitle: 'Delete this resume?',
+    clearBody: 'Every project on your resume will be deleted from your account. This cannot be undone.',
   },
 })
 
@@ -245,6 +250,8 @@ function Document({ onAdd }: { onAdd: () => void }) {
   const loading = useResumeLoading()
   const [editing, setEditing] = useState<string | null>(null)
   const [removing, setRemoving] = useState<ResumeProject | null>(null)
+  /** 이력서를 통째로 지우기 전에 한 번 더 묻는 창이 떠 있는지 */
+  const [clearing, setClearing] = useState(false)
   const ready = projects.filter((item) => !item.pending)
 
   function move(project: ResumeProject, by: -1 | 1) {
@@ -265,6 +272,11 @@ function Document({ onAdd }: { onAdd: () => void }) {
         title={L.title}
         actions={
           <>
+            {ready.length > 0 && (
+              <button type="button" onClick={() => setClearing(true)} className={`${toolButton} text-red-500!`}>
+                {L.clear}
+              </button>
+            )}
             {ready.length > 0 && <CopyButtons projects={ready} />}
             <button type="button" onClick={onAdd} disabled={loading} className={`${toolButton} whitespace-nowrap disabled:opacity-50`}>
               <PlusIcon />
@@ -282,7 +294,7 @@ function Document({ onAdd }: { onAdd: () => void }) {
             <div className="flex flex-col gap-12">
               {projects.map((project, index) =>
                 project.pending ? (
-                  <Writing key={project.id} name={project.name} />
+                  <Writing key={project.id} />
                 ) : editing === project.id ? (
                   <ProjectEditor key={project.id} project={project} onClose={() => setEditing(null)} />
                 ) : (
@@ -316,6 +328,21 @@ function Document({ onAdd }: { onAdd: () => void }) {
           }}
         />
       )}
+
+      {clearing && (
+        <ConfirmDialog
+          title={L.clearTitle}
+          body={L.clearBody}
+          confirm={L.clear}
+          danger
+          onCancel={() => setClearing(false)}
+          onConfirm={() => {
+            track('resume_delete', { projects: ready.length })
+            clearResume()
+            setClearing(false)
+          }}
+        />
+      )}
     </main>
   )
 }
@@ -338,13 +365,9 @@ function Loading() {
   )
 }
 
-function Writing({ name }: { name: string }) {
-  const L = useMessages(TEXT)
+function Writing() {
   return (
     <section aria-busy="true" className="animate-rise">
-      <p role="status" className="mb-4 text-[13px] font-medium text-gray-500">
-        {name}, {L.writing}
-      </p>
       <div className="flex flex-col gap-3" aria-hidden>
         <div className="flex items-center justify-between gap-4">
           <Bone className="h-5 w-2/3" />

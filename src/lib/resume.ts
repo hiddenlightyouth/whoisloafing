@@ -3,7 +3,7 @@ import { authFetch } from './auth'
 import { DEEP_ERRORS } from './api'
 import { getLang, messages, pick } from './i18n'
 import { getModel, refreshUsage } from './usage'
-import { cancelSave, canSync, fetchSaved, putSaved, scheduleSave } from './saved'
+import { cancelSave, canSync, deleteSaved, fetchSaved, putSaved, scheduleSave } from './saved'
 import { readFlag, readJson, writeFlag, writeItem, writeJson } from './storage'
 
 /** 문제 해결 경험 하나. 서버의 ResumeProblemDto와 맞춰요. 원인과 판단은 비어 있을 수 있어요. */
@@ -198,6 +198,18 @@ export function setResume(update: (prev: ResumeProject[]) => ResumeProject[]) {
     const list = projects
     scheduleSave(SAVED_KEY, (keepalive) => upload(list, keepalive))
   } else writeLocal(projects, false)
+}
+
+/**
+ * 이력서를 통째로 지워요. 쓰는 중이던 프로젝트도 같이 치워서, 끝나도 다시 들어오지 않아요.
+ * 계정에 저장해 둔 것도 지워요.
+ */
+export function clearResume() {
+  cancelSave(SAVED_KEY)
+  projects = []
+  clearLocal()
+  notify()
+  if (syncedFor) void deleteSaved(SAVED_PATH)
 }
 
 export function useResume() {

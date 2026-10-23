@@ -71,6 +71,8 @@ function Builder({ repo, onBack }: { repo: string; onBack: () => void }) {
   const [owner, name] = repo.split('/')
   /** 다시 만들기를 누르기 전에 한 번 더 묻는 창이 떠 있는지 */
   const [restarting, setRestarting] = useState(false)
+  /** 지우기를 누르기 전에 한 번 더 묻는 창이 떠 있는지 */
+  const [deleting, setDeleting] = useState(false)
   /** 받는 사이에 고쳤으면 받은 것으로 덮지 않아요. */
   const touched = useRef(false)
 
@@ -103,6 +105,9 @@ function Builder({ repo, onBack }: { repo: string; onBack: () => void }) {
         actions={
           saved && (
             <>
+              <button type="button" onClick={() => setDeleting(true)} className={`${toolButton} text-red-500!`}>
+                {L.delete}
+              </button>
               <button type="button" onClick={() => setRestarting(true)} className={toolButton}>
                 {L.restart}
               </button>
@@ -138,6 +143,23 @@ function Builder({ repo, onBack }: { repo: string; onBack: () => void }) {
           }}
         />
       )}
+
+      {deleting && (
+        <ConfirmDialog
+          title={L.deleteTitle}
+          body={L.deleteBody(name)}
+          confirm={L.delete}
+          danger
+          onCancel={() => setDeleting(false)}
+          onConfirm={() => {
+            track('portfolio_delete', { repo })
+            touched.current = true
+            clearPortfolio(repo)
+            setDeleting(false)
+            onBack()
+          }}
+        />
+      )}
     </main>
   )
 }
@@ -152,6 +174,9 @@ const TEXT = messages({
     restartTitle: '처음부터 다시 만들까요?',
     restartBody: '항목과 기획안부터 다시 골라서 새로 써요. 지금 포트폴리오는 지워지고 되돌릴 수 없어요.',
     restartConfirm: '다시 만들기',
+    delete: '지우기',
+    deleteTitle: '포트폴리오를 지울까요?',
+    deleteBody: (name: string) => `${name} 포트폴리오를 지워요. 계정에서도 지워지고 되돌릴 수 없어요.`,
     steps: { sections: '항목 선택', plan: '추가 정보', person: '대상 선택' } as Record<Step, string>,
     sectionsTitle: '어떤 항목으로 포트폴리오를 만들까요?',
     planTitle: '참고할 기획안이 있나요?',
@@ -191,6 +216,9 @@ const TEXT = messages({
     restartTitle: 'Start over?',
     restartBody: 'You will pick sections and a plan again and write it from scratch. The current portfolio will be deleted and cannot be restored.',
     restartConfirm: 'Start over',
+    delete: 'Delete',
+    deleteTitle: 'Delete this portfolio?',
+    deleteBody: (name: string) => `The ${name} portfolio will be deleted from your account. This cannot be undone.`,
     steps: { sections: 'Sections', plan: 'Additional info', person: 'Select person' },
     sectionsTitle: 'Which sections should your portfolio have?',
     planTitle: 'Do you have a plan to reference?',
