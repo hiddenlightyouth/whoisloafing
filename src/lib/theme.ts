@@ -2,7 +2,6 @@ import { useSyncExternalStore } from 'react'
 import { appShell, isApp, postToApp, type AppTheme } from './app'
 
 const THEME_STORAGE = 'whoisloafing:app-theme'
-const BACKDROP_STORAGE = 'whoisloafing:app-backdrop'
 const SHIELD_STORAGE = 'whoisloafing:app-capture-shield'
 /** 앱의 설정 창에서 화면 설정을 바꾸면 웹뷰에 보내는 이벤트예요. */
 const SETTINGS_EVENT = 'whoisloafing:app-settings'
@@ -12,8 +11,6 @@ const THEMES: AppTheme[] = ['system', 'light', 'dark']
 export interface AppSettings {
   /** 화면 모드 */
   theme: AppTheme
-  /** 새 분석 화면에 기여도 그래프와 지렁이 배경을 보여줄지 */
-  backdrop: boolean
   /** 화면 공유나 녹화가 감지되면 화면을 가릴지. 처음에는 켜져 있어요. */
   shield: boolean
 }
@@ -28,10 +25,10 @@ function read(key: string): string | null {
 
 function readSettings(): AppSettings {
   const theme = read(THEME_STORAGE) as AppTheme | null
-  return { theme: theme && THEMES.includes(theme) ? theme : 'system', backdrop: read(BACKDROP_STORAGE) === '1', shield: read(SHIELD_STORAGE) !== '0' }
+  return { theme: theme && THEMES.includes(theme) ? theme : 'system', shield: read(SHIELD_STORAGE) !== '0' }
 }
 
-let settings: AppSettings = appShell ? readSettings() : { theme: 'light', backdrop: true, shield: false }
+let settings: AppSettings = appShell ? readSettings() : { theme: 'light', shield: false }
 const listeners = new Set<() => void>()
 
 const systemDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -45,7 +42,6 @@ function store(next: AppSettings) {
   settings = next
   try {
     localStorage.setItem(THEME_STORAGE, next.theme)
-    localStorage.setItem(BACKDROP_STORAGE, next.backdrop ? '1' : '0')
     localStorage.setItem(SHIELD_STORAGE, next.shield ? '1' : '0')
   } catch {
     // 저장하지 못해도 이번 화면에서는 그대로 동작해요.
@@ -58,11 +54,6 @@ function store(next: AppSettings) {
 export function setAppTheme(theme: AppTheme) {
   store({ ...settings, theme })
   postToApp({ type: 'theme', theme })
-}
-
-export function setAppBackdrop(backdrop: boolean) {
-  store({ ...settings, backdrop })
-  postToApp({ type: 'backdrop', on: backdrop })
 }
 
 /** 화면 공유 중에 화면을 가릴지 정하고 앱에도 알려서, 앱의 설정 창과 같이 바뀌게 해요. */
@@ -92,7 +83,6 @@ if (isApp) {
     const detail = (event as CustomEvent<Partial<AppSettings>>).detail ?? {}
     store({
       theme: detail.theme && THEMES.includes(detail.theme) ? detail.theme : settings.theme,
-      backdrop: typeof detail.backdrop === 'boolean' ? detail.backdrop : settings.backdrop,
       shield: typeof detail.shield === 'boolean' ? detail.shield : settings.shield,
     })
   })

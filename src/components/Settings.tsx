@@ -3,7 +3,7 @@ import { track } from '../lib/analytics'
 import { Modal } from './Dialog'
 import { appAtLeast, appVersion, postToApp, type AppTheme } from '../lib/app'
 import { setShortcutHintsPinned, useShortcutHintsPinned } from '../lib/shortcuts'
-import { setAppBackdrop, setAppShield, setAppTheme, useAppSettings } from '../lib/theme'
+import { setAppShield, setAppTheme, useAppSettings } from '../lib/theme'
 import { LANG_NAMES, LANGS, messages, setLang, useLang, useMessages } from '../lib/i18n'
 
 const THEMES: AppTheme[] = ['system', 'light', 'dark']
@@ -17,7 +17,6 @@ const TEXT = messages({
     display: '화면',
     theme: '화면 모드',
     language: '언어',
-    backdrop: '역동적인 시작 화면',
     hints: '단축키 항상 표시',
     hintsNote: '단축키가 사용 가능한 메뉴에 어떤 단축키를 사용하는지 항상 표시합니다.',
     privacy: '개인정보 보호',
@@ -34,7 +33,6 @@ const TEXT = messages({
     display: 'Display',
     theme: 'Appearance',
     language: 'Language',
-    backdrop: 'Animated start screen',
     hints: 'Always show shortcuts',
     hintsNote: 'Always show which keyboard shortcut each menu uses.',
     privacy: 'Privacy',
@@ -110,7 +108,7 @@ function Switch({ on, label, onChange }: { on: boolean; label: string; onChange:
  * 바깥을 누르거나 Esc를 누르면 닫혀요. 바꾼 값은 바로 적용돼서 저장 버튼은 없어요.
  */
 export function Settings({ onClose }: { onClose: () => void }) {
-  const { theme, backdrop, shield } = useAppSettings()
+  const { theme, shield } = useAppSettings()
   const hints = useShortcutHintsPinned()
   const lang = useLang()
   const text = useMessages(TEXT)
@@ -149,16 +147,6 @@ export function Settings({ onClose }: { onClose: () => void }) {
             onChange={(value) => {
               track('language_change', { lang: value, from: 'settings' })
               setLang(value)
-            }}
-          />
-        </Row>
-        <Row label={text.backdrop}>
-          <Switch
-            on={backdrop}
-            label={text.backdrop}
-            onChange={(next) => {
-              track('app_backdrop_change', { on: next })
-              setAppBackdrop(next)
             }}
           />
         </Row>

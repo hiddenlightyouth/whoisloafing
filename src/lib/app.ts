@@ -42,13 +42,12 @@ export interface AppLoginDetail {
 /** 앱의 화면 모드. system은 macOS 설정을 따라가요. */
 export type AppTheme = 'system' | 'light' | 'dark'
 
-/** update는 새 버전이 있는지 확인하는 창을 띄워요(앱 1.1부터). login은 기본 브라우저로 로그인 화면을 열고, drag와 zoom은 창을 옮기거나 키우고, theme과 backdrop, shield(앱 1.2부터)는 고른 설정을 앱에 알려요. */
+/** update는 새 버전이 있는지 확인하는 창을 띄워요(앱 1.1부터). login은 기본 브라우저로 로그인 화면을 열고, drag와 zoom은 창을 옮기거나 키우고, theme과 shield(앱 1.2부터)는 고른 설정을 앱에 알려요. */
 type AppMessage =
   | { type: 'login' }
   | { type: 'drag' }
   | { type: 'zoom' }
   | { type: 'theme'; theme: AppTheme }
-  | { type: 'backdrop'; on: boolean }
   | { type: 'shield'; on: boolean }
   | { type: 'update' }
 

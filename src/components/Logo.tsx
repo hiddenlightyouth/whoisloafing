@@ -9,7 +9,7 @@ export function Logo({ onClick }: { onClick?: () => void }) {
       }}
       className="inline-flex items-center"
     >
-      <img src="/logo.svg" alt="Lofy" width={1592} height={367} draggable={false} className="h-[14px] w-auto translate-y-px" />
+      <img src="/logo.svg" alt="Lofy" width={1506} height={501} draggable={false} className="h-[21px] w-auto" />
     </a>
   )
 }
