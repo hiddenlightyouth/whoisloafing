@@ -21,7 +21,7 @@ GitHub 레포 링크를 입력하면 참여자별 기여도를 분석해서 채�
   - 나머지는 흰 배경과 회색 계열 텍스트로 절제해요.
 - 컬러와 폰트는 `src/index.css`의 `@theme`에 토큰으로 등록되어 있어요. (`brand`, `brand-hover`, `brand-soft`, `font-sans`)
 - 탭 제목은 Lofy, 파비콘은 흰 배경에 짙은 회색 중절모
-- 링크를 카카오톡이나 디스코드에 붙이면 뜨는 미리보기 카드는 `index.html`의 og 태그와 `public/og.png`로 정해요. 영어 주소(`/en`으로 시작)의 카드는 `public/og-en.png`와 영어 문구를 써요. 자세한 것은 아래 다국어 절에 있어요. 주소는 실제 서비스 주소(https://lofy.hidly.dev)로 적혀 있어서, 도메인이 바뀌면 같이 바꿔야 해요(`index.html`, `src/lib/meta.ts`의 `SITE`, `scripts/prerender.mjs`의 `SITE`, `public/robots.txt`, 업데이트 목록과 앱 레포). 서비스 주소는 예전에 https://whoisloafing.hidly.dev였어요. 이미 깔린 macOS 앱(1.3까지)은 예전 주소를 열고 예전 주소에서 업데이트를 확인해서, 예전 주소도 같은 Worker에 계속 연결해 둬요. 백엔드의 `CORS_ALLOWED_ORIGINS`와 GitHub, 카카오의 로그인 돌아오는 주소에도 두 주소를 다 넣어요. 채팅 주소(`/c/아이디`)도 같은 카드가 떠요.
+- 링크를 카카오톡이나 디스코드에 붙이면 뜨는 미리보기 카드는 `index.html`의 og 태그와 `public/og.png`로 정해요. 영어 주소(`/en`으로 시작)의 카드는 `public/og-en.png`와 영어 문구를 써요. 자세한 것은 아래 다국어 절에 있어요. 주소는 실제 서비스 주소(https://lofy.hidly.dev)로 적혀 있어서, 도메인이 바뀌면 같이 바꿔야 해요(`index.html`, `src/lib/meta.ts`의 `SITE`, `scripts/prerender.mjs`의 `SITE`, `public/robots.txt`, 업데이트 목록과 앱 레포). 서비스 주소는 예전에 https://whoisloafing.hidly.dev였어요. 이미 깔린 macOS 앱(1.3까지)은 예전 주소를 열고 예전 주소에서 업데이트를 확인해서, 예전 주소도 같은 Worker에 계속 연결해 둬요. 1.4부터는 새 주소를 써요. 백엔드의 `CORS_ALLOWED_ORIGINS`에는 새 주소만 넣어 둬요. 1.3 앱은 업데이트 전까지 화면만 열리고 API는 쓰지 못하지만, 열자마자 1.4 업데이트를 받으니 예전 주소는 넣지 않기로 했어요. GitHub, 카카오의 로그인 돌아오는 주소에는 새 주소를 넣어요. 채팅 주소(`/c/아이디`)도 같은 카드가 떠요.
 - 디자인 원칙: 여백 위주의 미니멀. 장식, 그라데이션, 이모지, 아이콘 남발 금지. 타이틀 위에 태그, 뱃지, 라벨을 붙이지 않아요.
 - 그라데이션 금지의 예외는 질문 메뉴를 들고 있는 유리 방울 하나예요. 그림 파일이나 라이브러리 없이 CSS로만 그리고(`src/index.css`의 orb 규칙), 색은 메인 컬러 계열의 파란색만 써요. 움직임 줄이기 설정에서는 멈춰 있어요.
 - 그림자 효과는 쓰지 않아요. 입력창, 버튼, 말풍선, 팝업, 툴팁 어디에도 `shadow`를 넣지 않고, 경계가 필요하면 옅은 회색 테두리나 배경색 차이로 구분해요.
