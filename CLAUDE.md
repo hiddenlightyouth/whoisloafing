@@ -59,8 +59,8 @@ GitHub API, Claude API 호출, 채팅 저장, 회원 정보는 모두 백엔드 
 index.html            폰트 로드, 탭 제목, 파비콘, 링크 미리보기 태그
 public/logo.svg       로고 (중절모와 서비스명). 헤더에 그대로 쓰여요.
 public/favicon.svg    파비콘 (로고의 중절모만 따온 그림)
-public/og.png         링크 미리보기 카드에 뜨는 대표 이미지 (1200x630)
-public/og-en.png      영어 주소의 미리보기 카드 이미지 (1200x630). og.png와 같은 모양에 영어 문구예요.
+public/og.png         링크 미리보기 카드에 뜨는 대표 이미지 (1200x630). 흰 바탕 한가운데에 손글씨 Lofy(`LofyScript`와 같은 글자, #2C2C2C)만 있어요. 카카오톡처럼 가장자리를 잘라 보여주는 곳에서도 글자가 남게 가운데에 둬요.
+public/og-en.png      영어 주소의 미리보기 카드 이미지 (1200x630). 글자가 없어서 지금은 og.png와 같은 그림이에요.
 public/about/         소개 화면에 넣는 기능별 스크린샷 (webp)
 public/models/        모델 메뉴에 쓰는 모델 로고 (claude, gemini, gpt)
 public/download/appcast.xml  macOS 앱이 새 버전이 있는지 읽어 가는 업데이트 목록. 앱 레포의 스크립트가 업데이트용 zip(`WhoIsLoafing-버전.zip`)과 함께 만들어 넣어요. 최신 버전 하나만 적혀 있어요. 이 파일이 없으면 없는 주소라 `index.html`이 대신 가서 앱의 업데이트 확인이 오류를 내니 지우지 않아요.
