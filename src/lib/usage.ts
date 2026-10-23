@@ -5,9 +5,6 @@ import { readItem, writeItem } from './storage'
 
 // 요금제와 주간 사용량, 분석에 쓸 모델을 다뤄요. 한도와 기록은 서버가 지키고, 화면은 고른 모델을 요청에 실어 보내고 사용량을 보여줘요.
 
-/** 사용량을 쓰는 작업. 서버의 UsageAction과 같은 이름이에요. */
-export type UsageAction = 'intro' | 'contribution' | 'followup' | 'deep' | 'portfolio' | 'portfolio_revise' | 'resume' | 'resume_revise'
-
 export type PlanId = 'FREE' | 'LITE' | 'PRO'
 
 export type ProviderId = 'claude' | 'gpt' | 'gemini'
@@ -49,21 +46,6 @@ export const MODELS: ModelInfo[] = [
 
 export const providerOf = (model: ModelInfo) => PROVIDERS.find((provider) => provider.id === model.provider) ?? PROVIDERS[0]
 
-/**
- * 서버가 값을 주지 않을 때 쓰는 작업별 예상량(Claude Haiku 기준). 서버의 UsageAction과 같아요.
- * 실제로는 작업이 쓴 토큰만큼 깎이고, 이 값은 시작하기 전에 얼마쯤 쓸지 보여주는 데 써요.
- */
-const FALLBACK_COSTS: Record<UsageAction, number> = {
-  intro: 2,
-  contribution: 10,
-  followup: 1,
-  deep: 2,
-  portfolio: 4,
-  portfolio_revise: 2,
-  resume: 4,
-  resume_revise: 2,
-}
-
 export interface PlanInfo {
   id: PlanId
   weeklyLimit: number
@@ -79,7 +61,6 @@ export interface Usage {
   used: number
   /** 다시 채워지는 때. 한국 시간 월요일 0시예요. */
   resetAt: string
-  costs: Record<string, number>
   models: { id: string; provider: string; name: string; available: boolean; multiplier?: number }[]
   plans: PlanInfo[]
 }
@@ -114,12 +95,6 @@ export function refreshUsage(): Promise<Usage | null> {
 /** 받아 둔 이번 주 사용량. 아직 받지 않았으면 null이에요. */
 export function useUsage(): Usage | null {
   return useSyncExternalStore(subscribe, () => usage, () => null)
-}
-
-/** 작업 하나의 예상량. 고른 모델의 배수를 곱해요. */
-export function costOf(action: UsageAction, current: Usage | null = usage, model: ModelId = 'claude-haiku'): number {
-  const base = current?.costs[action] ?? FALLBACK_COSTS[action]
-  return base * (modelsOf(current).find((item) => item.id === model)?.multiplier ?? 1)
 }
 
 /** 한도에 대한 비율(%). 0보다 크면 적어도 1%로 보여줘요. */
