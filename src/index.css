@@ -508,9 +508,90 @@
   }
 }
 
+/*
+ * 손글씨 Lofy(LofyScript)예요. 메인 컬러 획이 이글거리며 한 글자씩 써지고, 다 쓰면 속이 짙은 회색으로 채워지면서 획은 사라져요.
+ * 그 뒤로는 글자를 다시 쓰지 않고, 테두리를 따라 짧은 메인 컬러 빛만 천천히 돌아요. 그라데이션이나 그림자는 쓰지 않아요.
+ */
+.lofy-script .lofy-fill path {
+  fill: var(--color-gray-900);
+  opacity: 0;
+  animation: lofy-fill 0.7s var(--ease-smooth) var(--lofy-written) forwards;
+}
+
+.lofy-script .lofy-write path {
+  fill: none;
+  stroke: var(--color-brand);
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation-name: lofy-write;
+  animation-timing-function: var(--ease-smooth);
+  animation-fill-mode: forwards;
+}
+
+.lofy-script .lofy-write {
+  animation: lofy-fade-out 0.7s var(--ease-smooth) var(--lofy-written) forwards;
+}
+
+.lofy-script .lofy-trace path {
+  fill: none;
+  stroke: var(--color-brand);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-dasharray: 0.12 0.88;
+  stroke-dashoffset: 1;
+  opacity: 0;
+  animation: lofy-trace 4.8s linear infinite;
+}
+
+@keyframes lofy-write {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes lofy-fill {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes lofy-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes lofy-trace {
+  0% {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  10%,
+  85% {
+    opacity: 0.9;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;
+  }
+
+  /* 손글씨 Lofy는 다 쓴 모습으로 멈춰 있고, 테두리를 도는 빛은 띄우지 않아요. */
+  .lofy-script .lofy-fill path {
+    animation: none;
+    opacity: 1;
+  }
+
+  .lofy-script .lofy-write,
+  .lofy-script .lofy-trace {
+    display: none;
   }
 
   /* 끝없이 도는 방울 애니메이션은 아예 멈춰요. */
@@ -574,13 +655,9 @@
   background-color: rgb(72 72 74 / 0.95);
 }
 
-/* 로고는 짙은 회색 그림이라 밝게 뒤집고, 기여도 그래프 배경은 색상은 그대로 두고 밝기만 뒤집어요. */
+/* 로고는 짙은 회색 그림이라 밝게 뒤집어요. */
 .dark img[src='/logo.svg'] {
   filter: invert(1);
-}
-
-.dark canvas {
-  filter: invert(1) hue-rotate(180deg);
 }
 
 /* 색만 바뀌던 버튼도 누름 반응(scale)이 부드럽게 이어지게 해요. 색은 전처럼, 크기는 통 튀는 빠르기로 바뀌어요. */

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { track } from '../lib/analytics'
 import { APP_LOGIN_EVENT, postToApp, type AppLoginDetail } from '../lib/app'
 import { signInWithAppCode } from '../lib/auth'
-import { ContributionBackdrop } from './ContributionBackdrop'
+import { LofyScript } from './LofyScript'
 import { messages, useMessages } from '../lib/i18n'
 
 const TEXT = messages({
@@ -42,16 +42,8 @@ export function AppGate() {
 
   return (
     <main data-app-drag className="relative flex h-dvh items-center justify-center overflow-hidden bg-white px-5">
-      <ContributionBackdrop />
       <div className="relative w-full max-w-xs text-center">
-        <img
-          src="/logo.svg"
-          alt="Lofy"
-          width={1592}
-          height={367}
-          draggable={false}
-          className="mx-auto h-[22px] w-auto animate-rise"
-        />
+        <LofyScript className="mx-auto h-24 w-auto" />
         {/* 브라우저를 열어 둔 동안에만 한 줄로 알려줘요. 그 전에는 로고와 버튼만 둬요. */}
         {waiting && <p className="mt-4 animate-rise break-keep text-[14px] leading-relaxed text-gray-500">{text.waiting}</p>}
 

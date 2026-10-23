@@ -2,8 +2,8 @@ import type { ReactNode } from 'react'
 import { appShell } from '../lib/app'
 import { messages, useMessages } from '../lib/i18n'
 import { useAppSettings } from '../lib/theme'
-import { ContributionBackdrop } from './ContributionBackdrop'
 import { Footer } from './Footer'
+import { LofyScript } from './LofyScript'
 import { RepoInput, type RepoDraft } from './RepoInput'
 
 /**
@@ -67,9 +67,9 @@ export function Hero({ onSubmit, below, draft }: Props) {
   if (below) {
     return (
       <main className="relative flex-1 overflow-hidden">
-        {backdrop && <ContributionBackdrop />}
         <div className="relative h-full overflow-y-auto px-6 pb-10 md:px-10">
           <div className="mx-auto w-full max-w-lg pt-[max(6rem,16vh)] pb-14">
+            {backdrop && <LofyScript className="mx-auto mb-5 h-16 w-auto sm:h-20" />}
             <Title />
             <p
               className="mt-3 mb-7 animate-rise text-balance break-keep text-center text-[13px] leading-relaxed text-gray-500 sm:mb-8 sm:text-[14px]"
@@ -92,10 +92,10 @@ export function Hero({ onSubmit, below, draft }: Props) {
 
   return (
     <main className="relative flex flex-1 items-center justify-center overflow-hidden px-5">
-      {/* 앱에서는 설정에서 켰을 때만 배경 그림을 보여줘요. 브라우저에서는 늘 보여요. */}
-      {backdrop && <ContributionBackdrop />}
       {/* 타이틀, 설명, 입력창을 한 덩어리로 묶어서, 그 덩어리가 화면 정중앙에 오게 해요. */}
       <div className="relative w-full max-w-lg">
+        {/* 앱에서는 설정에서 켰을 때만 손글씨 Lofy를 보여줘요. 브라우저에서는 늘 보여요. */}
+        {backdrop && <LofyScript className="mx-auto mb-5 h-16 w-auto sm:h-20" />}
         <Title />
         <p
           className="mt-3 mb-7 animate-rise text-balance break-keep text-center text-[13px] leading-relaxed text-gray-500 sm:mb-8 sm:text-[14px]"
