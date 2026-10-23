@@ -11,10 +11,10 @@ interface Props {
 
 const CLOSED_KEY = 'whoisloafing:app-nudge-closed'
 
-/** 웹에서는 못 쓰고 앱에서만 쓸 수 있는 기능(FEATURES)이에요. 앱의 심층 분석 탭과 맞춰요. 웹 /app의 심층 분석 안내도 같은 목록을 써요. */
+/** 웹에서는 못 쓰고 앱에서만 쓸 수 있는 기능(FEATURES)이에요. 앱의 심층 분석 탭과 포트폴리오, 이력서 만들기와 맞춰요. 웹 /app의 심층 분석 안내도 같은 목록을 써요. */
 export const APP_NUDGE_TEXT = messages({
   ko: {
-    FEATURES: ['프로젝트 구조를 맵으로 둘러보기', 'CI/CD가 도는 순서 한눈에 보기', '이슈와 PR 템플릿 모아 보기', '참여자가 고친 폴더 살펴보기', '기술 스택과 버전 한눈에 보기'],
+    FEATURES: ['프로젝트 구조를 맵으로 둘러보기', 'CI/CD가 도는 순서 한눈에 보기', '이슈와 PR 템플릿 모아 보기', '참여자가 고친 폴더 살펴보기', '기술 스택과 버전 한눈에 보기', '포트폴리오와 이력서 만들기'],
     open: '앱 안내 열기',
     close: '닫기',
     title: '여기서 멈추긴 아쉬워요',
@@ -22,7 +22,7 @@ export const APP_NUDGE_TEXT = messages({
     download: 'macOS 앱 다운로드',
   },
   en: {
-    FEATURES: ['Explore the project structure as a map', 'See the order your CI/CD jobs run in', 'Browse issue and PR templates', 'See which folders each contributor touched', 'Review the tech stack and versions'],
+    FEATURES: ['Explore the project structure as a map', 'See the order your CI/CD jobs run in', 'Browse issue and PR templates', 'See which folders each contributor touched', 'Review the tech stack and versions', 'Build portfolios and resumes'],
     open: 'Open app info',
     close: 'Close',
     title: 'Want to go deeper?',

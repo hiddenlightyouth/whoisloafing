@@ -82,14 +82,16 @@ export function PageView({
   feedback,
   signedIn,
 }: Props) {
-  // 포트폴리오와 이력서는 내 작업의 채팅으로 만들어서 로그인해야 써요. 로그인하면 이 화면을 이어서 보여줘요.
-  const accountPage = page.kind === 'account' ? page.page : (page.kind === 'portfolio' || page.kind === 'resume') && !signedIn ? 'login' : null
+  // 심층 분석, 포트폴리오, 이력서는 앱 전용이라 웹에서는 앱 안내만 보여줘요.
+  const appOnly = !isApp && (page.kind === 'deep' || page.kind === 'portfolio' || page.kind === 'resume') ? page.kind : null
+  // 앱에서 포트폴리오와 이력서는 내 작업의 채팅으로 만들어서 로그인해야 써요. 로그인하면 이 화면을 이어서 보여줘요.
+  const accountPage = page.kind === 'account' ? page.page : !appOnly && (page.kind === 'portfolio' || page.kind === 'resume') && !signedIn ? 'login' : null
   return (
     <Suspense fallback={<main className="flex-1" />}>
       {page.kind === 'app-login' ? (
         <AppLogin onCancel={onHome} />
-      ) : page.kind === 'deep' && !isApp ? (
-        <DeepAppOnly />
+      ) : appOnly ? (
+        <DeepAppOnly feature={appOnly} />
       ) : page.kind === 'deep' ? (
         <Deep repo={page.repo} onOpen={(repo) => onDeep(repo)} onNew={onHome} refreshKey={chatsVersion} chatHint={deepChatHint} />
       ) : page.kind === 'portfolio' && signedIn ? (

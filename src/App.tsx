@@ -473,8 +473,9 @@ export default function App() {
         onDeep: deep ? () => openDeep(null) : undefined,
         onExplore: exploreReady ? () => openExplore() : undefined,
         // 포트폴리오는 내 작업의 채팅으로 만들어서, 로그인했을 때만 보여줘요.
-        onPortfolio: config?.portfolio && tokens !== null ? () => openPortfolio(null) : undefined,
-        onResume: config?.resume && tokens !== null ? () => openAppPage('/resume') : undefined,
+        // 포트폴리오와 이력서는 앱 전용이라, 로그인하지 않은 웹에서도 메뉴는 보여주고 누르면 앱 안내를 띄워요.
+        onPortfolio: config?.portfolio ? () => openPortfolio(null) : undefined,
+        onResume: config?.resume ? () => openAppPage('/resume') : undefined,
         onDeepRepo: deep
           ? (repo) => {
               track('deep_open', { from: 'sidebar', repo })
