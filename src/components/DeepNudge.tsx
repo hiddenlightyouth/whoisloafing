@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { track } from '../lib/analytics'
 import { messages, useMessages } from '../lib/i18n'
 import { readItem, writeItem } from '../lib/storage'
+import { CloseButton } from './Icons'
 
 /** 제목은 사용자가 정한 문구라 그대로 둬요. */
 const TEXT = messages({
@@ -49,20 +50,15 @@ export function DeepNudge({ onDeep, onClose }: { onDeep: () => void; onClose: ()
         <h2 id="deep-nudge-title" className="text-[14px] font-semibold text-gray-900">
           {text.title}
         </h2>
-        <button
-          type="button"
-          aria-label={text.close}
+        <CloseButton
+          label={text.close}
           onClick={() => {
             track('deep_nudge_close')
             rememberClose()
             onClose()
           }}
-          className="-mt-1 -mr-1 flex size-7 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-        >
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
-            <path d="M4 4l8 8M12 4l-8 8" />
-          </svg>
-        </button>
+          className="-mt-1 -mr-1"
+        />
       </div>
       <p className="mt-1 break-keep text-[13px] leading-relaxed text-gray-500">
         {text.body}

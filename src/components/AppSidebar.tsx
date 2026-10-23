@@ -12,6 +12,7 @@ import { Kbd } from './Shortcuts'
 import { Bone } from './Skeleton'
 import { messages, pick, useMessages } from '../lib/i18n'
 import { openPlans, percentOf, refreshUsage, useUsage, type PlanId } from '../lib/usage'
+import { PinIcon, PlusIcon } from './Icons'
 
 const TEXT = messages({
   ko: {
@@ -150,9 +151,7 @@ function ChatRow({ chat, active, menuOpen, working, onOpen, onToggleMenu, onClos
           )}
           <span className="min-w-0 truncate">{repo}</span>
           {chat.pinned && (
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="size-3 shrink-0 text-gray-400" role="img" aria-label={list.pinned}>
-                <path d="M9.5 2.5l4 4-2 .5-2.2 2.2.2 2.8L4 6.5l2.8.2L9 4.5zM6.7 9.3L3 13" />
-              </svg>
+            <PinIcon className="size-3 shrink-0 text-gray-400" label={list.pinned} />
           )}
         </p>
         <p className="mt-0.5 flex items-center justify-between gap-2 text-xs text-gray-400">
@@ -360,9 +359,7 @@ export function AppSidebar({ activeChatId, page, refreshKey, onNew, onDeep, onPo
           onClick={onNew}
           className="flex h-10 w-full items-center gap-2 rounded-xl bg-white px-3 text-[13px] font-semibold text-gray-900 ring-1 ring-gray-200 transition-colors hover:text-brand"
         >
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-4" aria-hidden="true">
-            <path d="M8 3v10M3 8h10" />
-          </svg>
+          <PlusIcon className="size-4" />
           <span className="flex-1 text-left">{text.new}</span>
           <Kbd>N</Kbd>
         </button>

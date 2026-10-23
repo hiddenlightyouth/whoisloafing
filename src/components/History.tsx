@@ -9,6 +9,7 @@ import { pageFrame, PageHeader } from './AppPage'
 import { ConfirmDialog } from './Dialog'
 import { Bone } from './Skeleton'
 import { messages, pick, useMessages } from '../lib/i18n'
+import { PinIcon } from './Icons'
 
 export const CHAT_LIST_TEXT = messages({
   ko: {
@@ -182,9 +183,7 @@ function ChatRow({ chat, menuOpen, working, onOpen, onToggleMenu, onCloseMenu, o
                 <span className="font-semibold">{repo}</span>
               </span>
               {chat.pinned && (
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="size-3.5 shrink-0 text-gray-400" role="img" aria-label={text.pinned}>
-                <path d="M9.5 2.5l4 4-2 .5-2.2 2.2.2 2.8L4 6.5l2.8.2L9 4.5zM6.7 9.3L3 13" />
-              </svg>
+                <PinIcon className="size-3.5 shrink-0 text-gray-400" label={text.pinned} />
               )}
             </p>
             <span className="shrink-0 text-xs text-gray-400">{formatWhen(chat.updatedAt)}</span>

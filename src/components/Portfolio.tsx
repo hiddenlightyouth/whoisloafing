@@ -22,7 +22,8 @@ import {
   type SavedPortfolio,
 } from '../lib/portfolio'
 import { showToast } from '../lib/toast'
-import { canvas, CloseIcon, copyRich, copyText, ExportMenu, ghostButton, iconButton, pageFrame, PageHeader, paper, PlanField, RefreshIcon, RevisionPicker, StepLayout, Steps, StepTitle, TrashIcon } from './AppPage'
+import { canvas, copyRich, copyText, ExportMenu, ghostButton, iconButton, pageFrame, PageHeader, paper, PlanField, RevisionPicker, StepLayout, Steps, StepTitle } from './AppPage'
+import { CloseIcon, RefreshIcon, TrashIcon } from './Icons'
 import { ConfirmDialog, primaryButton } from './Dialog'
 import { MapMenu, toolButton } from './DeepParts'
 import { RepoGallery } from './RepoGallery'

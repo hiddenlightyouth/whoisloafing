@@ -22,6 +22,7 @@ import { StructureMap } from './StructureMap'
 import { getLang, messages, pick, useLang, useMessages } from '../lib/i18n'
 import { readJson, writeItem, writeJson } from '../lib/storage'
 import { refreshUsage } from '../lib/usage'
+import { CloseButton } from './Icons'
 
 interface Props {
   /** 살펴볼 레포(소유자/레포). null이면 레포를 고르는 화면이에요. */
@@ -390,16 +391,7 @@ function SideChat({ chatId, onClose }: { chatId: string; onClose: () => void }) 
     <aside className="flex w-[400px] shrink-0 animate-slide-in flex-col border-l border-gray-200 bg-white pt-14">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gray-100 py-2.5 pr-3 pl-4">
         <h2 className="text-[14px] font-semibold text-gray-900">{L.chat}</h2>
-        <button
-          type="button"
-          aria-label={L.closeChat}
-          onClick={onClose}
-          className="flex size-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-        >
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="size-4" aria-hidden="true">
-            <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
-          </svg>
-        </button>
+        <CloseButton label={L.closeChat} onClick={onClose} size="md" />
       </div>
       {state === 'loading' ? (
         <div className="space-y-2.5 p-4" aria-busy="true">

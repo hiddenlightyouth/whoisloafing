@@ -5,6 +5,7 @@ import { appAtLeast, appVersion, postToApp, type AppTheme } from '../lib/app'
 import { setShortcutHintsPinned, useShortcutHintsPinned } from '../lib/shortcuts'
 import { setAppShield, setAppTheme, useAppSettings } from '../lib/theme'
 import { LANG_NAMES, LANGS, messages, setLang, useLang, useMessages } from '../lib/i18n'
+import { CloseButton } from './Icons'
 
 const THEMES: AppTheme[] = ['system', 'light', 'dark']
 
@@ -119,11 +120,7 @@ export function Settings({ onClose }: { onClose: () => void }) {
         <h2 id="settings-title" className="text-[17px] font-semibold text-gray-900">
           {text.title}
         </h2>
-        <button type="button" aria-label={text.close} onClick={onClose} className="-mr-2 flex size-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-4" aria-hidden="true">
-            <path d="M4 4l8 8M12 4l-8 8" />
-          </svg>
-        </button>
+        <CloseButton label={text.close} onClick={onClose} size="md" className="-mr-2" />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
 

@@ -3,6 +3,7 @@ import { useDismiss } from '../hooks/useDismiss'
 import { messages, useMessages } from '../lib/i18n'
 import { showToast } from '../lib/toast'
 import { toolButton } from './DeepParts'
+import { BackIcon, ChevronDownIcon } from './Icons'
 
 /**
  * 앱 화면(심층 분석, 탐색, 포트폴리오, 이력서, 관리자, 내 정보)이 같이 쓰는 틀이에요.
@@ -35,46 +36,6 @@ export const ghostButton =
 /** 줄 안에서 쓰는 작은 아이콘 버튼(빼기, 옮기기 등)이에요. */
 export const iconButton =
   'flex size-8 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-800 disabled:text-gray-200 disabled:hover:bg-transparent'
-
-export function BackIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" className="size-4" aria-hidden="true">
-      <path d="M10 3.5L5.5 8 10 12.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-export function CloseIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="size-3.5" aria-hidden="true">
-      <path d="M4 4l8 8M12 4l-8 8" />
-    </svg>
-  )
-}
-
-export function PlusIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
-      <path d="M8 3v10M3 8h10" />
-    </svg>
-  )
-}
-
-export function TrashIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden="true">
-      <path d="M2.5 4.5h11M6.5 4.5V3a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1.5M4 4.5l.6 8.1a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9l.6-8.1M6.75 7v4M9.25 7v4" />
-    </svg>
-  )
-}
-
-export function RefreshIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden="true">
-      <path d="M13 8a5 5 0 1 1-1.46-3.54M13 2.5v3h-3" />
-    </svg>
-  )
-}
 
 /**
  * 앱 화면 맨 위의 제목 줄이에요. 레포를 보는 화면이면 제목 위에 소유자를 작게 적고, 왼쪽에 뒤로 가기를 둬요.
@@ -264,9 +225,7 @@ export function ExportMenu({ items }: { items: ExportItem[] }) {
           <path d="M8 10V2.5M5 5.5l3-3 3 3M3 9.5v3a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-3" />
         </svg>
         {L.export}
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className={`size-3 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true">
-          <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <ChevronDownIcon className={`size-3 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
         <div role="menu" className="absolute top-full right-0 z-20 mt-2 w-48 origin-top-right animate-pop rounded-xl border border-gray-200 bg-white p-1.5">

@@ -9,6 +9,7 @@ import { readFlag, writeFlag } from '../lib/storage'
 import { moreButton, PageHeader } from './AppPage'
 import { primaryButton } from './Dialog'
 import { getLang, messages, useMessages, type Lang } from '../lib/i18n'
+import { CheckIcon, CloseIcon } from './Icons'
 
 /** 탐색의 큰 갈래. GitHub는 GitHub 전체에서 인기 있는 레포, 동아리는 IT 연합 동아리와 커뮤니티가 만든 레포예요. */
 /** clubs는 한국의 연합 동아리와 커뮤니티, global은 해외 학생 개발 동아리와 커뮤니티예요. */
@@ -349,9 +350,7 @@ function ClubGuide({ onClose }: { onClose: () => void }) {
             }}
             className="-mt-1 -mr-1 flex size-7 shrink-0 items-center justify-center rounded-md text-white/70 transition-colors hover:bg-white/15 hover:text-white"
           >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
-              <path d="M4 4l8 8M12 4l-8 8" />
-            </svg>
+            <CloseIcon className="size-3.5" />
           </button>
         </div>
         <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-[12.5px] text-white/70 select-none">
@@ -363,9 +362,7 @@ function ClubGuide({ onClose }: { onClose: () => void }) {
               onChange={(event) => setNever(event.target.checked)}
               className="peer size-3.5 cursor-pointer appearance-none rounded-[4px] border-[1.5px] border-[#ffffff]/70 transition-colors checked:border-[#ffffff] checked:bg-[#ffffff]"
             />
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none absolute size-2.5 text-brand opacity-0 peer-checked:opacity-100" aria-hidden="true">
-              <path d="M3.5 8.5l3 3 6-7" />
-            </svg>
+            <CheckIcon className="pointer-events-none absolute size-2.5 text-brand opacity-0 peer-checked:opacity-100" strokeWidth={2.4} />
           </span>
           {L.guideNever}
         </label>

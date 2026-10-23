@@ -140,6 +140,7 @@ src/
   hooks/useLoginNudge.ts  로그인 안내를 닫아 뒀는지와, 닫은 뒤 새로 시작한 채팅 세기
   hooks/useDismiss.ts   열려 있는 메뉴를 바깥을 누르거나 Esc를 누르면 닫기. 새 메뉴와 펼쳐지는 칸도 이것을 써요.
   components/Dialog.tsx 화면을 덮고 가운데에 뜨는 창(Modal)과 한 번 더 묻는 확인 창(ConfirmDialog). 새 창은 직접 막과 Esc 처리를 만들지 않고 이것을 써요.
+  components/Icons.tsx  여러 화면이 같이 쓰는 선 아이콘(닫기, 체크, 더하기, 펼치기, 뒤로 가기, 압정, 휴지통, 다시 만들기)과 닫기(X) 버튼(`CloseButton`). 같은 아이콘을 화면마다 SVG로 다시 그리지 않고 이것을 써요.
   components/About.tsx       소개 화면 (/about)
   components/         Header, Logo, Hero, Footer, AppNudge, LofyScript, RepoInput, Chat, Bubble, TypingDots, RichText, Articles, PeoplePicker, AssistantOrb, LeaveDialog, RankingCarousel, StatsCard, SummaryChart, Charts, Followup, Account, AuthForm, MyPage, History, LoginNudge, Skeleton, Toast
 ```
@@ -326,7 +327,7 @@ macOS 앱(hiddenlightyouth/whoisloafing-app)은 이 서비스를 창 안의 웹�
 - 내용은 제목 줄 아래를 가득 채우는 옅은 회색 바탕(`canvas`) 위에 둬요. 카드 목록(갤러리, 탐색)은 바탕 위에 흰 카드로, 문서(이력서, 포트폴리오 미리보기)는 바탕 위의 흰 종이(`paper`, 최대 880px)로 보여줘요.
 - 단계를 차례로 정하는 화면(포트폴리오와 이력서의 만들기 전 단계)은 번호 붙은 단계 표시(`Steps`), 가운데 640px 칸, 아래 흰 버튼 줄(`StepLayout`)로 같아요. 기획안 단계는 비워 두면 다음 버튼이 "건너뛰기"로 바뀌어요.
 - 버튼은 네 가지예요. 주된 버튼은 메인 컬러의 둥근 버튼(`Dialog`의 `primaryButton`), 그 밖의 버튼은 흰 바탕에 회색 테두리(`toolButton`), 목록 아래의 더 보기는 흰 알약(`moreButton`), 줄 안의 작은 버튼은 글자 버튼(`ghostButton`)과 아이콘 버튼(`iconButton`)이에요. 다시 시도하기도 주된 버튼이에요.
-- 제목 줄의 버튼은 글자만 두지 않고 왼쪽에 늘 아이콘을 붙여요(이모지가 아니라 `AppPage`의 SVG 아이콘). 프로젝트 추가와 새 분석은 더하기(`PlusIcon`), 내보내기는 위로 나가는 화살표(`ExportMenu`), 삭제는 휴지통(`TrashIcon`), 재생성은 둥근 화살표(`RefreshIcon`)예요. 새 버튼을 더할 때도 아이콘을 같이 그려요.
+- 제목 줄의 버튼은 글자만 두지 않고 왼쪽에 늘 아이콘을 붙여요(이모지가 아니라 `Icons`의 SVG 아이콘). 프로젝트 추가와 새 분석은 더하기(`PlusIcon`), 내보내기는 위로 나가는 화살표(`ExportMenu`), 삭제는 휴지통(`TrashIcon`), 재생성은 둥근 화살표(`RefreshIcon`)예요. 새 버튼을 더할 때도 아이콘을 같이 그려요.
 - 다듬기를 누르면 펼쳐지는 칸(`RevisionPicker`)과 내보내기 메뉴(`ExportMenu`)도 같이 써요. 내보내기는 복사 방법이 여러 가지여도 버튼 하나만 두고, 누르면 아래로 고르는 메뉴가 펼쳐져요. 고르면 바로 복사하고 결과는 토스트로 알려줘요. 서식과 글을 같이 복사할 때는 `copyRich`를 써요.
 
 ### 관리자 화면

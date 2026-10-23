@@ -3,6 +3,7 @@ import { useDismiss } from '../hooks/useDismiss'
 import { track } from '../lib/analytics'
 import { Kbd } from './Shortcuts'
 import { messages, useMessages } from '../lib/i18n'
+import { CheckIcon, ChevronDownIcon } from './Icons'
 
 const TEXT = messages({
   ko: { copied: '복사했어요', copyFailed: '복사하지 못했어요', copy: '복사', loading: '불러오고 있어요.' },
@@ -128,9 +129,7 @@ export function MapMenu({ label, value, active = false, groups, onOpen }: {
       >
         {label && <span className="text-gray-500">{label}</span>}
         {value && <span className="max-w-40 truncate">{value}</span>}
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className={`size-3 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true">
-          <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <ChevronDownIcon className={`size-3 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
@@ -165,9 +164,7 @@ export function MapMenu({ label, value, active = false, groups, onOpen }: {
                   <span className="min-w-0 flex-1 truncate">{item.label}</span>
                   {item.hint && <span className="shrink-0 text-[12px] text-gray-400 tabular-nums">{item.hint}</span>}
                   {item.shortcut && <Kbd>{item.shortcut}</Kbd>}
-                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className={`size-3.5 shrink-0 text-brand ${item.checked ? '' : 'invisible'}`} aria-hidden="true">
-                    <path d="M3.5 8.5l3 3 6-7" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <CheckIcon className={`size-3.5 shrink-0 text-brand ${item.checked ? '' : 'invisible'}`} />
                 </button>
               ))}
             </div>

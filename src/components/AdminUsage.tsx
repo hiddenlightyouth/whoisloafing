@@ -7,6 +7,7 @@ import { tag } from './DeepParts'
 import { BarChart, card, compact, Empty, Failed, full, MoreButton, rowButton, RowsSkeleton, sectionTitle, Segmented, share, Stat, StatsSkeleton, tableWrap, td, th, usePaged, type Bar } from './AdminParts'
 import { Bone } from './Skeleton'
 import { messages, pick, useMessages } from '../lib/i18n'
+import { CloseButton } from './Icons'
 
 type Period = 7 | 30 | 90 | 365 | 'all'
 
@@ -487,11 +488,7 @@ function CallPanel({ id, onClose }: { id: number; onClose: () => void }) {
       <div className="fixed inset-0 z-20" onPointerDown={onClose} aria-hidden />
       <aside aria-label={L.panel} className="fixed inset-y-0 right-0 z-30 flex w-full max-w-[640px] animate-slide-in flex-col border-l border-gray-200 bg-white">
         <div className="flex h-14 shrink-0 items-center justify-end px-4">
-          <button type="button" aria-label={L.close} onClick={onClose} className="flex size-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-4" aria-hidden="true">
-              <path d="M4 4l8 8M12 4l-8 8" />
-            </svg>
-          </button>
+          <CloseButton label={L.close} onClick={onClose} size="md" />
         </div>
 
         {!call ? (

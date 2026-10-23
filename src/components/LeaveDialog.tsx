@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { messages, useMessages } from '../lib/i18n'
+import { CloseButton } from './Icons'
 
 const TEXT = messages({
   ko: {
@@ -67,16 +68,7 @@ export function LeaveDialog({ home, onStay, onLeave, onLogin }: Props) {
       >
         {/* 로그인을 권할 때는 버튼을 둘로 줄이고, 그대로 남는 것은 X 버튼이 맡아요. */}
         {onLogin && (
-          <button
-            type="button"
-            aria-label={text.close}
-            onClick={onStay}
-            className="absolute top-3 right-3 flex size-7 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-          >
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="size-3.5" aria-hidden="true">
-              <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
-            </svg>
-          </button>
+          <CloseButton label={text.close} onClick={onStay} className="absolute top-3 right-3" />
         )}
         <h2 id="leave-dialog-title" className={`text-[15px] font-semibold text-gray-900 ${onLogin ? 'pr-7' : ''}`}>
           {onLogin ? text.saveTitle : text.title}

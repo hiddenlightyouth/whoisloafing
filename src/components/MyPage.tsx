@@ -24,6 +24,7 @@ import { IpPlace } from './IpPlace'
 import { SocialButtons, useSocialClients } from './Social'
 import { Bone } from './Skeleton'
 import { messages, pick, useMessages } from '../lib/i18n'
+import { CheckIcon } from './Icons'
 
 const TEXT = messages({
   ko: {
@@ -183,9 +184,7 @@ function Connections() {
             </div>
             {me && linked(provider) && (
               <p className="flex shrink-0 items-center gap-1.5 text-[13px] font-medium text-gray-600">
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-3.5 text-brand" aria-hidden="true">
-                  <path d="M3.5 8.5l3 3 6-7" />
-                </svg>
+                <CheckIcon className="size-3.5 text-brand" />
                 {text.linked}
                 {canUnlink(provider) && (
                   <button type="button" onClick={() => setUnlinking(provider)} className={`${quiet} ml-1.5 bg-gray-100 text-gray-700 hover:text-red-500`}>

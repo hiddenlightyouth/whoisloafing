@@ -3,6 +3,7 @@ import { MAC_DOWNLOAD, MAC_DOWNLOAD_OPEN, MAC_SUPPORT } from '../lib/app'
 import { messages, useMessages } from '../lib/i18n'
 import { APP_NUDGE_TEXT } from './AppNudge'
 import { AppleLogo } from './Header'
+import { CheckIcon } from './Icons'
 
 /** 웹에서는 못 쓰고 앱에서만 쓰는 화면 */
 export type AppOnlyFeature = 'deep' | 'portfolio' | 'resume'
@@ -43,9 +44,7 @@ export function DeepAppOnly({ feature }: { feature: AppOnlyFeature }) {
         <ul className="mt-6 space-y-2">
           {features.map((feature) => (
             <li key={feature} className="flex items-center gap-2 text-[14px] text-gray-700">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-3.5 shrink-0 text-brand" aria-hidden="true">
-                <path d="M3.5 8.5l3 3 6-7" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <CheckIcon className="size-3.5 shrink-0 text-brand" />
               {feature}
             </li>
           ))}

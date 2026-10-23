@@ -3,6 +3,7 @@ import { useDismiss } from '../hooks/useDismiss'
 import { track } from '../lib/analytics'
 import { messages, useMessages } from '../lib/i18n'
 import { modelsOf, PROVIDERS, providerOf, refreshUsage, setModel, useModel, useUsage } from '../lib/usage'
+import { CheckIcon } from './Icons'
 
 const TEXT = messages({
   ko: {
@@ -92,9 +93,7 @@ export function ModelMenu({ up = false, className = '' }: { /** 위로 펼쳐요
                         ×{item.multiplier}
                       </span>
                       {item.id === model ? (
-                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-4 text-brand" aria-hidden>
-                          <path d="M3.5 8.5l3 3 6-7" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                        <CheckIcon className="size-4 text-brand" />
                       ) : (
                         !item.available && <span className="shrink-0 text-[11.5px] text-gray-400">{L.soon}</span>
                       )}

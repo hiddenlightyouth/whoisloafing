@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { messages, useLang, useMessages } from '../lib/i18n'
 import { refreshUsage, useUsage, type PlanId, type PlanInfo } from '../lib/usage'
 import { Modal } from './Dialog'
+import { CheckIcon, CloseButton } from './Icons'
 
 /** 화면을 서버보다 먼저 배포했을 때 보여줄 요금제. 서버의 UsagePolicy와 같아요. */
 const FALLBACK_PLANS: PlanInfo[] = [
@@ -64,16 +65,7 @@ export function PlansModal({ onClose }: { onClose: () => void }) {
         <h2 id="plans-title" className="text-[18px] font-semibold text-gray-900">
           {L.title}
         </h2>
-        <button
-          type="button"
-          aria-label={L.close}
-          onClick={onClose}
-          className="flex size-8 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-        >
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-4" aria-hidden>
-            <path d="M4 4l8 8M12 4l-8 8" />
-          </svg>
-        </button>
+        <CloseButton label={L.close} onClick={onClose} size="md" />
       </div>
 
       <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -99,9 +91,7 @@ export function PlansModal({ onClose }: { onClose: () => void }) {
               <ul className="mt-5 flex-1 space-y-2 text-[13px] text-gray-700">
                 {[below && times > 1 ? L.times(L.names[below.id], times) : L.base, ...L.features].map((line) => (
                   <li key={line} className="flex gap-2">
-                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="mt-0.5 size-3.5 shrink-0 text-brand" aria-hidden>
-                      <path d="M3.5 8.5l3 3 6-7" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <CheckIcon className="mt-0.5 size-3.5 shrink-0 text-brand" />
                     {line}
                   </li>
                 ))}

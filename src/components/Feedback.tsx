@@ -4,6 +4,7 @@ import { closeBugReport, sendFeedback } from '../lib/feedback'
 import { showToast } from '../lib/toast'
 import { Modal } from './Dialog'
 import { messages, pick, useMessages } from '../lib/i18n'
+import { CloseButton } from './Icons'
 
 const TEXT = messages({
   ko: {
@@ -93,11 +94,7 @@ export function FeedbackPrompt({ chatId, onClose }: { chatId: string | null; onC
     >
       <div className="flex items-start justify-between gap-3">
         <h2 className="text-[14px] font-semibold text-gray-900">{text.promptTitle}</h2>
-        <button type="button" aria-label={text.close} disabled={sending} onClick={() => void send(false)} className="-mt-1 -mr-1 flex size-7 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-3.5" aria-hidden="true">
-            <path d="M4 4l8 8M12 4l-8 8" />
-          </svg>
-        </button>
+        <CloseButton label={text.close} disabled={sending} onClick={() => void send(false)} className="-mt-1 -mr-1" />
       </div>
       <p className="mt-1 text-[13px] leading-relaxed text-gray-500">{text.promptBody}</p>
       <div role="radiogroup" aria-label={text.rating} className="mt-3 flex gap-2">

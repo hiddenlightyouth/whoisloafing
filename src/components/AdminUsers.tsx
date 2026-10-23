@@ -25,6 +25,7 @@ import { DeviceTags, Empty, Failed, full, MoreButton, rowButton, RowsSkeleton, S
 import { IpPlace } from './IpPlace'
 import { Bone } from './Skeleton'
 import { messages, pick, useMessages } from '../lib/i18n'
+import { CloseButton } from './Icons'
 
 
 function StatusTags({ user, self }: { user: AdminUser; self: boolean }) {
@@ -419,11 +420,7 @@ function UserPanel({ id, selfId, onClose, onChanged, onDeleted, onOpenChat }: Pa
       <div className="fixed inset-0 z-20" onPointerDown={onClose} aria-hidden />
       <aside aria-label={L.panel} className="fixed inset-y-0 right-0 z-30 flex w-full max-w-[440px] animate-slide-in flex-col border-l border-gray-200 bg-white">
         <div className="flex h-14 shrink-0 items-center justify-end px-4">
-          <button type="button" aria-label={L.close} onClick={onClose} className="flex size-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" className="size-4" aria-hidden="true">
-              <path d="M4 4l8 8M12 4l-8 8" />
-            </svg>
-          </button>
+          <CloseButton label={L.close} onClick={onClose} size="md" />
         </div>
 
         {!detail || !user ? (

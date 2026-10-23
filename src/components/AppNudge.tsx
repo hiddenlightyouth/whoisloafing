@@ -3,6 +3,7 @@ import { track } from '../lib/analytics'
 import { MAC_DOWNLOAD, MAC_SUPPORT } from '../lib/app'
 import { messages, useMessages } from '../lib/i18n'
 import { readFlag, writeFlag } from '../lib/storage'
+import { CheckIcon, CloseButton } from './Icons'
 
 interface Props {
   /** 닫아 둔 로그인 안내 아이콘이 왼쪽 아래에 떠 있으면 true. 그 위로 자리를 올려서 겹치지 않게 해요. */
@@ -73,16 +74,7 @@ export function AppNudge({ raised }: Props) {
       aria-labelledby="app-nudge-title"
       className={`absolute left-6 z-10 hidden w-[300px] origin-bottom-left animate-pop rounded-2xl border border-gray-200 bg-white p-4 md:block ${place}`}
     >
-      <button
-        type="button"
-        aria-label={text.close}
-        onClick={() => toggle(true)}
-        className="absolute top-2.5 right-2.5 flex size-7 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-      >
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="size-3.5" aria-hidden="true">
-          <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
-        </svg>
-      </button>
+      <CloseButton label={text.close} onClick={() => toggle(true)} className="absolute top-2.5 right-2.5" />
       <h2 id="app-nudge-title" className="pr-7 text-[14px] font-semibold text-gray-900">
         {text.title}
       </h2>
@@ -90,9 +82,7 @@ export function AppNudge({ raised }: Props) {
       <ul className="mt-2.5 space-y-1.5">
         {text.FEATURES.map((feature) => (
           <li key={feature} className="flex items-center gap-2 text-[13px] text-gray-700">
-            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="size-3.5 shrink-0 text-brand" aria-hidden="true">
-              <path d="M3.5 8.5l3 3 6-7" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <CheckIcon className="size-3.5 shrink-0 text-brand" />
             {feature}
           </li>
         ))}

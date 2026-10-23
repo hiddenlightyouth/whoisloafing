@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { messages, useMessages } from '../lib/i18n'
+import { CloseButton } from './Icons'
 
 const TEXT = messages({
   ko: {
@@ -68,16 +69,7 @@ export function LoginNudge({ collapsed, onLogin, onClose, onOpen }: Props) {
         aria-labelledby="login-nudge-title"
         className="absolute bottom-6 left-6 z-10 hidden w-[300px] origin-bottom-left animate-pop rounded-2xl border border-gray-200 bg-white p-4 md:block"
       >
-        <button
-          type="button"
-          aria-label={close}
-          onClick={onClose}
-          className="absolute top-2.5 right-2.5 flex size-7 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-        >
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" className="size-3.5" aria-hidden="true">
-            <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
-          </svg>
-        </button>
+        <CloseButton label={close} onClick={onClose} className="absolute top-2.5 right-2.5" />
         <h2 id="login-nudge-title" className="pr-7 text-[14px] font-semibold text-gray-900">
           {TITLE}
         </h2>
