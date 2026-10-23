@@ -23,7 +23,7 @@ import {
 } from '../lib/resume'
 import { showToast } from '../lib/toast'
 import { messages, useMessages } from '../lib/i18n'
-import { canvas, CloseIcon, copyText, CopyButton, ghostButton, iconButton, pageFrame, PageHeader, paper, PlanField, PlusIcon, RevisionPicker, StepLayout, Steps, StepTitle } from './AppPage'
+import { canvas, CloseIcon, copyText, TrashIcon, CopyButton, ghostButton, iconButton, pageFrame, PageHeader, paper, PlanField, PlusIcon, RevisionPicker, StepLayout, Steps, StepTitle } from './AppPage'
 import { toolButton } from './DeepParts'
 import { ConfirmDialog, primaryButton } from './Dialog'
 import { PeopleList } from './Portfolio'
@@ -70,9 +70,9 @@ const TEXT = messages({
     stackHint: '쉼표로 나눠 적어요',
     addProblemManual: '빈 경험 추가',
     deleteProblem: '경험 빼기',
-    clear: '지우기',
-    clearTitle: '이력서를 지울까요?',
-    clearBody: '이력서의 프로젝트를 모두 지워요. 계정에서도 지워지고 되돌릴 수 없어요.',
+    clear: '삭제',
+    clearTitle: '이력서를 삭제할까요?',
+    clearBody: '이력서의 프로젝트를 모두 삭제해요. 계정에서도 지워지고 되돌릴 수 없어요.',
   },
   en: {
     title: 'Build a resume',
@@ -147,6 +147,7 @@ export function Resume({ onNew, refreshKey }: { onNew: () => void; refreshKey: n
       <RepoGallery
         key={refreshKey}
         title={empty ? L.title : L.pickTitle}
+        created={new Set(projects.map((project) => project.repo.toLowerCase()))}
         onNew={onNew}
         onBack={empty ? undefined : () => setMode({ kind: 'doc' })}
         onOpen={(repo) => {
@@ -273,7 +274,8 @@ function Document({ onAdd }: { onAdd: () => void }) {
         actions={
           <>
             {ready.length > 0 && (
-              <button type="button" onClick={() => setClearing(true)} className={`${toolButton} text-red-500!`}>
+              <button type="button" onClick={() => setClearing(true)} className={`${toolButton} whitespace-nowrap text-red-500!`}>
+                <TrashIcon />
                 {L.clear}
               </button>
             )}

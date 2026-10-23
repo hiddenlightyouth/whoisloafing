@@ -59,6 +59,22 @@ export function PlusIcon() {
   )
 }
 
+export function TrashIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden="true">
+      <path d="M2.5 4.5h11M6.5 4.5V3a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 .5.5v1.5M4 4.5l.6 8.1a1 1 0 0 0 1 .9h4.8a1 1 0 0 0 1-.9l.6-8.1M6.75 7v4M9.25 7v4" />
+    </svg>
+  )
+}
+
+export function RefreshIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" className="size-4" aria-hidden="true">
+      <path d="M13 8a5 5 0 1 1-1.46-3.54M13 2.5v3h-3" />
+    </svg>
+  )
+}
+
 /**
  * 앱 화면 맨 위의 제목 줄이에요. 레포를 보는 화면이면 제목 위에 소유자를 작게 적고, 왼쪽에 뒤로 가기를 둬요.
  * 오른쪽에는 그 화면의 버튼을 둬요. 탭이 있으면 이 줄 바로 아래에 붙여요.

@@ -16,6 +16,7 @@ const TEXT = messages({
     start: '새 분석 시작하기',
     working: '처리 중',
     more: '더 보기',
+    created: '이미 생성됨',
   },
   en: {
     newAnalysis: 'New analysis',
@@ -25,6 +26,7 @@ const TEXT = messages({
     start: 'Start a new analysis',
     working: 'Working',
     more: 'Show more',
+    created: 'Created',
   },
 })
 
@@ -35,12 +37,14 @@ interface RepoCard {
 }
 
 /** 링크를 다시 적지 않고, 채팅으로 분석해 둔 레포 중에서 골라요. */
-export function RepoGallery({ title, onOpen, onNew, onBack }: {
+export function RepoGallery({ title, onOpen, onNew, onBack, created }: {
   title: string
   onOpen: (repo: string) => void
   onNew: () => void
   /** 넘기면 제목 왼쪽에 뒤로 가기 버튼을 둬요. 이력서 만들기처럼 갤러리가 첫 화면이 아닐 때 써요. */
   onBack?: () => void
+  /** 이미 만든 레포들(소유자/레포를 소문자로). 넘기면 그 카드의 오른쪽 위에 "이미 생성됨"을 붙여요. */
+  created?: Set<string>
 }) {
   const L = useMessages(TEXT)
   const [cards, setCards] = useState<RepoCard[] | null>(null)
@@ -121,7 +125,12 @@ export function RepoGallery({ title, onOpen, onNew, onBack }: {
                     onClick={() => onOpen(card.repo)}
                     className="flex h-[132px] w-full flex-col justify-between rounded-2xl border border-gray-200 bg-white p-4 text-left transition-colors hover:border-brand"
                   >
-                    <Avatar owner={owner} />
+                    <span className="flex w-full items-start justify-between gap-2">
+                      <Avatar owner={owner} />
+                      {created?.has(card.repo.toLowerCase()) && (
+                        <span className="shrink-0 rounded-md border border-gray-200 px-2 py-0.5 text-[11.5px] font-medium text-gray-500">{L.created}</span>
+                      )}
+                    </span>
                     <span className="min-w-0">
                       <span className="block truncate text-[14.5px] font-semibold text-gray-900">{name}</span>
                       <span className="mt-0.5 flex items-center justify-between gap-2 text-[12px] text-gray-400">

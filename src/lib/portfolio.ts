@@ -1,9 +1,9 @@
 import { authFetch } from './auth'
-import { DEEP_ERRORS } from './api'
+import { DEEP_ERRORS, loadConfig } from './api'
 import { getLang, messages, pick } from './i18n'
 import { getModel, refreshUsage } from './usage'
 import { cancelSave, canSync, deleteSaved, fetchSaved, putSaved, scheduleSave } from './saved'
-import { readJson, writeItem, writeJson } from './storage'
+import { listKeys, readJson, writeItem, writeJson } from './storage'
 
 /** 포트폴리오에 넣을 수 있는 항목. 서버의 PortfolioSection과 맞춰요. */
 export type PortfolioKey = 'intro' | 'period' | 'team' | 'stack' | 'role' | 'features' | 'trouble' | 'result'
@@ -143,6 +143,18 @@ type LocalPortfolio = SavedPortfolio & { unsynced?: boolean }
 
 function strip({ unsynced: _unsynced, ...saved }: LocalPortfolio): SavedPortfolio {
   return saved
+}
+
+/**
+ * 포트폴리오를 이미 만든 레포들(소유자/레포를 소문자로). 레포를 고르는 화면이 "이미 생성됨"을 붙이는 데 써요.
+ * 이 기기에 남은 것과 계정에 저장한 것을 합쳐요.
+ */
+export async function fetchPortfolioRepos(): Promise<Set<string>> {
+  const repos = new Set(listKeys(SAVED_PREFIX).map((key) => key.slice(SAVED_PREFIX.length)))
+  if (!(await canSync()) || !(await loadConfig()).portfolioList) return repos
+  const result = await authFetch<string[]>('/portfolio/saved/repos').catch(() => null)
+  if (result?.ok && result.data) result.data.forEach((repo) => repos.add(repo.toLowerCase()))
+  return repos
 }
 
 /** 이 기기에 남은 것. 계정에 저장하기 전에 만든 것이거나, 계정에 올리지 못한 것이에요. */

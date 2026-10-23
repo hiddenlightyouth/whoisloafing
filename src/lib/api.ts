@@ -37,6 +37,8 @@ export interface ServerConfig {
   resume: boolean
   /** 서버에 포트폴리오와 이력서를 계정에 저장하는 API가 있는지. 없으면 전처럼 이 기기에만 저장해요. */
   portfolioSync: boolean
+  /** 서버에 포트폴리오를 저장해 둔 레포 목록 API가 있는지. 없으면 이 기기에 남은 것만 이미 만든 것으로 표시해요. */
+  portfolioList: boolean
   /** 서버가 주간 사용량과 요금제를 다루는지. 없으면 시작 창에서 사용량을 보여주지 않아요. */
   usage: boolean
 }
@@ -62,10 +64,11 @@ export async function fetchConfig(): Promise<ServerConfig> {
       portfolio: result.ok && result.data?.portfolio === true,
       resume: result.ok && result.data?.resume === true,
       portfolioSync: result.ok && result.data?.portfolioSync === true,
+      portfolioList: result.ok && result.data?.portfolioList === true,
       usage: result.ok && result.data?.usage === true,
     }
   } catch {
-    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false, clubs: false, githubClientId: null, kakaoClientId: null, socialAppLink: false, socialUnlink: false, withdraw: false, deepStack: false, portfolio: false, resume: false, portfolioSync: false, usage: false }
+    return { storage: false, deep: false, explore: false, admin: false, pin: false, feedback: false, clubs: false, githubClientId: null, kakaoClientId: null, socialAppLink: false, socialUnlink: false, withdraw: false, deepStack: false, portfolio: false, resume: false, portfolioSync: false, portfolioList: false, usage: false }
   }
 }
 

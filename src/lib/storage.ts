@@ -19,6 +19,15 @@ export function writeItem(key: string, value: string | null) {
   }
 }
 
+/** 이 이름으로 시작하는 키를 모두 돌려줘요. */
+export function listKeys(prefix: string): string[] {
+  try {
+    return Object.keys(localStorage).filter((key) => key.startsWith(prefix))
+  } catch {
+    return []
+  }
+}
+
 export function readJson<T>(key: string, fallback: T): T {
   const raw = readItem(key)
   if (raw === null) return fallback

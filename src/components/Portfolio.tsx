@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth'
 import {
   clearPortfolio,
   createPortfolio,
+  fetchPortfolioRepos,
   DEFAULT_SECTIONS,
   fetchPortfolioPeople,
   loadPortfolio,
@@ -21,7 +22,7 @@ import {
   type SavedPortfolio,
 } from '../lib/portfolio'
 import { showToast } from '../lib/toast'
-import { canvas, CloseIcon, copyText, CopyButton, ghostButton, iconButton, pageFrame, PageHeader, paper, PlanField, RevisionPicker, StepLayout, Steps, StepTitle } from './AppPage'
+import { canvas, CloseIcon, copyText, CopyButton, ghostButton, iconButton, pageFrame, PageHeader, paper, PlanField, RefreshIcon, RevisionPicker, StepLayout, Steps, StepTitle, TrashIcon } from './AppPage'
 import { ConfirmDialog, primaryButton } from './Dialog'
 import { MapMenu, toolButton } from './DeepParts'
 import { RepoGallery } from './RepoGallery'
@@ -46,11 +47,24 @@ const PLAN_MAX = 8000
  */
 export function Portfolio({ repo, onOpen, onNew, refreshKey }: Props) {
   const L = useMessages(TEXT)
+  const [created, setCreated] = useState<Set<string>>()
+
+  // 갤러리로 돌아올 때마다 다시 받아서, 방금 만들거나 지운 것도 바로 맞춰요.
+  useEffect(() => {
+    if (repo) return
+    let alive = true
+    void fetchPortfolioRepos().then((repos) => alive && setCreated(repos))
+    return () => {
+      alive = false
+    }
+  }, [repo, refreshKey])
+
   if (!repo) {
     return (
       <RepoGallery
         key={refreshKey}
         title={L.title}
+        created={created}
         onNew={onNew}
         onOpen={(picked) => {
           track('portfolio_repo_select', { repo: picked })
@@ -105,10 +119,12 @@ function Builder({ repo, onBack }: { repo: string; onBack: () => void }) {
         actions={
           saved && (
             <>
-              <button type="button" onClick={() => setDeleting(true)} className={`${toolButton} text-red-500!`}>
+              <button type="button" onClick={() => setDeleting(true)} className={`${toolButton} whitespace-nowrap text-red-500!`}>
+                <TrashIcon />
                 {L.delete}
               </button>
-              <button type="button" onClick={() => setRestarting(true)} className={toolButton}>
+              <button type="button" onClick={() => setRestarting(true)} className={`${toolButton} whitespace-nowrap`}>
+                <RefreshIcon />
                 {L.restart}
               </button>
               <CopyButton
@@ -170,13 +186,13 @@ const TEXT = messages({
   ko: {
     title: '포트폴리오 만들기',
     back: '레포 고르는 화면으로 돌아가기',
-    restart: '처음부터 다시 만들기',
-    restartTitle: '처음부터 다시 만들까요?',
+    restart: '재생성',
+    restartTitle: '포트폴리오를 재생성할까요?',
     restartBody: '항목과 기획안부터 다시 골라서 새로 써요. 지금 포트폴리오는 지워지고 되돌릴 수 없어요.',
-    restartConfirm: '다시 만들기',
-    delete: '지우기',
-    deleteTitle: '포트폴리오를 지울까요?',
-    deleteBody: (name: string) => `${name} 포트폴리오를 지워요. 계정에서도 지워지고 되돌릴 수 없어요.`,
+    restartConfirm: '재생성',
+    delete: '삭제',
+    deleteTitle: '포트폴리오를 삭제할까요?',
+    deleteBody: (name: string) => `${name} 포트폴리오를 삭제해요. 계정에서도 지워지고 되돌릴 수 없어요.`,
     steps: { sections: '항목 선택', plan: '추가 정보', person: '대상 선택' } as Record<Step, string>,
     sectionsTitle: '어떤 항목으로 포트폴리오를 만들까요?',
     planTitle: '참고할 기획안이 있나요?',
@@ -212,10 +228,10 @@ const TEXT = messages({
   en: {
     title: 'Build a portfolio',
     back: 'Back to repositories',
-    restart: 'Start over',
-    restartTitle: 'Start over?',
+    restart: 'Regenerate',
+    restartTitle: 'Regenerate this portfolio?',
     restartBody: 'You will pick sections and a plan again and write it from scratch. The current portfolio will be deleted and cannot be restored.',
-    restartConfirm: 'Start over',
+    restartConfirm: 'Regenerate',
     delete: 'Delete',
     deleteTitle: 'Delete this portfolio?',
     deleteBody: (name: string) => `The ${name} portfolio will be deleted from your account. This cannot be undone.`,
