@@ -108,7 +108,7 @@ export function AppLogin({ onCancel }: { onCancel: () => void }) {
     <main className="flex flex-1 overflow-y-auto">
       <div className="m-auto w-full max-w-sm px-5 pt-24 pb-16">
         <div className="animate-rise rounded-3xl border border-gray-200 bg-white p-6 sm:p-7">
-          <img src="/logo.svg" alt="Lofy" width={1506} height={501} draggable={false} className="h-[21px] w-auto" />
+          <img src="/logo.svg" alt="Lofy" width={1592} height={367} draggable={false} className="h-[14px] w-auto" />
 
           <h1 className="mt-6 break-keep text-[20px] font-semibold leading-snug text-gray-900">
             {sent ? text.sent : text.title(name)}
